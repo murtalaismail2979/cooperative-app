@@ -103,6 +103,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/dividends/{dividend}/pay', [App\Http\Controllers\Admin\DividendController::class, 'markAsPaid'])->name('dividends.pay');
         Route::delete('/dividends/{dividend}', [App\Http\Controllers\Admin\DividendController::class, 'destroy'])->name('dividends.destroy');
 
+        // Dividend Loss Reconciliation & Financial Year Locking
+        Route::get('/dividends-reconciliation', [App\Http\Controllers\Admin\DividendReconciliationController::class, 'index'])->name('dividends.reconciliation.index');
+        Route::get('/dividends-reconciliation/{year}', [App\Http\Controllers\Admin\DividendReconciliationController::class, 'show'])->name('dividends.reconciliation.show');
+        Route::post('/dividends-reconciliation/process/{year}', [App\Http\Controllers\Admin\DividendReconciliationController::class, 'process'])->name('dividends.reconciliation.process');
+        Route::post('/dividends-reconciliation/recovery/{adjustment}', [App\Http\Controllers\Admin\DividendReconciliationController::class, 'recordRecovery'])->name('dividends.reconciliation.recovery');
+        Route::post('/dividends-reconciliation/lock/{year}', [App\Http\Controllers\Admin\DividendReconciliationController::class, 'toggleYearLock'])->name('dividends.reconciliation.lock');
+
         // Reports
         Route::get('/reports/savings/export', [App\Http\Controllers\Admin\ReportController::class, 'exportSavings'])->name('reports.savings.export');
         Route::get('/reports/savings', [App\Http\Controllers\Admin\ReportController::class, 'savings'])->name('reports.savings');
@@ -111,6 +118,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/reports/financial/export', [App\Http\Controllers\Admin\ReportController::class, 'exportFinancial'])->name('reports.financial.export');
         Route::get('/reports/financial', [App\Http\Controllers\Admin\ReportController::class, 'financial'])->name('reports.financial');
         Route::get('/reports/all/export', [App\Http\Controllers\Admin\ReportController::class, 'exportAll'])->name('reports.all.export');
+
+        // Registration Fee Management
+        Route::get('/registration-fees', [App\Http\Controllers\Admin\RegistrationFeeController::class, 'index'])->name('registration-fees.index');
+        Route::get('/registration-fees/settings', [App\Http\Controllers\Admin\RegistrationFeeController::class, 'settings'])->name('registration-fees.settings');
+        Route::post('/registration-fees/settings', [App\Http\Controllers\Admin\RegistrationFeeController::class, 'updateSettings'])->name('registration-fees.settings.update');
+        Route::post('/registration-fees/payment', [App\Http\Controllers\Admin\RegistrationFeeController::class, 'storePayment'])->name('registration-fees.payment.store');
+        Route::post('/registration-fees/payments/{payment}/cancel', [App\Http\Controllers\Admin\RegistrationFeeController::class, 'cancelPayment'])->name('registration-fees.payment.cancel');
+        Route::post('/registration-fees/reconcile/{member}', [App\Http\Controllers\Admin\RegistrationFeeController::class, 'reconcile'])->name('registration-fees.reconcile');
+        Route::get('/registration-fees/payments/{payment}/receipt', [App\Http\Controllers\Admin\RegistrationFeeController::class, 'receipt'])->name('registration-fees.receipt');
+    });
+
+    // ========== BATCH UPLOAD (ADMIN & TREASURER) ==========
+    Route::middleware(['role:admin,treasurer'])->prefix('admin')->name('admin.')->group(function () {
+        Route::get('/batch-upload', [App\Http\Controllers\Admin\BatchUploadController::class, 'index'])->name('batch-upload.index');
+        Route::get('/batch-upload/template/{type}', [App\Http\Controllers\Admin\BatchUploadController::class, 'downloadTemplate'])->name('batch-upload.template');
+        Route::post('/batch-upload/preview', [App\Http\Controllers\Admin\BatchUploadController::class, 'preview'])->name('batch-upload.preview');
+        Route::post('/batch-upload/confirm', [App\Http\Controllers\Admin\BatchUploadController::class, 'confirmImport'])->name('batch-upload.confirm');
+        Route::get('/batch-upload/error-report/{batchImport}', [App\Http\Controllers\Admin\BatchUploadController::class, 'downloadErrorReport'])->name('batch-upload.error-report');
     });
 
     // ========== TREASURER ROUTES ==========
@@ -151,6 +176,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/investments/{investment}/returns/{return}', [App\Http\Controllers\Treasurer\InvestmentController::class, 'destroyReturn'])->name('investments.destroy_return');
         Route::get('/investments/{investment}/returns/{return}/edit', [App\Http\Controllers\Treasurer\InvestmentController::class, 'editReturn'])->name('investments.returns.edit');
         Route::put('/investments/{investment}/returns/{return}', [App\Http\Controllers\Treasurer\InvestmentController::class, 'updateReturn'])->name('investments.returns.update');
+
+        // Registration Fee Management
+        Route::get('/registration-fees', [App\Http\Controllers\Treasurer\RegistrationFeeController::class, 'index'])->name('registration-fees.index');
+        Route::post('/registration-fees/payment', [App\Http\Controllers\Treasurer\RegistrationFeeController::class, 'storePayment'])->name('registration-fees.payment.store');
+        Route::get('/registration-fees/payments/{payment}/receipt', [App\Http\Controllers\Treasurer\RegistrationFeeController::class, 'receipt'])->name('registration-fees.receipt');
     });
 
     // ========== MEMBER ROUTES ==========
@@ -159,6 +189,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/savings', [App\Http\Controllers\Member\DashboardController::class, 'savings'])->name('savings');
         Route::get('/loans', [App\Http\Controllers\Member\DashboardController::class, 'loans'])->name('loans');
         Route::get('/dividends', [App\Http\Controllers\Member\DashboardController::class, 'dividends'])->name('dividends');
+        Route::get('/registration-fee', [App\Http\Controllers\Member\RegistrationFeeController::class, 'index'])->name('registration-fee.index');
+        Route::get('/registration-fee/payments/{payment}/receipt', [App\Http\Controllers\Member\RegistrationFeeController::class, 'receipt'])->name('registration-fee.receipt');
     });
 });
 

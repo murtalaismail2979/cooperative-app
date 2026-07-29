@@ -12,11 +12,13 @@ class DashboardController extends Controller
 {
     protected $savingsService;
     protected $dividendService;
+    protected $registrationFeeService;
 
-    public function __construct(SavingsService $savingsService, DividendService $dividendService)
+    public function __construct(SavingsService $savingsService, DividendService $dividendService, \App\Services\RegistrationFeeService $registrationFeeService)
     {
         $this->savingsService = $savingsService;
         $this->dividendService = $dividendService;
+        $this->registrationFeeService = $registrationFeeService;
     }
 
     public function index()
@@ -25,6 +27,7 @@ class DashboardController extends Controller
         $user->load(['savingsSlots', 'nextOfKin']);
 
         $history = $this->getSavingsHistory($user);
+        $registrationFee = $user->registrationFee ?: $this->registrationFeeService->createObligationForMember($user);
 
         $data = [
             'totalSlots' => $user->savingsSlots->where('is_active', true)->count(),
@@ -34,6 +37,7 @@ class DashboardController extends Controller
             'runningChargesPaid' => RunningCharge::where('user_id', $user->id)
                 ->where('status', 'paid')
                 ->count(),
+            'registrationFee' => $registrationFee,
             'recentSavings' => $history->take(6),
         ];
 
@@ -130,7 +134,8 @@ class DashboardController extends Controller
         $user = auth()->user();
         $payouts = $user->dividendPayouts()->with('dividend.investment')->latest()->paginate(15);
         $summary = $this->dividendService->getMemberDividendSummary($user);
-        $totalDividends = $summary['total_amount'];
-        return view('member.dividends', compact('payouts', 'totalDividends'));
+        $adjustments = \App\Models\DividendAdjustment::where('user_id', $user->id)->with('reconciliation')->latest()->get();
+        $totalDividends = $summary['final_entitlement'];
+        return view('member.dividends', compact('payouts', 'totalDividends', 'summary', 'adjustments'));
     }
 }

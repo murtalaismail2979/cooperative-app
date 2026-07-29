@@ -79,6 +79,9 @@ class RegisteredUserController extends Controller
                 'address' => $request->nok_address,
             ]);
 
+            // Create Registration Fee Obligation
+            app(\App\Services\RegistrationFeeService::class)->createObligationForMember($createdUser);
+
             return $createdUser;
         });
 

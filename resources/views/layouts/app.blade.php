@@ -76,6 +76,9 @@
                             <a href="{{ route('admin.members.index') }}" class="nav-link d-block {{ request()->routeIs('admin.members.*') ? 'active' : '' }}">
                                 <i class="bi bi-people"></i> Members
                             </a>
+                            <a href="{{ route('admin.registration-fees.index') }}" class="nav-link d-block {{ request()->routeIs('admin.registration-fees.*') ? 'active' : '' }}">
+                                <i class="bi bi-card-checklist"></i> Registration Fees
+                            </a>
                             <a href="{{ route('admin.savings.index') }}" class="nav-link d-block {{ request()->routeIs('admin.savings.*') ? 'active' : '' }}">
                                 <i class="bi bi-piggy-bank"></i> Savings
                             </a>
@@ -91,16 +94,25 @@
                             <a href="{{ route('admin.expenses.index') }}" class="nav-link d-block {{ request()->routeIs('admin.expenses.*') ? 'active' : '' }}">
                                 <i class="bi bi-cart"></i> Expenses
                             </a>
-                            <a href="{{ route('admin.dividends.index') }}" class="nav-link d-block {{ request()->routeIs('admin.dividends.*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.dividends.index') }}" class="nav-link d-block {{ request()->routeIs('admin.dividends.index') || request()->routeIs('admin.dividends.create') || request()->routeIs('admin.dividends.show') ? 'active' : '' }}">
                                 <i class="bi bi-gift"></i> Dividends
+                            </a>
+                            <a href="{{ route('admin.dividends.reconciliation.index') }}" class="nav-link d-block {{ request()->routeIs('admin.dividends.reconciliation.*') ? 'active' : '' }}">
+                                <i class="bi bi-calculator"></i> Annual Reconciliation
                             </a>
                             <hr class="border-light">
                             <a href="{{ route('admin.reports.savings') }}" class="nav-link d-block {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">
                                 <i class="bi bi-file-earmark-bar-graph"></i> Reports
                             </a>
+                            <a href="{{ route('admin.batch-upload.index') }}" class="nav-link d-block {{ request()->routeIs('admin.batch-upload.*') ? 'active' : '' }}">
+                                <i class="bi bi-cloud-arrow-up"></i> Batch Upload
+                            </a>
                         @elseif(auth()->user()->isTreasurer())
                             <a href="{{ route('treasurer.dashboard') }}" class="nav-link d-block {{ request()->routeIs('treasurer.dashboard') ? 'active' : '' }}">
                                 <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                            <a href="{{ route('treasurer.registration-fees.index') }}" class="nav-link d-block {{ request()->routeIs('treasurer.registration-fees.*') ? 'active' : '' }}">
+                                <i class="bi bi-card-checklist"></i> Registration Fees
                             </a>
                             <a href="{{ route('treasurer.savings.index') }}" class="nav-link d-block {{ request()->routeIs('treasurer.savings.*') ? 'active' : '' }}">
                                 <i class="bi bi-piggy-bank"></i> Record Savings
@@ -117,9 +129,15 @@
                             <a href="{{ route('treasurer.expenses.index') }}" class="nav-link d-block {{ request()->routeIs('treasurer.expenses.*') ? 'active' : '' }}">
                                 <i class="bi bi-cart"></i> Expenses
                             </a>
+                            <a href="{{ route('admin.batch-upload.index') }}" class="nav-link d-block {{ request()->routeIs('admin.batch-upload.*') ? 'active' : '' }}">
+                                <i class="bi bi-cloud-arrow-up"></i> Batch Upload
+                            </a>
                         @else
                             <a href="{{ route('member.dashboard') }}" class="nav-link d-block {{ request()->routeIs('member.dashboard') ? 'active' : '' }}">
                                 <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                            <a href="{{ route('member.registration-fee.index') }}" class="nav-link d-block {{ request()->routeIs('member.registration-fee.*') ? 'active' : '' }}">
+                                <i class="bi bi-card-checklist"></i> Registration Fee
                             </a>
                             <a href="{{ route('member.savings') }}" class="nav-link d-block {{ request()->routeIs('member.savings') ? 'active' : '' }}">
                                 <i class="bi bi-piggy-bank"></i> My Savings
@@ -131,6 +149,9 @@
                                 <i class="bi bi-gift"></i> Dividends
                             </a>
                         @endif
+                        <a href="{{ route('password.recovery') }}" class="nav-link d-block {{ request()->routeIs('password.recovery*') ? 'active' : '' }}">
+                            <i class="bi bi-shield-lock"></i> Retrieve Password
+                        </a>
                         <hr class="border-light">
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
@@ -148,7 +169,10 @@
                     <div>
                         @yield('page-title', 'Dashboard')
                     </div>
-                    <div>
+                    <div class="d-flex align-items-center">
+                        <a href="{{ route('password.recovery') }}" class="btn btn-outline-primary btn-sm me-3 shadow-sm">
+                            <i class="bi bi-shield-lock me-1"></i> Retrieve / Reset Password
+                        </a>
                         <a href="{{ route('profile.edit') }}" class="text-decoration-none text-muted profile-link d-inline-flex align-items-center">
                             <i class="bi bi-person-circle me-1"></i> 
                             <span>{{ auth()->user()->name ?? '' }}</span>

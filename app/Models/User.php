@@ -21,6 +21,7 @@ class User extends Authenticatable
         'address',
         'role',
         'is_active',
+        'date_of_birth',
     ];
 
     protected $hidden = [
@@ -32,6 +33,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'is_active' => 'boolean',
+        'date_of_birth' => 'date',
     ];
 
     // Relationships
@@ -73,6 +75,26 @@ class User extends Authenticatable
     public function slotHistories()
     {
         return $this->hasMany(MemberSlotHistory::class);
+    }
+
+    public function registrationFee()
+    {
+        return $this->hasOne(RegistrationFee::class);
+    }
+
+    public function registrationFeePayments()
+    {
+        return $this->hasMany(RegistrationFeePayment::class);
+    }
+
+    public function dividendAdjustments()
+    {
+        return $this->hasMany(DividendAdjustment::class);
+    }
+
+    public function dividendRecoveryPayments()
+    {
+        return $this->hasMany(DividendRecoveryPayment::class);
     }
 
     // Scopes

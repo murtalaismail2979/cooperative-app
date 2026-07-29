@@ -4,8 +4,11 @@
 <div class="card shadow mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>All Investments</span>
-        <div>
-            <a href="{{ route('admin.investment-types.index') }}" class="btn btn-outline-primary btn-sm me-2"><i class="bi bi-gear"></i> Investment Types</a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('admin.batch-upload.index', ['type' => 'investments']) }}" class="btn btn-outline-dark btn-sm">
+                <i class="bi bi-cloud-arrow-up"></i> Batch Upload Investments
+            </a>
+            <a href="{{ route('admin.investment-types.index') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-gear"></i> Investment Types</a>
             <a href="{{ route('admin.investments.create') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-circle"></i> New Investment</a>
         </div>
     </div>

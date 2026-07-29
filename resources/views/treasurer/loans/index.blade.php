@@ -2,7 +2,12 @@
 @section('page-title')<h4><i class="bi bi-cash-stack"></i> Active Financing - Repayments</h4>@endsection
 @section('content')
 <div class="card shadow mb-4">
-    <div class="card-header"><span>Active Financing</span></div>
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Active Financing</span>
+        <a href="{{ route('admin.batch-upload.index', ['type' => 'loans']) }}" class="btn btn-outline-warning btn-sm">
+            <i class="bi bi-cloud-arrow-up"></i> Batch Upload Loans
+        </a>
+    </div>
     <div class="card-body">
         <form method="GET" action="{{ route('treasurer.loans.index') }}" class="row g-3 align-items-center mb-4">
             <div class="col-md-4 col-lg-3">

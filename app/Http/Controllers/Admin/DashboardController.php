@@ -11,6 +11,7 @@ use App\Services\LoanService;
 use App\Services\SavingsService;
 use App\Services\InvestmentService;
 use App\Services\ExpenseService;
+use App\Services\RegistrationFeeService;
 use App\Models\MonthlySaving;
 
 class DashboardController extends Controller
@@ -19,17 +20,20 @@ class DashboardController extends Controller
     protected $savingsService;
     protected $investmentService;
     protected $expenseService;
+    protected $registrationFeeService;
 
     public function __construct(
         LoanService $loanService,
         SavingsService $savingsService,
         InvestmentService $investmentService,
-        ExpenseService $expenseService
+        ExpenseService $expenseService,
+        RegistrationFeeService $registrationFeeService
     ) {
         $this->loanService = $loanService;
         $this->savingsService = $savingsService;
         $this->investmentService = $investmentService;
         $this->expenseService = $expenseService;
+        $this->registrationFeeService = $registrationFeeService;
     }
 
     public function index()
@@ -37,6 +41,7 @@ class DashboardController extends Controller
         $loanStats = $this->loanService->getActiveLoansStats();
         $investmentStats = $this->investmentService->getInvestmentStats();
         $expenseStats = $this->expenseService->getExpenseStats();
+        $regFeeStats = $this->registrationFeeService->getDashboardStats();
 
         $driver = \DB::connection()->getDriverName();
         $yearExpr = $driver === 'sqlite' ? "strftime('%Y', month)" : "YEAR(month)";
@@ -53,6 +58,7 @@ class DashboardController extends Controller
             'totalInvestmentCapital' => $investmentStats['totalCapital'],
             'currentMonthSavings' => $this->savingsService->getTotalCurrentMonthSavings(),
             'totalSavings' => MonthlySaving::where('status', 'paid')->sum('amount'),
+            'registrationFeeStats' => $regFeeStats,
             'savingsBreakdown' => MonthlySaving::selectRaw("{$yearExpr} as year, {$monthExpr} as month_num, SUM(amount) as total, COUNT(DISTINCT user_id) as members")
                 ->where('status', 'paid')
                 ->groupBy('year', 'month_num')

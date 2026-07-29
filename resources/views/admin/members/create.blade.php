@@ -24,12 +24,17 @@
             </div>
 
             <div class="row mb-3">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label class="form-label">Phone Number</label>
                     <input type="text" name="phone" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone') }}">
                     @error('phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
+                    <label class="form-label">Date of Birth (Secret Question 2)</label>
+                    <input type="date" name="date_of_birth" class="form-control @error('date_of_birth') is-invalid @enderror" value="{{ old('date_of_birth') }}">
+                    @error('date_of_birth')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-4">
                     <label class="form-label">Contact Address</label>
                     <textarea name="address" class="form-control @error('address') is-invalid @enderror" rows="2">{{ old('address') }}</textarea>
                     @error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -54,16 +59,33 @@
             </div>
 
             <div class="row mb-3" id="memberOnlyFieldsRow">
-                <div class="col-md-6">
-                    <label class="form-label">Number of Savings Slots (1-10) <span class="text-danger">*</span></label>
+                <div class="col-md-3">
+                    <label class="form-label">Savings Slots (1-10) <span class="text-danger">*</span></label>
                     <input type="number" name="slots" id="slotsInput" class="form-control @error('slots') is-invalid @enderror" value="{{ old('slots', 1) }}" min="1" max="10" required>
-                    <small class="text-muted">Each slot = ₦2,000/month</small>
+                    <small class="text-muted">₦2,000/slot/mo</small>
                     @error('slots')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-3">
                     <label class="form-label">Registration Year <span class="text-danger">*</span></label>
                     <input type="number" name="registration_year" id="regYearInput" class="form-control @error('registration_year') is-invalid @enderror" value="{{ old('registration_year', date('Y')) }}" min="2000" max="2100" required>
                     @error('registration_year')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Registration Fee (₦) <span class="text-danger">*</span></label>
+                    <input type="number" step="0.01" min="0.01" name="registration_fee" id="regFeeInput" class="form-control @error('registration_fee') is-invalid @enderror" value="{{ old('registration_fee', $defaultRegistrationFee ?? 1000) }}" required>
+                    <small class="text-muted">Paid at once during registration</small>
+                    @error('registration_fee')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Payment Method <span class="text-danger">*</span></label>
+                    <select name="payment_method" id="paymentMethodInput" class="form-select @error('payment_method') is-invalid @enderror" required>
+                        <option value="Cash" {{ old('payment_method') === 'Cash' || !old('payment_method') ? 'selected' : '' }}>Cash</option>
+                        <option value="Bank Transfer" {{ old('payment_method') === 'Bank Transfer' ? 'selected' : '' }}>Bank Transfer</option>
+                        <option value="Cheque" {{ old('payment_method') === 'Cheque' ? 'selected' : '' }}>Cheque</option>
+                        <option value="Online" {{ old('payment_method') === 'Online' ? 'selected' : '' }}>Online</option>
+                        <option value="Other" {{ old('payment_method') === 'Other' ? 'selected' : '' }}>Other</option>
+                    </select>
+                    @error('payment_method')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
             </div>
 
@@ -133,6 +155,8 @@
         const inputsToToggle = [
             document.getElementById('slotsInput'),
             document.getElementById('regYearInput'),
+            document.getElementById('regFeeInput'),
+            document.getElementById('paymentMethodInput'),
             document.getElementById('nokNameInput'),
             document.getElementById('nokRelSelect'),
             document.getElementById('nokPhoneInput')

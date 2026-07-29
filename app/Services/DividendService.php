@@ -25,6 +25,12 @@ class DividendService
     {
         $investment = \App\Models\Investment::findOrFail($investmentId);
 
+        $year = (int) $investment->start_date->format('Y');
+
+        if (app(DividendReconciliationService::class)->isYearClosed($year)) {
+            throw new \RuntimeException("Financial year {$year} is closed. Cannot distribute dividends for a closed financial year.");
+        }
+
         if ($investment->dividend()->exists()) {
             throw new \RuntimeException('Dividends have already been distributed for this business/investment.');
         }
@@ -64,8 +70,6 @@ class DividendService
         // 3. Calculate unit profit (member distribution pool / total units)
         $unitValue = $memberDistributionPool / $totalUnits;
 
-        $year = (int) $investment->start_date->format('Y');
-
         // 4. Create the dividend record
         $dividend = Dividend::create([
             'year' => $year,
@@ -78,7 +82,7 @@ class DividendService
             'total_units' => $totalUnits,
             'unit_value' => $unitValue,
             'distributed_at' => now(),
-            'distributed_by' => auth()->id(),
+            'distributed_by' => auth()->id() ?? User::where('role', 'admin')->first()?->id ?? 1,
         ]);
 
         // 5. Create payout records
@@ -95,16 +99,28 @@ class DividendService
     }
 
     /**
-     * Get summary stats for a member's dividends.
+     * Get summary stats for a member's dividends including loss adjustments.
      */
     public function getMemberDividendSummary(User $member): array
     {
         $payouts = $member->dividendPayouts;
+        $adjustments = \App\Models\DividendAdjustment::where('user_id', $member->id)->get();
+
+        $totalOriginal = (float) $payouts->sum('amount');
+        $totalLossAdjustment = (float) $adjustments->sum('loss_adjustment_amount');
+        $finalEntitlement = max(0.00, $totalOriginal - $totalLossAdjustment);
+        $totalPaid = (float) $payouts->where('paid', true)->sum('amount');
+        $overpaid = (float) $adjustments->sum('overpayment_amount');
+        $recovered = (float) $adjustments->sum('amount_recovered');
+        $outstandingRecovery = max(0.00, $overpaid - $recovered);
 
         return [
-            'total_amount' => $payouts->sum('amount'),
-            'total_paid' => $payouts->where('paid', true)->sum('amount'),
-            'total_pending' => $payouts->where('paid', false)->sum('amount'),
+            'total_amount' => $totalOriginal,
+            'total_loss_adjustment' => $totalLossAdjustment,
+            'final_entitlement' => $finalEntitlement,
+            'total_paid' => $totalPaid,
+            'total_pending' => max(0.00, $finalEntitlement - $totalPaid),
+            'outstanding_recovery' => $outstandingRecovery,
             'total_years' => $payouts->count(),
         ];
     }

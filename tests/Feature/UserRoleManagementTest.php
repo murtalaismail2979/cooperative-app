@@ -44,6 +44,8 @@ class UserRoleManagementTest extends TestCase
                 'role' => 'member',
                 'slots' => 3,
                 'registration_year' => 2026,
+                'registration_fee' => 1000.00,
+                'payment_method' => 'Cash',
                 'nok_name' => 'Jane Kin',
                 'nok_phone' => '08012345678',
                 'nok_relationship' => 'Spouse',

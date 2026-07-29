@@ -79,6 +79,10 @@ class DividendController extends Controller
 
     public function markAsPaid(Dividend $dividend)
     {
+        if (app(\App\Services\DividendReconciliationService::class)->isYearClosed($dividend->year)) {
+            return back()->withErrors(["Financial year {$dividend->year} is closed. Cannot modify payouts for a closed financial year."]);
+        }
+
         $dividend->payouts()->where('paid', false)->update([
             'paid' => true,
             'paid_date' => now(),
@@ -89,6 +93,10 @@ class DividendController extends Controller
 
     public function destroy(Dividend $dividend)
     {
+        if (app(\App\Services\DividendReconciliationService::class)->isYearClosed($dividend->year)) {
+            return back()->withErrors(["Financial year {$dividend->year} is closed. Cannot delete dividend records for a closed financial year."]);
+        }
+
         $dividend->delete();
 
         return redirect()->route('admin.dividends.index')

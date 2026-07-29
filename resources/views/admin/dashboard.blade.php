@@ -48,6 +48,39 @@
     </div>
 </div>
 
+<!-- Registration Fee Stat Row -->
+@if(isset($data['registrationFeeStats']))
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card border-start border-primary border-4 shadow-sm">
+            <div class="card-body py-3 d-flex flex-wrap justify-content-between align-items-center">
+                <div class="d-flex align-items-center mb-2 mb-md-0">
+                    <div class="p-3 bg-primary bg-opacity-10 text-primary rounded-3 me-3">
+                        <i class="bi bi-card-checklist fs-3"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0 fw-bold text-dark">Registration Fee Summary</h6>
+                        <small class="text-muted">Collected: <strong class="text-success">₦{{ number_format($data['registrationFeeStats']['totalCollected'], 2) }}</strong> | Outstanding: <strong class="text-danger">₦{{ number_format($data['registrationFeeStats']['totalOutstanding'], 2) }}</strong></small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="text-center px-2">
+                        <span class="badge bg-success rounded-pill px-3">{{ $data['registrationFeeStats']['fullyPaidCount'] }} Paid</span>
+                    </div>
+                    <div class="text-center px-2">
+                        <span class="badge bg-warning text-dark rounded-pill px-3">{{ $data['registrationFeeStats']['partiallyPaidCount'] }} Partial</span>
+                    </div>
+                    <div class="text-center px-2">
+                        <span class="badge bg-danger rounded-pill px-3">{{ $data['registrationFeeStats']['unpaidCount'] }} Unpaid</span>
+                    </div>
+                    <a href="{{ route('admin.registration-fees.index') }}" class="btn btn-sm btn-outline-primary">Manage Fees</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 <div class="row">
     <div class="col-lg-8">
         <div class="card shadow mb-4">

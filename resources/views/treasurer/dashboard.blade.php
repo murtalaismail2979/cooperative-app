@@ -22,7 +22,7 @@
             <div class="col-md-3 mb-3"><a href="{{ route('treasurer.savings.index') }}" class="btn btn-outline-success w-100 p-3"><i class="bi bi-piggy-bank fs-3 d-block"></i>Record Savings</a></div>
             <div class="col-md-3 mb-3"><a href="{{ route('treasurer.loans.index') }}" class="btn btn-outline-warning w-100 p-3"><i class="bi bi-cash-stack fs-3 d-block"></i>Financing Repayments</a></div>
             <div class="col-md-3 mb-3"><a href="{{ route('treasurer.investments.index') }}" class="btn btn-outline-info w-100 p-3"><i class="bi bi-graph-up-arrow fs-3 d-block"></i>Investments</a></div>
-            <div class="col-md-3 mb-3"><a href="{{ route('treasurer.expenses.create') }}" class="btn btn-outline-danger w-100 p-3"><i class="bi bi-cart fs-3 d-block"></i>New Expense</a></div>
+            <div class="col-md-3 mb-3"><a href="{{ route('password.recovery') }}" class="btn btn-outline-secondary w-100 p-3"><i class="bi bi-shield-lock fs-3 d-block"></i>Retrieve Password</a></div>
         </div>
     </div>
 </div>

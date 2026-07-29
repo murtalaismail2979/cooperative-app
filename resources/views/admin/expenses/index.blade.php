@@ -4,7 +4,12 @@
 <div class="row">
     <div class="col-lg-4">
         <div class="card shadow mb-4">
-            <div class="card-header"><h6 class="m-0 fw-bold text-primary">Record Expense</h6></div>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="m-0 fw-bold text-primary">Record Expense</h6>
+                <a href="{{ route('admin.batch-upload.index', ['type' => 'expenses']) }}" class="btn btn-outline-danger btn-sm">
+                    <i class="bi bi-cloud-arrow-up"></i> Batch Upload Expenses
+                </a>
+            </div>
             <div class="card-body">
                 <form method="POST" action="{{ route('admin.expenses.store') }}">
                     @csrf

@@ -8,9 +8,14 @@
 <div class="card shadow mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>All Users</span>
-        <a href="{{ route('admin.members.create') }}" class="btn btn-primary btn-sm">
-            <i class="bi bi-plus-circle"></i> Add User
-        </a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('admin.batch-upload.index', ['type' => 'members']) }}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-cloud-arrow-up"></i> Batch Upload Members
+            </a>
+            <a href="{{ route('admin.members.create') }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-circle"></i> Add User
+            </a>
+        </div>
     </div>
     <div class="card-body">
         <form method="GET" action="{{ route('admin.members.index') }}" class="row g-3 align-items-center mb-4">

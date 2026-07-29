@@ -34,9 +34,9 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="email" class="form-label text-muted small fw-bold text-uppercase">Email Address</label>
-                        <input type="email" name="email" id="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email', $user->email) }}" required autocomplete="email">
-                        @error('email')
+                        <label for="date_of_birth" class="form-label text-muted small fw-bold text-uppercase">Date of Birth (Secret Question 2)</label>
+                        <input type="date" name="date_of_birth" id="date_of_birth" class="form-control @error('date_of_birth') is-invalid @enderror" value="{{ old('date_of_birth', $user->date_of_birth ? $user->date_of_birth->format('Y-m-d') : '') }}">
+                        @error('date_of_birth')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -70,26 +70,41 @@
 
                     <div class="mb-3">
                         <label for="current_password" class="form-label text-muted small fw-bold text-uppercase">Current Password</label>
-                        <input type="password" name="current_password" id="current_password" class="form-control @error('current_password', 'updatePassword') is-invalid @enderror" required autocomplete="current-password">
-                        @error('current_password', 'updatePassword')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                        <div class="input-group">
+                            <input type="password" name="current_password" id="current_password" class="form-control @error('current_password', 'updatePassword') is-invalid @enderror" required autocomplete="current-password">
+                            <button type="button" class="btn btn-outline-secondary toggle-password" data-target="current_password" aria-label="Toggle password visibility">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            @error('current_password', 'updatePassword')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
                     </div>
 
                     <div class="mb-3">
                         <label for="password" class="form-label text-muted small fw-bold text-uppercase">New Password</label>
-                        <input type="password" name="password" id="password" class="form-control @error('password', 'updatePassword') is-invalid @enderror" required autocomplete="new-password">
-                        @error('password', 'updatePassword')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                        <div class="input-group">
+                            <input type="password" name="password" id="password" class="form-control @error('password', 'updatePassword') is-invalid @enderror" required autocomplete="new-password">
+                            <button type="button" class="btn btn-outline-secondary toggle-password" data-target="password" aria-label="Toggle password visibility">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            @error('password', 'updatePassword')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
                     </div>
 
                     <div class="mb-3">
                         <label for="password_confirmation" class="form-label text-muted small fw-bold text-uppercase">Confirm New Password</label>
-                        <input type="password" name="password_confirmation" id="password_confirmation" class="form-control @error('password_confirmation', 'updatePassword') is-invalid @enderror" required autocomplete="new-password">
-                        @error('password_confirmation', 'updatePassword')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                        <div class="input-group">
+                            <input type="password" name="password_confirmation" id="password_confirmation" class="form-control @error('password_confirmation', 'updatePassword') is-invalid @enderror" required autocomplete="new-password">
+                            <button type="button" class="btn btn-outline-secondary toggle-password" data-target="password_confirmation" aria-label="Toggle password visibility">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            @error('password_confirmation', 'updatePassword')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
                     </div>
 
                     <div class="mt-4">
@@ -152,12 +167,32 @@
     </div>
 </div>
 
-@if ($errors->userDeletion->isNotEmpty())
+@push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const modal = new bootstrap.Modal(document.getElementById('confirmUserDeletionModal'));
-        modal.show();
+        @if ($errors->userDeletion->isNotEmpty())
+            const modal = new bootstrap.Modal(document.getElementById('confirmUserDeletionModal'));
+            modal.show();
+        @endif
+
+        document.querySelectorAll('.toggle-password').forEach(button => {
+            button.addEventListener('click', function () {
+                const targetId = this.getAttribute('data-target');
+                const input = document.getElementById(targetId);
+                const icon = this.querySelector('i');
+
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.remove('bi-eye');
+                    icon.classList.add('bi-eye-slash');
+                } else {
+                    input.type = 'password';
+                    icon.classList.remove('bi-eye-slash');
+                    icon.classList.add('bi-eye');
+                }
+            });
+        });
     });
 </script>
-@endif
+@endpush
 @endsection

@@ -62,7 +62,8 @@ class UserController extends Controller
 
     public function create()
     {
-        return view('admin.members.create');
+        $defaultRegistrationFee = app(\App\Services\RegistrationFeeService::class)->getCurrentFeeAmount();
+        return view('admin.members.create', compact('defaultRegistrationFee'));
     }
 
     public function store(Request $request)
@@ -74,10 +75,14 @@ class UserController extends Controller
             'email' => 'required|email|unique:users',
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:500',
+            'date_of_birth' => 'nullable|date',
             'password' => 'required|string|min:8',
             'role' => 'required|string|in:member,treasurer,admin',
             'slots' => 'required_if:role,member|nullable|integer|min:1|max:10',
             'registration_year' => 'nullable|integer|min:2000|max:2100',
+            'registration_fee' => 'nullable|numeric|min:0.01',
+            'payment_method' => 'nullable|string|in:Cash,Bank Transfer,Cheque,Online,Other',
+            'reference_number' => 'nullable|string|max:255',
             'nok_name' => 'required_if:role,member|nullable|string|max:255',
             'nok_phone' => 'required_if:role,member|nullable|string|max:20',
             'nok_relationship' => 'required_if:role,member|nullable|string|max:255',
@@ -94,6 +99,7 @@ class UserController extends Controller
                 'password' => Hash::make($validated['password']),
                 'phone' => $validated['phone'] ?? null,
                 'address' => $validated['address'] ?? null,
+                'date_of_birth' => $validated['date_of_birth'] ?? null,
                 'member_code' => $validated['role'] === 'member' ? User::generateMemberCode($regYear) : null,
                 'registration_year' => $validated['role'] === 'member' ? $regYear : null,
                 'role' => $validated['role'],
@@ -125,6 +131,24 @@ class UserController extends Controller
                     'email' => $validated['nok_email'] ?? null,
                     'address' => $validated['nok_address'] ?? null,
                 ]);
+
+                // Create Registration Fee Obligation and Record Full Payment at Once
+                $regService = app(\App\Services\RegistrationFeeService::class);
+                $feeAmount = isset($validated['registration_fee']) && $validated['registration_fee'] !== null
+                    ? (float) $validated['registration_fee']
+                    : $regService->getCurrentFeeAmount();
+                $paymentMethod = !empty($validated['payment_method']) ? $validated['payment_method'] : 'Cash';
+                $referenceNumber = $validated['reference_number'] ?? null;
+
+                $fee = $regService->createObligationForMember($user, $feeAmount);
+                $regService->recordPayment(
+                    $fee,
+                    $feeAmount,
+                    date('Y-m-d'),
+                    $paymentMethod,
+                    $referenceNumber,
+                    auth()->id()
+                );
             }
         });
 
@@ -146,6 +170,7 @@ class UserController extends Controller
             'email' => 'required|email|unique:users,email,' . $member->id,
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:500',
+            'date_of_birth' => 'nullable|date',
             'role' => 'required|string|in:member,treasurer,admin',
             'registration_year' => 'nullable|integer|min:2000|max:2100',
             'is_active' => 'boolean',
@@ -168,6 +193,7 @@ class UserController extends Controller
                 'email' => $validated['email'],
                 'phone' => $validated['phone'] ?? null,
                 'address' => $validated['address'] ?? null,
+                'date_of_birth' => $validated['date_of_birth'] ?? null,
                 'registration_year' => $newRole === 'member' ? $regYear : null,
                 'member_code' => ($newRole === 'member' && !$member->member_code) ? User::generateMemberCode($regYear) : ($newRole === 'member' ? $member->member_code : null),
                 'role' => $newRole,

@@ -52,3 +52,9 @@ Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
                 ->name('logout');
 });
+
+// Password Retrieval / Recovery (Secret Questions: Registration Year & Date of Birth)
+Route::get('retrieve-password', [\App\Http\Controllers\Auth\PasswordRecoveryController::class, 'showForm'])->name('password.recovery');
+Route::post('retrieve-password/verify', [\App\Http\Controllers\Auth\PasswordRecoveryController::class, 'verifySecretQuestions'])->name('password.recovery.verify');
+Route::get('retrieve-password/reset', [\App\Http\Controllers\Auth\PasswordRecoveryController::class, 'showResetForm'])->name('password.recovery.reset');
+Route::post('retrieve-password/reset', [\App\Http\Controllers\Auth\PasswordRecoveryController::class, 'updatePassword'])->name('password.recovery.update');

@@ -45,6 +45,39 @@
     </div>
 </div>
 
+<!-- Registration Fee Card -->
+@if(isset($data['registrationFee']))
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card shadow-sm border-start border-4 border-info">
+            <div class="card-body py-3 d-flex flex-wrap justify-content-between align-items-center">
+                <div class="d-flex align-items-center mb-2 mb-md-0">
+                    <div class="p-3 bg-info bg-opacity-10 text-info rounded-3 me-3">
+                        <i class="bi bi-card-checklist fs-3"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-1 fw-bold text-dark">Member Registration Fee</h6>
+                        <small class="text-muted">Required: ₦{{ number_format($data['registrationFee']->fee_amount, 2) }} | Paid: <strong class="text-success">₦{{ number_format($data['registrationFee']->total_paid, 2) }}</strong> | Outstanding: <strong class="text-danger">₦{{ number_format($data['registrationFee']->outstanding_balance, 2) }}</strong></small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    @if($data['registrationFee']->status === 'fully_paid')
+                        <span class="badge bg-success rounded-pill px-3">Fully Paid</span>
+                    @elseif($data['registrationFee']->status === 'partially_paid')
+                        <span class="badge bg-warning text-dark rounded-pill px-3">Partially Paid</span>
+                    @elseif($data['registrationFee']->status === 'requires_verification')
+                        <span class="badge bg-info text-dark rounded-pill px-3">Requires Verification</span>
+                    @else
+                        <span class="badge bg-danger rounded-pill px-3">Unpaid</span>
+                    @endif
+                    <a href="{{ route('member.registration-fee.index') }}" class="btn btn-sm btn-outline-primary">View Details & Receipts</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 <div class="row">
     <div class="col-lg-6">
         <div class="card shadow mb-4">
@@ -197,22 +230,28 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-3 mb-3">
                         <a href="{{ route('member.savings') }}" class="btn btn-outline-primary w-100 p-3">
                             <i class="bi bi-piggy-bank fs-3 d-block"></i>
                             My Savings
                         </a>
                     </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-3 mb-3">
                         <a href="{{ route('member.loans') }}" class="btn btn-outline-warning w-100 p-3">
                             <i class="bi bi-cash-stack fs-3 d-block"></i>
                             My Financing
                         </a>
                     </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-3 mb-3">
                         <a href="{{ route('member.dividends') }}" class="btn btn-outline-success w-100 p-3">
                             <i class="bi bi-gift fs-3 d-block"></i>
                             Dividends
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ route('password.recovery') }}" class="btn btn-outline-secondary w-100 p-3">
+                            <i class="bi bi-shield-lock fs-3 d-block"></i>
+                            Retrieve Password
                         </a>
                     </div>
                 </div>

@@ -43,6 +43,14 @@
                     @error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-md-6">
+                    <label class="form-label">Date of Birth (Secret Question 2)</label>
+                    <input type="date" name="date_of_birth" class="form-control @error('date_of_birth') is-invalid @enderror" value="{{ old('date_of_birth', $member->date_of_birth ? $member->date_of_birth->format('Y-m-d') : '') }}">
+                    @error('date_of_birth')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
                     <label class="form-label">System Role <span class="text-danger">*</span></label>
                     <select name="role" id="roleSelect" class="form-select @error('role') is-invalid @enderror" required>
                         <option value="member" {{ old('role', $member->role) === 'member' ? 'selected' : '' }}>Member</option>

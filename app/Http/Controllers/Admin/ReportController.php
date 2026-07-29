@@ -506,6 +506,11 @@ class ReportController extends Controller
         } elseif ($tab === 'earnings') {
             list($headers, $rows) = $this->getEarningsReportData();
             return $this->streamCsv($headers, $rows, 'cooperative_and_management_earnings_report_' . date('Y-m-d') . '.csv');
+        } elseif ($tab === 'registration_fees') {
+            $search = $request->input('search');
+            $status = $request->input('status');
+            list($headers, $rows) = $this->getRegistrationFeesData($search, $status);
+            return $this->streamCsv($headers, $rows, 'registration_fees_report_' . date('Y-m-d') . '.csv');
         } else {
             list($headers, $rows) = $this->getMonthlySavingsData();
             return $this->streamCsv($headers, $rows, 'monthly_savings_report_' . date('Y-m-d') . '.csv');
@@ -1179,6 +1184,51 @@ class ReportController extends Controller
                 number_format($yearCoop, 2, '.', ''),
                 number_format($yearMgmt, 2, '.', ''),
                 number_format($yearTotal, 2, '.', '')
+            ];
+        }
+
+        return [$headers, $rows];
+    }
+
+    protected function getRegistrationFeesData(?string $search = null, ?string $status = null)
+    {
+        $query = \App\Models::class ? \App\Models\User::where('role', 'member')->with('registrationFee') : null;
+        $query = \App\Models\User::where('role', 'member')->with('registrationFee');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('member_code', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        if ($status) {
+            $query->whereHas('registrationFee', function ($q) use ($status) {
+                $q->where('status', $status);
+            });
+        }
+
+        $members = $query->get();
+
+        $headers = ['Member Code', 'Member Name', 'Email', 'Registration Fee (₦)', 'Total Paid (₦)', 'Outstanding Balance (₦)', 'Status'];
+        $rows = [];
+
+        foreach ($members as $member) {
+            $fee = $member->registrationFee;
+            $feeAmount = $fee ? (float) $fee->fee_amount : 10000.00;
+            $totalPaid = $fee ? (float) $fee->total_paid : 0.00;
+            $outstanding = max(0.00, $feeAmount - $totalPaid);
+            $statusText = $fee ? str_replace('_', ' ', ucfirst($fee->status)) : 'Unpaid';
+
+            $rows[] = [
+                $member->member_code ?? 'N/A',
+                $member->name,
+                $member->email,
+                number_format($feeAmount, 2, '.', ''),
+                number_format($totalPaid, 2, '.', ''),
+                number_format($outstanding, 2, '.', ''),
+                $statusText,
             ];
         }
 
