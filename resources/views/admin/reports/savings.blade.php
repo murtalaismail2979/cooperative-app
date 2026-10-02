@@ -140,16 +140,20 @@
                     </tr>
                 </thead>
                 <tbody>
-                @forelse($yearlySavings as $ys)
-                <tr>
-                    <td><span class="badge bg-primary">{{ $ys->user->member_code }}</span></td>
-                    <td class="fw-semibold">{{ $ys->user->name }}</td>
-                    <td><span class="badge bg-info text-dark fw-bold">{{ $ys->year }}</span></td>
-                    <td class="text-success fw-semibold">₦{{ number_format($ys->total_saved, 2) }}</td>
-                    <td class="text-primary fw-bold">₦{{ number_format($ys->cumulative_saved, 2) }}</td>
-                </tr>
+                @forelse($yearlySavings->groupBy('user_id') as $userId => $userGroup)
+                    @foreach($userGroup as $ys)
+                    <tr style="break-inside: avoid; page-break-inside: avoid;">
+                        @if($loop->first)
+                            <td rowspan="{{ count($userGroup) }}" class="align-middle"><span class="badge bg-primary">{{ $ys->user->member_code }}</span></td>
+                            <td rowspan="{{ count($userGroup) }}" class="align-middle fw-semibold">{{ $ys->user->name }}</td>
+                        @endif
+                        <td><span class="badge bg-info text-dark fw-bold">{{ $ys->year }}</span></td>
+                        <td class="text-success fw-semibold">₦{{ number_format($ys->total_saved, 2) }}</td>
+                        <td class="text-primary fw-bold">₦{{ number_format($ys->cumulative_saved, 2) }}</td>
+                    </tr>
+                    @endforeach
                 @empty
-                <tr><td colspan="5" class="text-center py-4 text-muted">No yearly savings found.</td></tr>
+                    <tr><td colspan="5" class="text-center py-4 text-muted">No yearly savings found.</td></tr>
                 @endforelse
                 </tbody>
             </table>

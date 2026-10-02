@@ -8,11 +8,31 @@
 <div class="row">
     <div class="col-12">
         <div class="card shadow mb-4">
-            <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                <h6 class="m-0 font-weight-bold text-primary">Savings History</h6>
-                <span class="badge bg-primary fs-6">
-                    Total: ₦{{ number_format($totalSavings, 2) }}
-                </span>
+            <div class="card-header py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h6 class="m-0 font-weight-bold text-primary"><i class="bi bi-clock-history me-1"></i> Savings History</h6>
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <form method="GET" action="{{ route('member.savings') }}" class="d-flex align-items-center gap-2 mb-0">
+                        <div class="col-auto">
+                            <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+                                <option value="">All Years</option>
+                                @foreach($years as $yr)
+                                    <option value="{{ $yr }}" {{ (string)$selectedYear === (string)$yr ? 'selected' : '' }}>Year {{ $yr }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-funnel"></i> Filter</button>
+                        </div>
+                        @if(!empty($selectedYear))
+                        <div class="col-auto">
+                            <a href="{{ route('member.savings') }}" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i> Clear</a>
+                        </div>
+                        @endif
+                    </form>
+                    <span class="badge bg-primary fs-6">
+                        Total: ₦{{ number_format($totalSavings, 2) }}
+                    </span>
+                </div>
             </div>
             <div class="card-body">
                 <div class="table-responsive">

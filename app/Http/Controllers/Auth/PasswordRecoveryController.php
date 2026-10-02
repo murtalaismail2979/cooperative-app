@@ -22,18 +22,16 @@ class PasswordRecoveryController extends Controller
     }
 
     /**
-     * Verify secret questions (Registration Number & Date of Birth).
+     * Verify secret questions (Registration Number).
      */
     public function verifySecretQuestions(Request $request): RedirectResponse
     {
         $request->validate([
             'account_identifier' => ['required', 'string'],
             'registration_number' => ['required', 'string'],
-            'date_of_birth' => ['required', 'date'],
         ], [
             'account_identifier.required' => 'Please provide your Email Address or Member Code.',
             'registration_number.required' => 'Registration Number is required for verification.',
-            'date_of_birth.required' => 'Date of Birth is required for verification.',
         ]);
 
         $identifier = trim($request->input('account_identifier'));
@@ -50,21 +48,17 @@ class PasswordRecoveryController extends Controller
         }
 
         $inputRegNum = strtolower(trim($request->input('registration_number')));
-        $inputDob = Carbon::parse($request->input('date_of_birth'))->format('Y-m-d');
-        $userDob = $user->date_of_birth ? Carbon::parse($user->date_of_birth)->format('Y-m-d') : null;
         $userRegNum = strtolower(trim($user->member_code ?? ''));
 
-        // Verify Secret Verification Questions (Registration Number and Date of Birth)
+        // Verify Secret Verification Question (Registration Number)
         // If user is admin/treasurer without member_code, allow email or user id as reg number fallback
         $regNumMatches = !empty($userRegNum) 
             ? ($userRegNum === $inputRegNum)
             : ($inputRegNum === strtolower(trim($user->email)) || $inputRegNum === (string) $user->id);
 
-        $dobMatches = ($userDob !== null && $userDob === $inputDob);
-
-        if (!$regNumMatches || !$dobMatches) {
+        if (!$regNumMatches) {
             return back()->withInput()->withErrors([
-                'secret_verification' => 'The secret verification details (Registration Number or Date of Birth) provided do not match our records.',
+                'secret_verification' => 'The secret verification detail (Registration Number) provided does not match our records.',
             ]);
         }
 

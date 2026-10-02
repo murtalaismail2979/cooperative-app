@@ -1,7 +1,12 @@
 @extends('layouts.app')
 
 @section('page-title')
-    <h4><i class="bi bi-person-plus"></i> Add New Member</h4>
+    <div class="d-flex justify-content-between align-items-center w-100">
+        <h4 class="mb-0"><i class="bi bi-person-plus"></i> Add New Member</h4>
+        <a href="{{ route('admin.members.index') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-people"></i> View Members
+        </a>
+    </div>
 @endsection
 
 @section('content')
@@ -24,17 +29,12 @@
             </div>
 
             <div class="row mb-3">
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <label class="form-label">Phone Number</label>
                     <input type="text" name="phone" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone') }}">
                     @error('phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
-                <div class="col-md-4">
-                    <label class="form-label">Date of Birth (Secret Question 2)</label>
-                    <input type="date" name="date_of_birth" class="form-control @error('date_of_birth') is-invalid @enderror" value="{{ old('date_of_birth') }}">
-                    @error('date_of_birth')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <label class="form-label">Contact Address</label>
                     <textarea name="address" class="form-control @error('address') is-invalid @enderror" rows="2">{{ old('address') }}</textarea>
                     @error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -51,21 +51,38 @@
                     <label class="form-label">System Role <span class="text-danger">*</span></label>
                     <select name="role" id="roleSelect" class="form-select @error('role') is-invalid @enderror" required>
                         <option value="member" {{ old('role') === 'member' || !old('role') ? 'selected' : '' }}>Member</option>
-                        <option value="treasurer" {{ old('role') === 'treasurer' ? 'selected' : '' }}>Treasurer</option>
-                        <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>Admin</option>
+                        <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>Admin - Full Privilege</option>
+                        <option value="chairman" {{ old('role') === 'chairman' ? 'selected' : '' }}>Chairman - View members & financial records</option>
+                        <option value="secretary" {{ old('role') === 'secretary' ? 'selected' : '' }}>Secretary - Edit members & view financial records</option>
+                        <option value="treasurer" {{ old('role') === 'treasurer' ? 'selected' : '' }}>Treasurer - View members & financial records</option>
                     </select>
                     @error('role')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
             </div>
 
             <div class="row mb-3" id="memberOnlyFieldsRow">
-                <div class="col-md-3">
-                    <label class="form-label">Savings Slots (1-10) <span class="text-danger">*</span></label>
+                <div class="col-md-2">
+                    <label class="form-label">Slots (1-10) <span class="text-danger">*</span></label>
                     <input type="number" name="slots" id="slotsInput" class="form-control @error('slots') is-invalid @enderror" value="{{ old('slots', 1) }}" min="1" max="10" required>
                     <small class="text-muted">₦2,000/slot/mo</small>
                     @error('slots')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-md-3">
+                    <label class="form-label">Registration Month <span class="text-danger">*</span></label>
+                    <select name="registration_month" id="regMonthInput" class="form-select @error('registration_month') is-invalid @enderror" required>
+                        @foreach([
+                            1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+                            5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+                            9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+                        ] as $mNum => $mName)
+                            <option value="{{ $mNum }}" {{ (int)old('registration_month', date('n')) === $mNum ? 'selected' : '' }}>
+                                {{ $mName }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('registration_month')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-2">
                     <label class="form-label">Registration Year <span class="text-danger">*</span></label>
                     <input type="number" name="registration_year" id="regYearInput" class="form-control @error('registration_year') is-invalid @enderror" value="{{ old('registration_year', date('Y')) }}" min="2000" max="2100" required>
                     @error('registration_year')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -76,10 +93,11 @@
                     <small class="text-muted">Paid at once during registration</small>
                     @error('registration_fee')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label">Payment Method <span class="text-danger">*</span></label>
                     <select name="payment_method" id="paymentMethodInput" class="form-select @error('payment_method') is-invalid @enderror" required>
-                        <option value="Cash" {{ old('payment_method') === 'Cash' || !old('payment_method') ? 'selected' : '' }}>Cash</option>
+                        <option value="Pending" {{ old('payment_method') === 'Pending' ? 'selected' : '' }}>Pending (Unpaid)</option>
+                        <option value="Cash" {{ old('payment_method') === 'Cash' || (!old('payment_method') && old('payment_method') !== 'Pending') ? 'selected' : '' }}>Cash</option>
                         <option value="Bank Transfer" {{ old('payment_method') === 'Bank Transfer' ? 'selected' : '' }}>Bank Transfer</option>
                         <option value="Cheque" {{ old('payment_method') === 'Cheque' ? 'selected' : '' }}>Cheque</option>
                         <option value="Online" {{ old('payment_method') === 'Online' ? 'selected' : '' }}>Online</option>
@@ -112,15 +130,10 @@
                 </div>
 
                 <div class="row mb-3">
-                    <div class="col-md-6">
+                    <div class="col-md-12">
                         <label class="form-label">Phone Number <span class="text-danger">*</span></label>
                         <input type="text" name="nok_phone" id="nokPhoneInput" class="form-control @error('nok_phone') is-invalid @enderror" value="{{ old('nok_phone') }}" required>
                         @error('nok_phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Email Address</label>
-                        <input type="email" name="nok_email" class="form-control @error('nok_email') is-invalid @enderror" value="{{ old('nok_email') }}">
-                        @error('nok_email')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                 </div>
 
@@ -133,13 +146,18 @@
                 </div>
             </div>
 
-            <div class="d-flex justify-content-between">
+            <div class="d-flex justify-content-between align-items-center">
                 <a href="{{ route('admin.members.index') }}" class="btn btn-secondary">
                     <i class="bi bi-arrow-left"></i> Back
                 </a>
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-save"></i> Add User
-                </button>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('admin.members.index') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-people"></i> View Members
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Add User
+                    </button>
+                </div>
             </div>
         </form>
     </div>

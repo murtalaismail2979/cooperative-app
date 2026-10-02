@@ -19,11 +19,13 @@ class MemberManagementFilterTest extends TestCase
         $member1 = User::factory()->create([
             'role' => 'member',
             'name' => 'John Doe',
+            'email' => 'john.doe@example.org',
             'member_code' => 'YLDA/26/0001'
         ]);
         $member2 = User::factory()->create([
             'role' => 'member',
             'name' => 'Jane Smith',
+            'email' => 'jane.smith@example.org',
             'member_code' => 'YLDA/26/0002'
         ]);
 

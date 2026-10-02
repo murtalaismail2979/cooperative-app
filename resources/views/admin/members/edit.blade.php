@@ -1,7 +1,19 @@
 @extends('layouts.app')
 
 @section('page-title')
-    <h4><i class="bi bi-pencil"></i> Edit Member: {{ $member->name }}</h4>
+    <div class="d-flex justify-content-between align-items-center w-100">
+        <h4 class="mb-0"><i class="bi bi-pencil"></i> Edit Member: {{ $member->name }}</h4>
+        <div class="d-flex gap-2">
+            @if($member->isMember())
+            <a href="{{ route('admin.loans.create', ['user_id' => $member->id]) }}" class="btn btn-success btn-sm">
+                <i class="bi bi-cash-stack me-1"></i> Grant New Financing
+            </a>
+            @endif
+            <a href="{{ route('admin.members.index') }}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-people"></i> View Members
+            </a>
+        </div>
+    </div>
 @endsection
 
 @section('content')
@@ -37,15 +49,10 @@
             </div>
 
             <div class="row mb-3">
-                <div class="col-md-6">
+                <div class="col-md-12">
                     <label class="form-label">Contact Address</label>
                     <textarea name="address" class="form-control @error('address') is-invalid @enderror" rows="2">{{ old('address', $member->address) }}</textarea>
                     @error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Date of Birth (Secret Question 2)</label>
-                    <input type="date" name="date_of_birth" class="form-control @error('date_of_birth') is-invalid @enderror" value="{{ old('date_of_birth', $member->date_of_birth ? $member->date_of_birth->format('Y-m-d') : '') }}">
-                    @error('date_of_birth')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
             </div>
 
@@ -54,8 +61,10 @@
                     <label class="form-label">System Role <span class="text-danger">*</span></label>
                     <select name="role" id="roleSelect" class="form-select @error('role') is-invalid @enderror" required>
                         <option value="member" {{ old('role', $member->role) === 'member' ? 'selected' : '' }}>Member</option>
-                        <option value="treasurer" {{ old('role', $member->role) === 'treasurer' ? 'selected' : '' }}>Treasurer</option>
-                        <option value="admin" {{ old('role', $member->role) === 'admin' ? 'selected' : '' }}>Admin</option>
+                        <option value="admin" {{ old('role', $member->role) === 'admin' ? 'selected' : '' }}>Admin - Full Privilege</option>
+                        <option value="chairman" {{ old('role', $member->role) === 'chairman' ? 'selected' : '' }}>Chairman - View members & financial records</option>
+                        <option value="secretary" {{ old('role', $member->role) === 'secretary' ? 'selected' : '' }}>Secretary - Edit members & view financial records</option>
+                        <option value="treasurer" {{ old('role', $member->role) === 'treasurer' ? 'selected' : '' }}>Treasurer - View members & financial records</option>
                     </select>
                     @error('role')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
@@ -72,12 +81,27 @@
             </div>
 
             <div class="row mb-3" id="memberOnlyFieldsRow">
-                <div class="col-md-6">
+                <div class="col-md-4">
+                    <label class="form-label">Registration Month <span class="text-danger">*</span></label>
+                    <select name="registration_month" id="regMonthInput" class="form-select @error('registration_month') is-invalid @enderror" required>
+                        @foreach([
+                            1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+                            5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+                            9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+                        ] as $mNum => $mName)
+                            <option value="{{ $mNum }}" {{ (int)old('registration_month', $member->registration_month ?? date('n')) === $mNum ? 'selected' : '' }}>
+                                {{ $mName }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('registration_month')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-4">
                     <label class="form-label">Registration Year <span class="text-danger">*</span></label>
                     <input type="number" name="registration_year" id="regYearInput" class="form-control @error('registration_year') is-invalid @enderror" value="{{ old('registration_year', $member->registration_year ?? date('Y')) }}" min="2000" max="2100" required>
                     @error('registration_year')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label class="form-label">Number of Slots (1-10) <span class="text-danger">*</span></label>
                     <select name="slots" id="slotsSelect" class="form-select @error('slots') is-invalid @enderror" required>
                         @for($i = 1; $i <= 10; $i++)
@@ -129,15 +153,10 @@
                 </div>
 
                 <div class="row mb-3">
-                    <div class="col-md-6">
+                    <div class="col-md-12">
                         <label class="form-label">Phone Number <span class="text-danger">*</span></label>
                         <input type="text" name="nok_phone" id="nokPhoneInput" class="form-control @error('nok_phone') is-invalid @enderror" value="{{ old('nok_phone', $member->nextOfKin->phone ?? '') }}" required>
                         @error('nok_phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Email Address</label>
-                        <input type="email" name="nok_email" class="form-control @error('nok_email') is-invalid @enderror" value="{{ old('nok_email', $member->nextOfKin->email ?? '') }}">
-                        @error('nok_email')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                 </div>
 
@@ -150,13 +169,18 @@
                 </div>
             </div>
 
-            <div class="d-flex justify-content-between">
+            <div class="d-flex justify-content-between align-items-center">
                 <a href="{{ route('admin.members.index') }}" class="btn btn-secondary">
                     <i class="bi bi-arrow-left"></i> Back
                 </a>
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-save"></i> Update User
-                </button>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('admin.members.index') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-people"></i> View Members
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Update User
+                    </button>
+                </div>
             </div>
         </form>
     </div>

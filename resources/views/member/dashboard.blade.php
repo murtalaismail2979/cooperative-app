@@ -207,10 +207,6 @@
                         <strong>{{ auth()->user()->nextOfKin->phone }}</strong>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
-                        <span>Email Address:</span>
-                        <strong>{{ auth()->user()->nextOfKin->email ?? 'N/A' }}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
                         <span>Contact Address:</span>
                         <strong>{{ auth()->user()->nextOfKin->address ?? 'N/A' }}</strong>
                     </div>

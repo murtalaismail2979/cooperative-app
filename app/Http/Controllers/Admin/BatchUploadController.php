@@ -32,14 +32,21 @@ class BatchUploadController extends Controller
     /**
      * Download Sample CSV Template
      */
-    public function downloadTemplate(string $type)
+    public function downloadTemplate(Request $request, string $type)
     {
         if (!in_array($type, ['members', 'savings', 'running_charges', 'loans', 'expenses', 'investments', 'registration_fees'])) {
             abort(404, 'Invalid import type.');
         }
 
-        $csvContent = $this->importService->generateTemplate($type);
+        $monthFilter = null;
         $filename = "coop_batch_template_{$type}.csv";
+
+        if ($type === 'running_charges' && $request->boolean('late_2021')) {
+            $monthFilter = [2021 => [11, 12]];
+            $filename = 'coop_batch_template_running_charges_2021-11_to_2021-12.csv';
+        }
+
+        $csvContent = $this->importService->generateTemplate($type, $monthFilter);
 
         return response($csvContent, 200, [
             'Content-Type' => 'text/csv; charset=UTF-8',

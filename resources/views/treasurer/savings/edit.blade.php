@@ -35,14 +35,20 @@
     <div class="mb-3">
         <label class="form-label fw-bold">Savings Slots <span class="text-danger">*</span></label>
         <div id="slots-container" class="mb-2">
-            @foreach($member->savingsSlots as $slot)
+            @forelse($displaySlots as $slot)
+                @php
+                    $configuredSlotAmount = \App\Models\Slot::where('slot_number', $slot->slot_number)->value('amount');
+                    $expectedAmount = $configuredSlotAmount !== null ? (float)$configuredSlotAmount : ($slot->slot_number * 2000);
+                @endphp
                 <div class="form-check mb-2">
-                    <input class="form-check-input slot-checkbox" type="checkbox" name="slots[]" value="{{ $slot->id }}" id="slot_{{ $slot->id }}" {{ in_array($slot->id, $paidSlotIds) ? 'checked' : '' }}>
+                    <input class="form-check-input slot-checkbox" type="checkbox" name="slots[]" value="{{ $slot->id }}" id="slot_{{ $slot->id }}" {{ in_array($slot->id, $paidSlotIds) ? 'checked' : '' }} data-amount="{{ $expectedAmount }}">
                     <label class="form-check-label" for="slot_{{ $slot->id }}">
-                        Slot #{{ $slot->id }} (₦{{ number_format(2000, 2) }}) - {{ $slot->is_active ? 'Active' : 'Inactive' }}
+                        Slot #{{ $slot->slot_number }} (₦{{ number_format($expectedAmount, 2) }}) - {{ $slot->is_active ? 'Active' : 'Inactive' }}
                     </label>
                 </div>
-            @endforeach
+            @empty
+                <div class="alert alert-warning mb-0">This member has no registered savings slots.</div>
+            @endforelse
         </div>
         <div class="mt-2 text-dark">
             Total Amount to Pay: <strong class="fs-5 text-success" id="total-amount">₦0.00</strong>
@@ -64,16 +70,26 @@ document.addEventListener('DOMContentLoaded', function() {
     const totalAmount = document.getElementById('total-amount');
 
     function calculateTotal() {
-        let count = 0;
+        let total = 0;
         checkboxes.forEach(cb => {
-            if (cb.checked) count++;
+            if (cb.checked) {
+                total += parseFloat(cb.dataset.amount || 0);
+            }
         });
-        const total = count * 2000;
         totalAmount.textContent = '₦' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     checkboxes.forEach(cb => {
-        cb.addEventListener('change', calculateTotal);
+        cb.addEventListener('change', function() {
+            if (this.checked) {
+                checkboxes.forEach(otherCb => {
+                    if (otherCb !== this) {
+                        otherCb.checked = false;
+                    }
+                });
+            }
+            calculateTotal();
+        });
     });
 
     calculateTotal();

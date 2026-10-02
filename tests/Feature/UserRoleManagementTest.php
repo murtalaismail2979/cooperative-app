@@ -67,6 +67,37 @@ class UserRoleManagementTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_create_member_with_pending_registration_fee(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin)
+            ->post(route('admin.members.store'), [
+                'name' => 'Pending Member',
+                'email' => 'pendingmember@example.com',
+                'password' => 'password123',
+                'role' => 'member',
+                'slots' => 2,
+                'registration_year' => 2026,
+                'registration_fee' => 1500.00,
+                'payment_method' => 'Pending',
+                'nok_name' => 'John Kin',
+                'nok_phone' => '08099999999',
+                'nok_relationship' => 'Brother',
+            ]);
+
+        $response->assertRedirect(route('admin.members.index'));
+        $createdUser = User::where('email', 'pendingmember@example.com')->first();
+        $this->assertNotNull($createdUser);
+        $this->assertDatabaseHas('registration_fees', [
+            'user_id' => $createdUser->id,
+            'fee_amount' => 1500.00,
+            'total_paid' => 0.00,
+            'status' => 'unpaid',
+        ]);
+        $this->assertEquals(0, $createdUser->registrationFeePayments()->count());
+    }
+
     public function test_admin_can_create_treasurer_without_slots_and_nok(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

@@ -40,8 +40,9 @@ class RunningChargeController extends Controller
                 ->get();
         }
         $overallTotal = (float) \App\Models\RunningCharge::where('status', 'paid')->sum('amount');
+        $chargeRates = \App\Models\RunningChargeRate::orderBy('start_year')->get();
 
-        return view('treasurer.running-charges.index', compact('members', 'charges', 'monthlyCharges', 'overallTotal'));
+        return view('treasurer.running-charges.index', compact('members', 'charges', 'monthlyCharges', 'overallTotal', 'chargeRates'));
     }
 
     public function store(Request $request)
@@ -50,12 +51,14 @@ class RunningChargeController extends Controller
             'user_id' => 'required|exists:users,id',
             'month' => 'required|date',
             'amount' => 'nullable|numeric|min:0',
+            'payment_date' => 'required|date',
         ]);
 
         $this->runningChargeService->recordCharge(
             $validated['user_id'],
             $validated['month'],
-            $validated['amount'] ?? null
+            $validated['amount'] ?? null,
+            $validated['payment_date']
         );
 
         return redirect()->route('treasurer.running-charges.index')->with('success', 'Running charge recorded successfully.');
@@ -165,7 +168,7 @@ class RunningChargeController extends Controller
     public function destroy(\App\Models\RunningCharge $runningCharge)
     {
         $runningCharge->delete();
-        return redirect()->route('treasurer.running-charges.history')->with('success', 'Running charge deleted successfully.');
+        return redirect()->back(fallback: route('treasurer.running-charges.history'))->with('success', 'Running charge deleted successfully.');
     }
 }
 

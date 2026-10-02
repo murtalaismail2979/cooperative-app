@@ -210,6 +210,18 @@ class MonthlyDividendTest extends TestCase
         $responseMemberB->assertSee('Cocoa Business');
         $responseMemberB->assertSee('₦1,012.50');
         $responseMemberB->assertSee('3'); // units
+
+        // Verify member can filter dividends by year and month
+        $responseFiltered = $this->actingAs($userA)
+            ->get(route('member.dividends', ['year' => 2026, 'month' => now()->month]));
+        $responseFiltered->assertOk();
+        $responseFiltered->assertSee('Cocoa Business');
+
+        $responseEmptyFilter = $this->actingAs($userA)
+            ->get(route('member.dividends', ['year' => 2020, 'month' => 1]));
+        $responseEmptyFilter->assertOk();
+        $responseEmptyFilter->assertDontSee('Cocoa Business');
+        $responseEmptyFilter->assertSee('No dividend records found');
     }
 
     public function test_dividend_distribution_fails_if_no_savings_at_business_start(): void
@@ -295,5 +307,53 @@ class MonthlyDividendTest extends TestCase
         // Confirm investment is available again
         $availableInvestments = (new \App\Services\DividendService())->getAvailableInvestments();
         $this->assertTrue($availableInvestments->contains($investment));
+    }
+
+    public function test_admin_can_distribute_negative_dividend_amount_for_loss(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $member = User::factory()->create(['role' => 'member', 'is_active' => true]);
+        $slot = SavingsSlot::create(['user_id' => $member->id, 'slot_number' => 1, 'is_active' => true]);
+
+        MonthlySaving::create([
+            'user_id' => $member->id,
+            'savings_slot_id' => $slot->id,
+            'amount' => 4000.00,
+            'month' => '2026-01-01',
+            'status' => 'paid',
+            'recorded_by' => $admin->id
+        ]);
+
+        $investment = Investment::create([
+            'name' => 'Poultry Farming Loss Operation',
+            'type' => 'agriculture',
+            'capital_amount' => 100000.00,
+            'total_returns' => 36250.00, // Capital 100k - Returns 36.25k = -63750 Loss
+            'status' => 'completed',
+            'start_date' => '2026-01-15',
+            'created_by' => $admin->id
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->post(route('admin.dividends.store'), [
+                'investment_id' => $investment->id,
+                'total_dividend_amount' => -63750.00
+            ]);
+
+        $dividend = Dividend::where('investment_id', $investment->id)->first();
+        $this->assertNotNull($dividend);
+        $response->assertRedirect(route('admin.dividends.show', $dividend));
+
+        $this->assertEquals(-63750.00, $dividend->original_sharable_profit);
+        $this->assertEquals(0.00, $dividend->cooperative_amount);
+        $this->assertEquals(0.00, $dividend->management_amount);
+        $this->assertEquals(-63750.00, $dividend->member_distribution_pool);
+
+        // Check member payout record
+        $payout = DividendPayout::where('dividend_id', $dividend->id)->first();
+        $this->assertNotNull($payout);
+        $this->assertEquals($member->id, $payout->user_id);
+        $this->assertEquals(2, $payout->units); // 4000 / 2000 = 2 units
+        $this->assertEquals(-63750.00, $payout->amount); // 2 units * (-63750/2)
     }
 }

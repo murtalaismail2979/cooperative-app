@@ -44,7 +44,7 @@
         .main-content.loading { opacity: 0.5; pointer-events: none; transition: opacity 0.15s ease; }
         
         /* General Dashboard card & button polish */
-        .card { border-radius: 12px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.03); }
+        .card { border-radius: 12px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.03); overflow: hidden; }
         .card-header { background-color: #fff; border-bottom: 1px solid rgba(0,0,0,0.05); font-weight: 600; }
         .btn { border-radius: 8px; font-weight: 500; transition: all 0.2s ease; }
         .btn-primary { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border: none; box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2); }
@@ -55,6 +55,23 @@
         .table th { font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; }
         .profile-link { transition: opacity 0.2s ease; }
         .profile-link:hover { opacity: 0.8; }
+
+        /* Prevent select and flex items from overflowing containers */
+        .form-select, .form-control { max-width: 100%; text-overflow: ellipsis; }
+        .input-group > .form-select, .input-group > .form-control, .input-group > div { min-width: 0; }
+
+        /* Pagination & SVG constraints */
+        svg { max-width: 100%; max-height: 100%; }
+        .pagination { margin-bottom: 0; }
+        .pagination svg { width: 1.25em; height: 1.25em; vertical-align: middle; }
+        .pagination .page-link { border-radius: 6px; margin: 0 2px; color: #4f46e5; border: 1px solid #e2e8f0; }
+        .pagination .page-item.active .page-link { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border-color: #4f46e5; color: #fff; }
+
+        /* Badge contrast enhancement */
+        .badge.bg-primary, .badge.bg-success, .badge.bg-danger, .badge.bg-info, .badge.bg-warning, .badge.bg-secondary {
+            color: #ffffff !important;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -74,7 +91,10 @@
                                 <i class="bi bi-speedometer2"></i> Dashboard
                             </a>
                             <a href="{{ route('admin.members.index') }}" class="nav-link d-block {{ request()->routeIs('admin.members.*') ? 'active' : '' }}">
-                                <i class="bi bi-people"></i> Members
+                                <i class="bi bi-people"></i> Manage Users
+                            </a>
+                            <a href="{{ route('admin.slots.index') }}" class="nav-link d-block {{ request()->routeIs('admin.slots.*') ? 'active' : '' }}">
+                                <i class="bi bi-grid-3x3-gap"></i> Slot Settings
                             </a>
                             <a href="{{ route('admin.registration-fees.index') }}" class="nav-link d-block {{ request()->routeIs('admin.registration-fees.*') ? 'active' : '' }}">
                                 <i class="bi bi-card-checklist"></i> Registration Fees
@@ -208,50 +228,155 @@
     <script src="{{ asset('js/bootstrap.bundle.min.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const inputs = document.querySelectorAll('.auto-search');
-            inputs.forEach(input => {
-                let timeout = null;
-                
-                // Restore focus and cursor position at the end of the text
-                if (localStorage.getItem('focused_search_id') === input.id) {
-                    input.focus();
-                    const len = input.value ? input.value.length : 0;
-                    input.setSelectionRange(len, len);
+            let searchTimeout = null;
+            let currentFetchController = null;
+
+            function buildFormUrl(form) {
+                const action = form.getAttribute('action') || window.location.pathname;
+                const formData = new FormData(form);
+                const params = new URLSearchParams();
+                for (const [key, value] of formData.entries()) {
+                    if (value !== null && value !== '') {
+                        params.append(key, value);
+                    }
+                }
+                const queryString = params.toString();
+                return action + (queryString ? '?' + queryString : '');
+            }
+
+            function executeAjaxSearch(url, activeInputId, selectionStart, selectionEnd) {
+                const mainContent = document.querySelector('.main-content');
+                if (mainContent) mainContent.classList.add('loading');
+
+                const loader = document.getElementById('top-loader');
+                if (loader) {
+                    loader.style.display = 'block';
+                    loader.style.transform = 'translateX(-30%)';
                 }
 
-                input.addEventListener('input', function() {
-                    localStorage.setItem('focused_search_id', this.id);
-                    
-                    const mainContent = document.querySelector('.main-content');
-                    if (mainContent) {
-                        mainContent.classList.add('loading');
+                if (currentFetchController) {
+                    currentFetchController.abort();
+                }
+                currentFetchController = new AbortController();
+
+                fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    signal: currentFetchController.signal
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response failed');
+                    return response.text();
+                })
+                .then(html => {
+                    const parser = new DOMParser();
+                    const newDoc = parser.parseFromString(html, 'text/html');
+                    const newMainContent = newDoc.querySelector('.main-content');
+
+                    if (mainContent && newMainContent) {
+                        mainContent.innerHTML = newMainContent.innerHTML;
+                        window.history.replaceState(null, '', url);
                     }
 
-                    const loader = document.getElementById('top-loader');
+                    if (activeInputId) {
+                        const restoredInput = document.getElementById(activeInputId);
+                        if (restoredInput) {
+                            restoredInput.focus();
+                            const len = restoredInput.value ? restoredInput.value.length : 0;
+                            const start = typeof selectionStart === 'number' ? selectionStart : len;
+                            const end = typeof selectionEnd === 'number' ? selectionEnd : len;
+                            try { restoredInput.setSelectionRange(start, end); } catch (e) {}
+                        }
+                    }
+
+                    initAutoSearch();
+                })
+                .catch(err => {
+                    if (err.name !== 'AbortError') {
+                        console.error('Search error:', err);
+                    }
+                })
+                .finally(() => {
+                    if (mainContent) mainContent.classList.remove('loading');
                     if (loader) {
-                        loader.style.transform = 'translateX(-30%)';
-                        let progress = -30;
-                        const interval = setInterval(() => {
-                            if (progress < -10) {
-                                progress += 3;
-                                loader.style.transform = `translateX(${progress}%)`;
-                            } else {
-                                clearInterval(interval);
-                            }
-                        }, 50);
+                        loader.style.transform = 'translateX(0%)';
+                        setTimeout(() => { loader.style.display = 'none'; }, 200);
+                    }
+                });
+            }
+
+            function initAutoSearch() {
+                const inputs = document.querySelectorAll('.auto-search');
+                inputs.forEach(input => {
+                    if (input.dataset.autoSearchBound) return;
+                    input.dataset.autoSearchBound = 'true';
+
+                    if (localStorage.getItem('focused_search_id') === input.id) {
+                        input.focus();
+                        const len = input.value ? input.value.length : 0;
+                        input.setSelectionRange(len, len);
+                        localStorage.removeItem('focused_search_id');
                     }
 
-                    clearTimeout(timeout);
-                    timeout = setTimeout(() => {
-                        this.form.submit();
-                    }, 300); // 300ms debounce for snappier response
+                    input.addEventListener('input', function() {
+                        const inputId = this.id;
+                        const start = this.selectionStart;
+                        const end = this.selectionEnd;
+                        const form = this.form;
+
+                        clearTimeout(searchTimeout);
+                        searchTimeout = setTimeout(() => {
+                            if (form) {
+                                const url = buildFormUrl(form);
+                                executeAjaxSearch(url, inputId, start, end);
+                            }
+                        }, 250);
+                    });
                 });
 
-                // Clear ID storage on manual form submission
-                input.form?.addEventListener('submit', function() {
-                    localStorage.removeItem('focused_search_id');
+                // Attach to search forms
+                const searchForms = document.querySelectorAll('form');
+                searchForms.forEach(form => {
+                    if (!form.querySelector('.auto-search')) return;
+                    if (form.dataset.formSearchBound) return;
+                    form.dataset.formSearchBound = 'true';
+
+                    form.querySelectorAll('select, input[type="date"]').forEach(select => {
+                        select.removeAttribute('onchange');
+                        select.addEventListener('change', function(e) {
+                            const activeInput = form.querySelector('.auto-search');
+                            const activeId = activeInput ? activeInput.id : null;
+                            const url = buildFormUrl(form);
+                            executeAjaxSearch(url, activeId);
+                        });
+                    });
+
+                    form.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        clearTimeout(searchTimeout);
+                        const activeInput = form.querySelector('.auto-search');
+                        const activeId = activeInput ? activeInput.id : null;
+                        const url = buildFormUrl(form);
+                        executeAjaxSearch(url, activeId);
+                    });
                 });
-            });
+
+                // Intercept pagination links inside main-content for instant page transitions
+                const mainContent = document.querySelector('.main-content');
+                if (mainContent && !mainContent.dataset.paginationBound) {
+                    mainContent.dataset.paginationBound = 'true';
+                    mainContent.addEventListener('click', function(e) {
+                        const pageLink = e.target.closest('.pagination a, .page-link');
+                        if (pageLink && pageLink.href && !pageLink.href.startsWith('#') && !pageLink.href.startsWith('javascript:')) {
+                            e.preventDefault();
+                            const activeInput = document.querySelector('.auto-search:focus') || document.querySelector('.auto-search');
+                            const activeId = activeInput ? activeInput.id : null;
+                            executeAjaxSearch(pageLink.href, activeId);
+                        }
+                    });
+                }
+            }
+
+            initAutoSearch();
         });
     </script>
     @stack('scripts')

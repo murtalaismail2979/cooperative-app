@@ -31,10 +31,20 @@
         </div>
     </div>
 
-    <div class="d-flex justify-content-between">
+    <div class="d-flex justify-content-between align-items-center">
         <a href="{{ route('admin.running-charges.history') }}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Back</a>
-        <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Save Changes</button>
+        <div>
+            <button type="button" class="btn btn-outline-danger me-2" onclick="if(confirm('Are you sure you want to delete this running charge record?')) document.getElementById('deleteChargeForm').submit();">
+                <i class="bi bi-trash"></i> Delete Charge
+            </button>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Save Changes</button>
+        </div>
     </div>
+</form>
+
+<form id="deleteChargeForm" method="POST" action="{{ route('admin.running-charges.destroy', $runningCharge) }}" class="d-none">
+    @csrf
+    @method('DELETE')
 </form>
 </div></div>
 @endsection

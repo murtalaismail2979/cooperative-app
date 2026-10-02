@@ -10,6 +10,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             RoleSeeder::class,
+            SlotSeeder::class,
         ]);
 
         \App\Models\InvestmentType::updateOrCreate(['slug' => 'buying_selling_goods'], ['name' => 'Buying & Selling Goods']);

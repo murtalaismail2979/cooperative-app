@@ -4,12 +4,59 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Models\RunningCharge;
+use App\Services\RunningChargeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class RunningChargesHistoryTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_admin_running_charges_page_exposes_edit_action(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $member = User::factory()->create(['role' => 'member']);
+        $charge = RunningCharge::create([
+            'user_id' => $member->id,
+            'amount' => 500,
+            'month' => '2026-09-01',
+            'payment_date' => '2026-09-05',
+            'status' => 'paid',
+            'recorded_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.running-charges.index'))
+            ->assertOk()
+            ->assertSee(route('admin.running-charges.edit', $charge))
+            ->assertSee('Correct running charge');
+    }
+
+    public function test_recording_same_member_month_updates_existing_charge(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $member = User::factory()->create(['role' => 'member']);
+
+        $this->actingAs($admin);
+        RunningCharge::create([
+            'user_id' => $member->id,
+            'amount' => 100,
+            'month' => '2021-10-01',
+            'status' => 'paid',
+            'payment_date' => '2021-10-05',
+        ]);
+
+        app(RunningChargeService::class)->recordCharge(
+            $member->id,
+            '2021-10-01 00:00:00',
+            125
+        );
+
+        $this->assertSame(1, RunningCharge::where('user_id', $member->id)->count());
+        $charge = RunningCharge::where('user_id', $member->id)->firstOrFail();
+        $this->assertSame('2021-10-01', $charge->month->format('Y-m-d'));
+        $this->assertSame('125.00', (string) $charge->amount);
+    }
 
     public function test_admin_can_access_running_charges_history_page(): void
     {

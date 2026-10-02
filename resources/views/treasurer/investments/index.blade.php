@@ -4,7 +4,12 @@
 <div class="card shadow mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>All Investments</span>
-        <a href="{{ route('treasurer.investments.create') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-circle"></i> New Investment</a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('admin.batch-upload.index', ['type' => 'investments']) }}" class="btn btn-outline-dark btn-sm">
+                <i class="bi bi-cloud-arrow-up me-1"></i> Batch Upload Investments
+            </a>
+            <a href="{{ route('treasurer.investments.create') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-circle"></i> New Investment</a>
+        </div>
     </div>
     <div class="card-body">
         <form method="GET" action="{{ route('treasurer.investments.index') }}" class="row g-3 align-items-center mb-4">
@@ -14,10 +19,34 @@
                     <input type="text" name="search" id="investmentSearch" class="form-control border-start-0 auto-search" placeholder="Search by name, capital, status, type..." value="{{ $search ?? '' }}">
                 </div>
             </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Search</button>
+            <div class="col-md-3">
+                <select name="type" class="form-select" onchange="this.form.submit()">
+                    <option value="">All Investment Types</option>
+                    @foreach($investmentTypes as $it)
+                        <option value="{{ $it->slug }}" {{ (string)($type ?? '') === (string)$it->slug || strtolower($type ?? '') === strtolower($it->slug ?? '') ? 'selected' : '' }}>{{ $it->name }}</option>
+                    @endforeach
+                </select>
             </div>
-            @if(!empty($search))
+            <div class="col-md-2">
+                <select name="year" class="form-select" onchange="this.form.submit()">
+                    <option value="">All Years</option>
+                    @foreach($availableYears as $yr)
+                        <option value="{{ $yr }}" {{ (string)($year ?? '') === (string)$yr ? 'selected' : '' }}>Year {{ $yr }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="month" class="form-select" onchange="this.form.submit()">
+                    <option value="">All Months</option>
+                    @foreach($months as $num => $name)
+                        <option value="{{ $num }}" {{ (string)($month ?? '') === (string)$num ? 'selected' : '' }}>{{ $name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Filter</button>
+            </div>
+            @if(!empty($search) || !empty($year) || !empty($month) || !empty($type))
             <div class="col-auto">
                 <a href="{{ route('treasurer.investments.index') }}" class="btn btn-outline-danger"><i class="bi bi-x-circle"></i> Clear</a>
             </div>
@@ -29,9 +58,19 @@
                 <thead><tr><th>#</th><th>Name</th><th>Capital</th><th>Returns</th><th>Sharable Profit</th><th>ROI</th><th>Start Date</th><th>End Date</th><th>Status</th><th class="text-center">Actions</th></tr></thead>
                 <tbody>
                 @forelse($investments as $inv)
+                @php
+                    $calculatedProfit = ($inv->capital_amount > 0 && $inv->roi > 0)
+                        ? ($inv->capital_amount * ($inv->roi / 100))
+                        : ($inv->sharable_profit > 0 ? $inv->sharable_profit : 0);
+                @endphp
                 <tr>
                     <td>{{ $inv->id }}</td>
-                    <td>{{ $inv->name }}</td>
+                    <td>
+                        {{ $inv->name }}
+                        @if($inv->quantity !== null)
+                            <br><small class="text-muted"><i class="bi bi-box-seam me-1"></i>Qty: {{ number_format($inv->quantity, 2) }}</small>
+                        @endif
+                    </td>
                     <td>₦{{ number_format($inv->capital_amount,2) }}</td>
                     <td>₦{{ number_format($inv->total_returns,2) }}</td>
                     <td>₦{{ number_format($inv->sharable_profit,2) }}</td>
@@ -44,6 +83,8 @@
                         <button type="button" class="btn btn-sm btn-success record-profit-btn" 
                                 data-name="{{ $inv->name }}" 
                                 data-url="{{ route('treasurer.investments.return', $inv) }}" 
+                                data-profit="{{ number_format((float)$calculatedProfit, 2, '.', '') }}"
+                                data-roi="{{ $inv->roi }}"
                                 title="Record Profit/Return">
                             <i class="bi bi-plus-circle"></i>
                         </button>
@@ -82,7 +123,12 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">Amount (₦) <span class="text-danger">*</span></label>
-                        <input type="number" step="0.01" name="amount" class="form-control" required>
+                        <small class="text-muted d-block mb-1">(Enter positive for Profit/Gain, negative for Loss e.g. -5000)</small>
+                        <div class="input-group">
+                            <input type="number" step="0.01" name="amount" id="modal_amount_input" class="form-control" required placeholder="0.00 or -5000.00">
+                            <button type="button" class="btn btn-outline-danger" id="toggleLossBtn" title="Toggle negative amount for loss"><i class="bi bi-dash-circle me-1"></i> Loss (-)</button>
+                        </div>
+                        <small class="text-success mt-1 d-block" id="modal_profit_info"></small>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">Date <span class="text-danger">*</span></label>
@@ -90,12 +136,12 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">Description</label>
-                        <input type="text" name="description" class="form-control" placeholder="e.g. Profit generated / Return">
+                        <input type="text" name="description" class="form-control" placeholder="e.g. Profit generated / Loss incurred / Return">
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success"><i class="bi bi-check-circle"></i> Record Profit</button>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-check-circle"></i> Save Return / Loss</button>
                 </div>
             </form>
         </div>
@@ -110,14 +156,39 @@ document.addEventListener('DOMContentLoaded', function() {
     const modal = new bootstrap.Modal(modalElement);
     const form = document.getElementById('recordProfitForm');
     const nameInput = document.getElementById('modal_investment_name');
+    const amountInput = document.getElementById('modal_amount_input');
+    const profitInfo = document.getElementById('modal_profit_info');
+    const toggleLossBtn = document.getElementById('toggleLossBtn');
+
+    if (toggleLossBtn && amountInput) {
+        toggleLossBtn.addEventListener('click', function() {
+            let val = amountInput.value.trim();
+            if (val.startsWith('-')) {
+                amountInput.value = val.substring(1);
+            } else if (val !== '') {
+                amountInput.value = '-' + val;
+            } else {
+                amountInput.value = '-';
+            }
+        });
+    }
 
     recordProfitButtons.forEach(btn => {
         btn.addEventListener('click', function() {
             const url = this.getAttribute('data-url');
             const name = this.getAttribute('data-name');
+            const profit = this.getAttribute('data-profit') || '0.00';
+            const roi = this.getAttribute('data-roi') || '0';
             
             form.setAttribute('action', url);
             nameInput.value = name;
+            amountInput.value = parseFloat(profit) > 0 ? parseFloat(profit).toFixed(2) : '';
+
+            if (parseFloat(profit) > 0) {
+                profitInfo.innerHTML = '<i class="bi bi-magic me-1"></i> Auto-calculated profit amount based on allocated profit percentage (' + roi + '%).';
+            } else {
+                profitInfo.innerHTML = '';
+            }
             
             modal.show();
         });

@@ -18,7 +18,7 @@ class BatchImportService
     /**
      * Generate downloadable CSV template with sample data.
      */
-    public function generateTemplate(string $type): string
+    public function generateTemplate(string $type, ?array $monthFilter = null): string
     {
         $headers = [];
         $sampleData = [];
@@ -30,14 +30,12 @@ class BatchImportService
                     'Email',
                     'Phone Number',
                     'Contact Address',
-                    'Date of Birth (YYYY-MM-DD)',
                     'Registration Year',
-                    'Role (member/treasurer/admin)',
+                    'Role (member/chairman/secretary/treasurer/admin)',
                     'Savings Slots (1-10)',
                     'Next of Kin Name',
                     'Next of Kin Phone',
                     'Next of Kin Relationship',
-                    'Next of Kin Email',
                     'Next of Kin Address',
                 ];
                 $sampleData = [
@@ -46,14 +44,12 @@ class BatchImportService
                         'john.doe@example.com',
                         '08012345678',
                         '123 Cooperative Street, Lagos',
-                        '1990-05-15',
                         '2026',
                         'member',
                         '2',
                         'Jane Doe',
                         '08087654321',
                         'Spouse',
-                        'jane.doe@example.com',
                         '123 Cooperative Street, Lagos',
                     ],
                 ];
@@ -61,43 +57,101 @@ class BatchImportService
 
             case 'savings':
                 $headers = [
-                    'Member Identifier (Email or Member Code)',
+                    'Member Code',
+                    'Full Name',
+                    'Current Slot No',
                     'Month (YYYY-MM)',
                     'Amount (NGN)',
                     'Payment Date (YYYY-MM-DD)',
-                    'Slot Number',
                 ];
-                $sampleData = [
-                    [
-                        'john.doe@example.com',
-                        '2026-07',
-                        '4000.00',
-                        '2026-07-05',
-                        '1',
-                    ],
-                ];
+
+                $members = User::where('role', 'member')
+                    ->with(['savingsSlots' => function ($query) {
+                        $query->orderBy('slot_number');
+                    }])
+                    ->orderByRaw('CASE WHEN member_code IS NULL OR member_code = "" THEN 1 ELSE 0 END, member_code ASC, name ASC')
+                    ->get();
+
+                if ($members->isEmpty()) {
+                    $sampleData = [];
+                    break;
+                }
+
+                $currentMonth = now()->format('Y-m');
+                foreach ($members as $member) {
+                    $activeSlots = $member->savingsSlots->where('is_active', true);
+                    $activeCount = $activeSlots->count();
+                    $maxActiveSlot = $activeSlots->max('slot_number');
+                    $slotNo = $maxActiveSlot ? $maxActiveSlot : ($activeCount > 0 ? $activeCount : 1);
+
+                    $configuredAmount = \App\Models\Slot::where('slot_number', $slotNo)->value('amount');
+                    $slotAmount = $configuredAmount 
+                        ? number_format((float)$configuredAmount, 2, '.', '')
+                        : number_format($activeCount * 2000.00, 2, '.', '');
+
+                    $sampleData[] = [
+                        $member->member_code ?? '',
+                        $member->name ?? '',
+                        (string) $slotNo,
+                        $currentMonth,
+                        $slotAmount,
+                        '',
+                    ];
+                }
                 break;
 
             case 'running_charges':
                 $headers = [
-                    'Member Identifier (Email or Member Code)',
+                    'Member Code',
+                    'Full Name',
                     'Month (YYYY-MM)',
                     'Amount (NGN)',
                     'Payment Date (YYYY-MM-DD)',
                 ];
-                $sampleData = [
-                    [
-                        'john.doe@example.com',
-                        '2026-07',
-                        '500.00',
-                        '2026-07-05',
-                    ],
+                $allowedMonths = [
+                    2021 => range(10, 12),
+                    2022 => range(1, 4),
+                    2023 => range(1, 12),
+                    2024 => range(1, 12),
+                    2025 => range(1, 12),
+                    2026 => range(1, 8),
                 ];
+
+                if ($monthFilter !== null) {
+                    $allowedMonths = array_intersect_key(
+                        $allowedMonths,
+                        array_flip(array_keys($monthFilter))
+                    );
+                    foreach ($allowedMonths as $year => $months) {
+                        $allowedMonths[$year] = array_values(array_intersect($months, $monthFilter[$year] ?? []));
+                    }
+                }
+
+                $members = User::where('role', 'member')
+                    ->whereNotNull('member_code')
+                    ->where('member_code', '<>', '')
+                    ->orderBy('member_code')
+                    ->get(['member_code', 'name']);
+
+                foreach ($members as $member) {
+                    foreach ($allowedMonths as $year => $months) {
+                        foreach ($months as $month) {
+                            $monthValue = sprintf('%d-%02d', $year, $month);
+                            $sampleData[] = [
+                                $member->member_code,
+                                $member->name,
+                                $monthValue,
+                                $year <= 2021 ? '100.00' : ($year <= 2023 ? '300.00' : '500.00'),
+                                $monthValue . '-05',
+                            ];
+                        }
+                    }
+                }
                 break;
 
             case 'loans':
                 $headers = [
-                    'Member Identifier (Email or Member Code)',
+                    'Member Code',
                     'Principal Amount (NGN)',
                     'Profit Rate (%)',
                     'Duration (Months)',
@@ -107,7 +161,7 @@ class BatchImportService
                 ];
                 $sampleData = [
                     [
-                        'john.doe@example.com',
+                        'YLDA/26/0001',
                         '100000.00',
                         '5.00',
                         '12',
@@ -160,7 +214,7 @@ class BatchImportService
 
             case 'registration_fees':
                 $headers = [
-                    'Member Identifier (Email or Member Code)',
+                    'Member Code',
                     'Fee Amount (NGN)',
                     'Payment Date (YYYY-MM-DD)',
                     'Payment Method',
@@ -168,7 +222,7 @@ class BatchImportService
                 ];
                 $sampleData = [
                     [
-                        'john.doe@example.com',
+                        'YLDA/26/0001',
                         '1000.00',
                         '2026-07-01',
                         'Cash',
@@ -222,6 +276,8 @@ class BatchImportService
             return trim(preg_replace('/[\x00-\x1F\x7F-\xFF]/', '', $h));
         }, $headers);
 
+        $this->assertHeadersMatchImportType($headers, $type);
+
         $parsedRows = [];
         $rowNumber = 1; // Header is row 1
         $totalRows = 0;
@@ -274,6 +330,36 @@ class BatchImportService
         ];
     }
 
+    protected function assertHeadersMatchImportType(array $headers, string $type): void
+    {
+        $headerSet = array_fill_keys($headers, true);
+
+        if ($type === 'members' && isset($headerSet['Member Code']) && isset($headerSet['Month (YYYY-MM)'])) {
+            throw new \InvalidArgumentException(
+                'This is a savings or running charges file. Select Monthly Savings or Running Charges as the import type.'
+            );
+        }
+
+        $requiredHeaders = match ($type) {
+            'savings' => ['Member Code', 'Month (YYYY-MM)', 'Amount (NGN)'],
+            'running_charges' => ['Member Code', 'Month (YYYY-MM)', 'Amount (NGN)'],
+            'loans' => ['Member Code', 'Principal Amount (NGN)', 'Duration (Months)'],
+            'registration_fees' => ['Member Code', 'Fee Amount (NGN)'],
+            default => [],
+        };
+
+        $missingHeaders = array_values(array_filter(
+            $requiredHeaders,
+            static fn (string $header): bool => !isset($headerSet[$header])
+        ));
+
+        if ($missingHeaders !== []) {
+            throw new \InvalidArgumentException(
+                "The selected import type '{$type}' requires these columns: " . implode(', ', $missingHeaders) . '.'
+            );
+        }
+    }
+
     /**
      * Validate an individual row based on type.
      */
@@ -285,11 +371,11 @@ class BatchImportService
 
         switch ($type) {
             case 'members':
+                $memberCode = trim((string) ($row['Member Code'] ?? ''));
                 $email = strtolower($row['Email'] ?? '');
                 $name = $row['Full Name'] ?? '';
-                $dob = $row['Date of Birth (YYYY-MM-DD)'] ?? '';
                 $slots = $row['Savings Slots (1-10)'] ?? '1';
-                $role = strtolower($row['Role (member/treasurer/admin)'] ?? 'member');
+                $role = strtolower($row['Role (member/chairman/secretary/treasurer/admin)'] ?? 'member');
 
                 if (empty($name)) {
                     $errors[] = "Full Name is required.";
@@ -297,23 +383,21 @@ class BatchImportService
                 if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
                     $errors[] = "Valid Email address is required.";
                 }
-                if (!empty($dob) && false === strtotime($dob)) {
-                    $errors[] = "Invalid Date of Birth format (must be YYYY-MM-DD).";
-                }
-                if (!in_array($role, ['member', 'treasurer', 'admin'])) {
-                    $errors[] = "Role must be member, treasurer, or admin.";
+                if (!in_array($role, ['member', 'chairman', 'secretary', 'treasurer', 'admin'])) {
+                    $errors[] = "Role must be member, chairman, secretary, treasurer, or admin.";
                 }
                 if (!is_numeric($slots) || (int)$slots < 1 || (int)$slots > 10) {
                     $errors[] = "Savings Slots must be an integer between 1 and 10.";
                 }
 
                 if (count($errors) === 0) {
-                    // Check duplicate in DB by email
-                    $existingUser = User::where('email', $email)->first();
+                    $existingUser = !empty($memberCode)
+                        ? User::where('member_code', $memberCode)->first()
+                        : null;
 
                     if ($existingUser) {
                         $status = 'duplicate';
-                        $errors[] = "Member record already exists with Email ({$email})" . (!empty($existingUser->member_code) ? " or Member Code ({$existingUser->member_code})" : "") . ".";
+                        $errors[] = "Member record already exists with Member Code ({$existingUser->member_code}).";
                         $meta['existing_user_id'] = $existingUser->id;
                     }
                 } else {
@@ -322,33 +406,36 @@ class BatchImportService
                 break;
 
             case 'savings':
-                $identifier = $row['Member Identifier (Email or Member Code)'] ?? '';
+                $memberCode = trim((string)($row['Member Code'] ?? ''));
+                $slotNo = trim((string)($row['Current Slot No'] ?? $row['Slot Number'] ?? ''));
                 $month = $row['Month (YYYY-MM)'] ?? '';
                 $amount = $row['Amount (NGN)'] ?? '';
 
-                if (empty($identifier)) {
-                    $errors[] = "Member Identifier (Email or Member Code) is required.";
+                if (empty($memberCode)) {
+                    $errors[] = 'Member Code is required.';
+                }
+                if (!empty($slotNo) && (!is_numeric($slotNo) || (int)$slotNo < 1 || (int)$slotNo > 10)) {
+                    $errors[] = 'Current Slot No must be a number between 1 and 10.';
                 }
                 if (empty($month) || false === strtotime($month . '-01')) {
-                    $errors[] = "Valid Month (YYYY-MM) is required.";
+                    $errors[] = 'Valid Month (YYYY-MM) is required.';
                 }
-                if (!is_numeric($amount) || (float)$amount <= 0) {
-                    $errors[] = "Amount must be a positive number.";
+                if (!is_numeric($amount) || (float)$amount < 0) {
+                    $errors[] = 'Amount must be zero or a positive number.';
                 }
 
                 if (count($errors) === 0) {
-                    $user = User::where('email', strtolower($identifier))
-                        ->orWhere('member_code', $identifier)
+                    $user = User::where('role', 'member')
+                        ->where('member_code', $memberCode)
                         ->first();
 
                     if (!$user) {
                         $status = 'invalid';
-                        $errors[] = "No member found matching identifier: '{$identifier}'.";
+                        $errors[] = "No member found matching Member Code: '{$memberCode}'.";
                     } else {
                         $meta['user_id'] = $user->id;
                         $formattedMonth = Carbon::parse($month . '-01')->format('Y-m-01');
 
-                        // Check duplicate monthly saving
                         $existingSaving = MonthlySaving::where('user_id', $user->id)
                             ->where('month', $formattedMonth)
                             ->first();
@@ -364,12 +451,12 @@ class BatchImportService
                 break;
 
             case 'running_charges':
-                $identifier = $row['Member Identifier (Email or Member Code)'] ?? '';
+                $memberCode = trim((string)($row['Member Code'] ?? ''));
                 $month = $row['Month (YYYY-MM)'] ?? '';
                 $amount = $row['Amount (NGN)'] ?? '';
 
-                if (empty($identifier)) {
-                    $errors[] = "Member Identifier is required.";
+                if (empty($memberCode)) {
+                    $errors[] = 'Member Code is required.';
                 }
                 if (empty($month) || false === strtotime($month . '-01')) {
                     $errors[] = "Valid Month (YYYY-MM) is required.";
@@ -379,13 +466,13 @@ class BatchImportService
                 }
 
                 if (count($errors) === 0) {
-                    $user = User::where('email', strtolower($identifier))
-                        ->orWhere('member_code', $identifier)
+                    $user = User::where('role', 'member')
+                        ->where('member_code', $memberCode)
                         ->first();
 
                     if (!$user) {
                         $status = 'invalid';
-                        $errors[] = "No member found matching identifier: '{$identifier}'.";
+                        $errors[] = "No member found matching Member Code: '{$memberCode}'.";
                     } else {
                         $meta['user_id'] = $user->id;
                         $formattedMonth = Carbon::parse($month . '-01')->format('Y-m-01');
@@ -405,14 +492,14 @@ class BatchImportService
                 break;
 
             case 'loans':
-                $identifier = $row['Member Identifier (Email or Member Code)'] ?? '';
+                $memberCode = trim((string) ($row['Member Code'] ?? ''));
                 $principal = $row['Principal Amount (NGN)'] ?? '';
                 $profitRate = $row['Profit Rate (%)'] ?? '0';
                 $duration = $row['Duration (Months)'] ?? '';
                 $dateGranted = $row['Date Granted (YYYY-MM-DD)'] ?? '';
 
-                if (empty($identifier)) {
-                    $errors[] = "Member Identifier is required.";
+                if (empty($memberCode)) {
+                    $errors[] = 'Member Code is required.';
                 }
                 if (!is_numeric($principal) || (float)$principal <= 0) {
                     $errors[] = "Principal Amount must be a positive number.";
@@ -428,13 +515,13 @@ class BatchImportService
                 }
 
                 if (count($errors) === 0) {
-                    $user = User::where('email', strtolower($identifier))
-                        ->orWhere('member_code', $identifier)
+                    $user = User::where('role', 'member')
+                        ->where('member_code', $memberCode)
                         ->first();
 
                     if (!$user) {
                         $status = 'invalid';
-                        $errors[] = "No member found matching identifier: '{$identifier}'.";
+                        $errors[] = "No member found matching Member Code: '{$memberCode}'.";
                     } else {
                         $meta['user_id'] = $user->id;
                     }
@@ -494,12 +581,12 @@ class BatchImportService
                 break;
 
             case 'registration_fees':
-                $identifier = $row['Member Identifier (Email or Member Code)'] ?? '';
+                $memberCode = trim((string) ($row['Member Code'] ?? ''));
                 $amount = $row['Fee Amount (NGN)'] ?? '';
                 $paymentDate = $row['Payment Date (YYYY-MM-DD)'] ?? '';
 
-                if (empty($identifier)) {
-                    $errors[] = "Member Identifier is required.";
+                if (empty($memberCode)) {
+                    $errors[] = 'Member Code is required.';
                 }
                 if (!is_numeric($amount) || (float)$amount <= 0) {
                     $errors[] = "Fee Amount must be a positive number.";
@@ -509,13 +596,13 @@ class BatchImportService
                 }
 
                 if (count($errors) === 0) {
-                    $user = User::where('email', strtolower($identifier))
-                        ->orWhere('member_code', $identifier)
+                    $user = User::where('role', 'member')
+                        ->where('member_code', $memberCode)
                         ->first();
 
                     if (!$user) {
                         $status = 'invalid';
-                        $errors[] = "No member found matching identifier: '{$identifier}'.";
+                        $errors[] = "No member found matching Member Code: '{$memberCode}'.";
                     } else {
                         $meta['user_id'] = $user->id;
                     }
@@ -559,7 +646,7 @@ class BatchImportService
                     $invalidSkipped++;
                     $errorLogs[] = [
                         'row_number' => $rowNum,
-                        'identifier' => $data['Email'] ?? $data['Member Identifier (Email or Member Code)'] ?? 'Row ' . $rowNum,
+                        'identifier' => $data['Member Code'] ?? $data['Email'] ?? 'Row ' . $rowNum,
                         'issue' => 'Validation Error',
                         'reason' => implode('; ', $errors),
                     ];
@@ -571,7 +658,7 @@ class BatchImportService
                         $duplicatesSkipped++;
                         $errorLogs[] = [
                             'row_number' => $rowNum,
-                            'identifier' => $data['Email'] ?? $data['Member Identifier (Email or Member Code)'] ?? 'Row ' . $rowNum,
+                            'identifier' => $data['Member Code'] ?? $data['Email'] ?? 'Row ' . $rowNum,
                             'issue' => 'Duplicate Skipped',
                             'reason' => implode('; ', $errors),
                         ];
@@ -587,8 +674,18 @@ class BatchImportService
                             $name = $data['Full Name'];
                             $phone = $data['Phone Number'] ?? null;
                             $address = $data['Contact Address'] ?? null;
-                            $dob = !empty($data['Date of Birth (YYYY-MM-DD)']) ? Carbon::parse($data['Date of Birth (YYYY-MM-DD)'])->format('Y-m-d') : null;
                             $regYear = !empty($data['Registration Year']) ? (int)$data['Registration Year'] : (int)date('Y');
+                            $regMonth = (int) date('n');
+                            if (!empty($data['Registration Month'])) {
+                                if (is_numeric($data['Registration Month']) && (int)$data['Registration Month'] >= 1 && (int)$data['Registration Month'] <= 12) {
+                                    $regMonth = (int) $data['Registration Month'];
+                                } else {
+                                    $parsedMonth = date('n', strtotime($data['Registration Month'] . ' 1'));
+                                    if ($parsedMonth >= 1 && $parsedMonth <= 12) {
+                                        $regMonth = (int) $parsedMonth;
+                                    }
+                                }
+                            }
                             $role = !empty($data['Role (member/treasurer/admin)']) ? strtolower($data['Role (member/treasurer/admin)']) : 'member';
                             $slots = !empty($data['Savings Slots (1-10)']) ? (int)$data['Savings Slots (1-10)'] : 1;
 
@@ -598,7 +695,6 @@ class BatchImportService
                                     'name' => $name,
                                     'phone' => $phone ?: $user->phone,
                                     'address' => $address ?: $user->address,
-                                    'date_of_birth' => $dob ?: $user->date_of_birth,
                                 ]);
                             } else {
                                 $user = User::create([
@@ -607,9 +703,9 @@ class BatchImportService
                                     'password' => Hash::make('password'),
                                     'phone' => $phone,
                                     'address' => $address,
-                                    'date_of_birth' => $dob,
                                     'member_code' => $role === 'member' ? User::generateMemberCode($regYear) : null,
                                     'registration_year' => $role === 'member' ? $regYear : null,
+                                    'registration_month' => $role === 'member' ? $regMonth : null,
                                     'role' => $role,
                                     'is_active' => true,
                                 ]);
@@ -629,7 +725,6 @@ class BatchImportService
                                             'name' => $data['Next of Kin Name'],
                                             'phone' => $data['Next of Kin Phone'] ?? 'N/A',
                                             'relationship' => $data['Next of Kin Relationship'] ?? 'Relative',
-                                            'email' => $data['Next of Kin Email'] ?? null,
                                             'address' => $data['Next of Kin Address'] ?? null,
                                         ]);
                                     }
@@ -649,7 +744,7 @@ class BatchImportService
                             $formattedMonth = Carbon::parse($monthInput . '-01')->format('Y-m-01');
                             $amount = (float)$data['Amount (NGN)'];
                             $paymentDate = !empty($data['Payment Date (YYYY-MM-DD)']) ? Carbon::parse($data['Payment Date (YYYY-MM-DD)'])->format('Y-m-d') : date('Y-m-d');
-                            $slotNum = !empty($data['Slot Number']) ? (int)$data['Slot Number'] : 1;
+                            $slotNum = !empty($data['Current Slot No']) ? (int)$data['Current Slot No'] : (!empty($data['Slot Number']) ? (int)$data['Slot Number'] : 1);
 
                             $user = User::findOrFail($userId);
                             $slot = $user->savingsSlots()->where('slot_number', $slotNum)->first();
@@ -783,7 +878,7 @@ class BatchImportService
                     $invalidSkipped++;
                     $errorLogs[] = [
                         'row_number' => $rowNum,
-                        'identifier' => $data['Email'] ?? $data['Member Identifier (Email or Member Code)'] ?? 'Row ' . $rowNum,
+                        'identifier' => $data['Member Code'] ?? $data['Email'] ?? 'Row ' . $rowNum,
                         'issue' => 'Database Execution Failure',
                         'reason' => $e->getMessage(),
                     ];

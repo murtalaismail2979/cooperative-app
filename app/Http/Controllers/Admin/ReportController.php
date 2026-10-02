@@ -34,16 +34,12 @@ class ReportController extends Controller
 
         $yearExprOuter = $driver === 'sqlite' ? "strftime('%Y', monthly_savings.month)" : "YEAR(monthly_savings.month)";
 
-        $yearlySavingsQuery = MonthlySaving::selectRaw("
-                monthly_savings.user_id,
-                {$yearExprOuter} as year,
-                SUM(monthly_savings.amount) as total_saved
-            ")
-            ->where('monthly_savings.status', 'paid')
-            ->with('user');
+        // 1) Find distinct member user_ids that match search and year criteria
+        $yearlyUserIdsQuery = MonthlySaving::where('monthly_savings.status', 'paid')
+            ->where('monthly_savings.amount', '>', 0);
 
         if ($yearlySearch) {
-            $yearlySavingsQuery->whereHas('user', function ($q) use ($yearlySearch) {
+            $yearlyUserIdsQuery->whereHas('user', function ($q) use ($yearlySearch) {
                 $q->where('name', 'like', "%{$yearlySearch}%")
                   ->orWhere('member_code', 'like', "%{$yearlySearch}%");
             });
@@ -51,21 +47,52 @@ class ReportController extends Controller
 
         if ($yearlyYear) {
             if ($driver === 'sqlite') {
-                $yearlySavingsQuery->whereRaw("strftime('%Y', monthly_savings.month) = ?", [$yearlyYear]);
+                $yearlyUserIdsQuery->whereRaw("strftime('%Y', monthly_savings.month) = ?", [$yearlyYear]);
             } else {
-                $yearlySavingsQuery->whereRaw("YEAR(monthly_savings.month) = ?", [$yearlyYear]);
+                $yearlyUserIdsQuery->whereRaw("YEAR(monthly_savings.month) = ?", [$yearlyYear]);
             }
         }
 
-        $yearlySavings = $yearlySavingsQuery
-            ->groupBy('monthly_savings.user_id', \DB::raw($yearExprOuter))
-            ->orderBy('year', 'desc')
+        $paginatedUsers = $yearlyUserIdsQuery
+            ->select('monthly_savings.user_id')
+            ->distinct()
             ->orderBy('monthly_savings.user_id', 'asc')
-            ->paginate(15, ['*'], 'yearly_page')
+            ->paginate(10, ['*'], 'yearly_page')
             ->withQueryString();
 
-        // Calculate cumulative savings in PHP to avoid ONLY_FULL_GROUP_BY issues with correlated subqueries in MySQL
-        $yearlySavings->getCollection()->transform(function ($item) use ($driver) {
+        $pageUserIds = collect($paginatedUsers->items())->pluck('user_id')->filter()->toArray();
+
+        if (!empty($pageUserIds)) {
+            $yearlySavingsQuery = MonthlySaving::selectRaw("
+                    monthly_savings.user_id,
+                    {$yearExprOuter} as year,
+                    SUM(monthly_savings.amount) as total_saved
+                ")
+                ->where('monthly_savings.status', 'paid')
+                ->where('monthly_savings.amount', '>', 0)
+                ->whereIn('monthly_savings.user_id', $pageUserIds)
+                ->with('user');
+
+            if ($yearlyYear) {
+                if ($driver === 'sqlite') {
+                    $yearlySavingsQuery->whereRaw("strftime('%Y', monthly_savings.month) = ?", [$yearlyYear]);
+                } else {
+                    $yearlySavingsQuery->whereRaw("YEAR(monthly_savings.month) = ?", [$yearlyYear]);
+                }
+            }
+
+            $yearlyRecords = $yearlySavingsQuery
+                ->groupBy('monthly_savings.user_id', \DB::raw($yearExprOuter))
+                ->havingRaw('SUM(monthly_savings.amount) > 0')
+                ->orderBy('monthly_savings.user_id', 'asc')
+                ->orderBy('year', 'desc')
+                ->get();
+        } else {
+            $yearlyRecords = collect();
+        }
+
+        // Calculate cumulative savings for items on current page
+        $yearlyRecords->transform(function ($item) use ($driver) {
             $yearExpr = $driver === 'sqlite' ? "strftime('%Y', month)" : "YEAR(month)";
             $item->cumulative_saved = MonthlySaving::where('user_id', $item->user_id)
                 ->where('status', 'paid')
@@ -74,8 +101,22 @@ class ReportController extends Controller
             return $item;
         });
 
+        // Wrap current page records in paginator based on member count
+        $yearlySavings = new \Illuminate\Pagination\LengthAwarePaginator(
+            $yearlyRecords,
+            $paginatedUsers->total(),
+            $paginatedUsers->perPage(),
+            $paginatedUsers->currentPage(),
+            [
+                'path' => \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPath(),
+                'pageName' => 'yearly_page',
+            ]
+        );
+        $yearlySavings->withQueryString();
+
         // Get list of years for selection in dropdown
         $availableYears = MonthlySaving::where('status', 'paid')
+            ->where('amount', '>', 0)
             ->selectRaw("DISTINCT {$yearExpr} as year")
             ->orderBy('year', 'desc')
             ->pluck('year')
@@ -93,6 +134,7 @@ class ReportController extends Controller
                 SUM(monthly_savings.amount) as total_saved
             ")
             ->where('monthly_savings.status', 'paid')
+            ->where('monthly_savings.amount', '>', 0)
             ->with('user');
 
         if ($lifetimeSearch) {
@@ -104,6 +146,7 @@ class ReportController extends Controller
 
         $lifetimeSavings = $lifetimeQuery
             ->groupBy('monthly_savings.user_id')
+            ->havingRaw('SUM(monthly_savings.amount) > 0')
             ->orderBy('total_saved', 'desc')
             ->paginate(15, ['*'], 'lifetime_page')
             ->withQueryString();
@@ -279,7 +322,7 @@ class ReportController extends Controller
                 ->withSum(['dividendPayouts as total_pending' => function($q) {
                     $q->where('paid', false);
                 }], 'amount')
-                ->orderBy('name')
+                ->orderByRaw('CASE WHEN member_code IS NULL OR member_code = "" THEN 1 ELSE 0 END, member_code ASC, name ASC')
                 ->paginate(15, ['*'], 'dividends_page')
                 ->withQueryString();
 
@@ -841,6 +884,7 @@ class ReportController extends Controller
                 SUM(monthly_savings.amount) as total_saved
             ")
             ->where('monthly_savings.status', 'paid')
+            ->where('monthly_savings.amount', '>', 0)
             ->with('user');
 
         if ($search) {
@@ -860,8 +904,9 @@ class ReportController extends Controller
 
         $results = $query
             ->groupBy('monthly_savings.user_id', \DB::raw($yearExprOuter))
-            ->orderBy('year', 'desc')
+            ->havingRaw('SUM(monthly_savings.amount) > 0')
             ->orderBy('monthly_savings.user_id', 'asc')
+            ->orderBy('year', 'desc')
             ->get();
 
         $headers = ['Member Code', 'Member Name', 'Year', 'Savings in Year (₦)', 'Cumulative Savings (₦)'];

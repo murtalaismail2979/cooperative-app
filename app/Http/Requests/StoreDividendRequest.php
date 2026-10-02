@@ -15,7 +15,7 @@ class StoreDividendRequest extends FormRequest
     {
         return [
             'investment_id' => 'required|exists:investments,id',
-            'total_dividend_amount' => 'required|numeric|min:0',
+            'total_dividend_amount' => 'required|numeric',
         ];
     }
 
@@ -25,7 +25,6 @@ class StoreDividendRequest extends FormRequest
             'investment_id.required' => 'Please select an investment.',
             'investment_id.exists' => 'The selected investment is invalid.',
             'total_dividend_amount.required' => 'Please enter the total dividend amount.',
-            'total_dividend_amount.min' => 'Dividend amount must be a positive value.',
         ];
     }
 }

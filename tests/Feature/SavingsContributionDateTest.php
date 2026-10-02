@@ -53,6 +53,39 @@ class SavingsContributionDateTest extends TestCase
             'payment_date' => '2026-06-15 00:00:00',
             'status' => 'paid',
         ]);
+        $this->assertDatabaseHas('running_charges', [
+            'user_id' => $member->id,
+            'month' => '2026-06-01 00:00:00',
+        ]);
+    }
+
+    public function test_zero_savings_does_not_create_running_charge(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $member = User::factory()->create(['role' => 'member']);
+        $slot = SavingsSlot::create(['user_id' => $member->id, 'slot_number' => 1, 'is_active' => true]);
+
+        MonthlySaving::create([
+            'user_id' => $member->id,
+            'savings_slot_id' => $slot->id,
+            'amount' => 0,
+            'month' => '2026-07-01',
+            'payment_date' => '2026-07-15',
+            'status' => 'paid',
+            'recorded_by' => $admin->id,
+        ]);
+
+        app(\App\Services\SavingsService::class)->recordSavings(
+            $member,
+            '2026-07-01',
+            [],
+            '2026-07-15'
+        );
+
+        $this->assertDatabaseMissing('running_charges', [
+            'user_id' => $member->id,
+            'month' => '2026-07-01 00:00:00',
+        ]);
     }
 
     public function test_treasurer_recording_savings_requires_contribution_date(): void

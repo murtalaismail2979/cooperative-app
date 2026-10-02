@@ -11,7 +11,7 @@
                 </div>
                 <div class="card-body p-4">
                     <p class="text-muted small mb-4">
-                        Please verify your identity by entering your <strong>Email or Member Code</strong> along with your secret questions: <strong>Registration Year</strong> and <strong>Date of Birth</strong>.
+                        Please verify your identity by entering your <strong>Email or Member Code</strong> along with your registration number.
                     </p>
 
                     @if ($errors->has('secret_verification'))
@@ -62,22 +62,6 @@
                             @enderror
                         </div>
 
-                        <!-- Secret Question 2: Date of Birth -->
-                        <div class="mb-4">
-                            <label for="date_of_birth" class="form-label text-muted small fw-bold text-uppercase">
-                                <i class="bi bi-cake2 text-primary me-1"></i> Secret Question 2: Date of Birth
-                            </label>
-                            <input type="date" 
-                                   name="date_of_birth" 
-                                   id="date_of_birth" 
-                                   class="form-control @error('date_of_birth') is-invalid @enderror" 
-                                   value="{{ old('date_of_birth', auth()->user() && auth()->user()->date_of_birth ? auth()->user()->date_of_birth->format('Y-m-d') : '') }}" 
-                                   required>
-                            @error('date_of_birth')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary py-2 fw-bold">
                                 <i class="bi bi-shield-check me-1"></i> Verify Details & Retrieve Password
@@ -95,7 +79,7 @@
     <div class="mb-4 text-sm text-gray-400">
         <h3 style="color:#fff; font-size:1.2rem; font-weight:700; margin-bottom:0.5rem;"><i class="bi bi-shield-lock"></i> Retrieve Password</h3>
         <p style="font-size:0.85rem; color:#94a3b8;">
-            Please verify your identity by entering your <strong>Email or Member Code</strong> along with your secret questions: <strong>Registration Number</strong> and <strong>Date of Birth</strong>.
+            Please verify your identity by entering your <strong>Email or Member Code</strong> along with your <strong>Registration Number</strong>.
         </p>
     </div>
 
@@ -126,13 +110,6 @@
             <x-input-label for="registration_number" :value="__('Secret Question 1: Registration Number')" />
             <x-text-input id="registration_number" class="block mt-1 w-full" type="text" name="registration_number" :value="old('registration_number')" placeholder="e.g. MEM-2026-001" required />
             <x-input-error :messages="$errors->get('registration_number')" class="mt-2" />
-        </div>
-
-        <!-- Secret Question 2: Date of Birth -->
-        <div class="mb-4">
-            <x-input-label for="date_of_birth" :value="__('Secret Question 2: Date of Birth')" />
-            <x-text-input id="date_of_birth" class="block mt-1 w-full" type="date" name="date_of_birth" :value="old('date_of_birth')" required />
-            <x-input-error :messages="$errors->get('date_of_birth')" class="mt-2" />
         </div>
 
         <div class="flex items-center justify-between mt-6">

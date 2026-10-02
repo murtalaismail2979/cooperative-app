@@ -53,16 +53,208 @@ class BatchUploadTest extends TestCase
         $response->assertDontSee('Registration Number');
         $response->assertSee('Full Name');
 
+        $memberUser = User::factory()->create([
+            'role' => 'member',
+            'name' => 'Savings Template User',
+            'member_code' => 'MEM-2026-555',
+        ]);
+        $memberUser->savingsSlots()->create(['slot_number' => 2, 'is_active' => true]);
+
         $responseSavings = $this->actingAs($this->admin)->get('/admin/batch-upload/template/savings');
         $responseSavings->assertStatus(200);
-        $responseSavings->assertSee('Member Identifier');
+        $responseSavings->assertSee('Member Code');
+        $responseSavings->assertSee('Full Name');
+        $responseSavings->assertSee('Current Slot No');
+        $responseSavings->assertSee('MEM-2026-555');
+        $responseSavings->assertSee('Savings Template User');
+        $responseSavings->assertDontSee('Email');
+    }
+
+    public function test_running_charges_template_lists_members_by_code_with_full_names(): void
+    {
+        $firstMember = User::factory()->create([
+            'role' => 'member',
+            'name' => 'Zulu Member',
+            'member_code' => 'YLDA/26/0002',
+        ]);
+        $secondMember = User::factory()->create([
+            'role' => 'member',
+            'name' => 'Alpha Member',
+            'member_code' => 'YLDA/26/0001',
+        ]);
+        User::factory()->create([
+            'role' => 'treasurer',
+            'name' => 'Treasurer Account',
+            'member_code' => 'MGMT-001',
+        ]);
+
+        $response = $this->actingAs($this->admin)->get('/admin/batch-upload/template/running_charges');
+
+        $response->assertStatus(200);
+        $response->assertSee('Member Code');
+        $response->assertSee('Full Name');
+        $response->assertSee('Month (YYYY-MM)');
+        $response->assertSee('Payment Date (YYYY-MM-DD)');
+        $response->assertSee('YLDA/26/0001');
+        $response->assertSee('Alpha Member');
+        $response->assertSee('YLDA/26/0002');
+        $response->assertSee('Zulu Member');
+        $csvRows = array_filter(
+            preg_split('/\r\n|\r|\n/', trim($response->getContent())),
+            static fn (string $row): bool => $row !== '' && !str_starts_with(ltrim($row, "\xEF\xBB\xBF"), '"Member Code"')
+        );
+        $this->assertCount(102, $csvRows);
+        $this->assertSame(51, count(array_filter($csvRows, fn (string $row): bool => str_contains($row, $firstMember->member_code))));
+        $this->assertSame(51, count(array_filter($csvRows, fn (string $row): bool => str_contains($row, $secondMember->member_code))));
+        $response->assertDontSee('MGMT-001');
+        $response->assertDontSee('Treasurer Account');
+        $this->assertLessThan(
+            strpos($response->getContent(), 'YLDA/26/0002'),
+            strpos($response->getContent(), 'YLDA/26/0001')
+        );
+    }
+
+    public function test_running_charges_template_can_be_limited_to_november_and_december_2021(): void
+    {
+        User::factory()->create([
+            'role' => 'member',
+            'name' => 'Late 2021 Member',
+            'member_code' => 'YLDA/26/0100',
+        ]);
+
+        $response = $this->actingAs($this->admin)->get('/admin/batch-upload/template/running_charges?late_2021=1');
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Disposition', 'attachment; filename="coop_batch_template_running_charges_2021-11_to_2021-12.csv"');
+        $response->assertDontSee('2021-10');
+        $response->assertSee('2021-11');
+        $response->assertSee('2021-12');
+        $response->assertDontSee('2022-01');
+        $response->assertDontSee('2026-01');
+    }
+
+    public function test_savings_batch_uses_member_code_only_for_identifier(): void
+    {
+        $memberUser = User::factory()->create([
+            'email' => 'membercodeonly@example.com',
+            'name' => 'Member Code User',
+            'member_code' => 'YLDA/26/0007',
+        ]);
+        $memberUser->savingsSlots()->create(['slot_number' => 1, 'is_active' => true]);
+
+        $csvContent = "\xEF\xBB\xBF" . "Member Code,Current Slot No,Month (YYYY-MM),Amount (NGN),Payment Date (YYYY-MM-DD)\n" .
+            "YLDA/26/0007,1,2026-07,5000.00,2026-07-10\n";
+
+        $file = UploadedFile::fake()->createWithContent('savings.csv', $csvContent);
+
+        $response = $this->actingAs($this->admin)->post('/admin/batch-upload/preview', [
+            'import_type' => 'savings',
+            'duplicate_mode' => 'skip',
+            'import_file' => $file,
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertSee('YLDA/26/0007');
+        $response->assertDontSee('No member found matching identifier');
+    }
+
+    public function test_running_charge_file_selected_as_members_gives_type_error_not_email_error(): void
+    {
+        $csvContent = "\xEF\xBB\xBF" . "Member Code,Full Name,Month (YYYY-MM),Amount (NGN),Payment Date (YYYY-MM-DD)\n" .
+            "MEM-2026-999,Member Name,2026-07,500.00,2026-07-05\n";
+
+        $file = UploadedFile::fake()->createWithContent('running-charges.csv', $csvContent);
+
+        $response = $this->actingAs($this->admin)->from('/admin/batch-upload')->post('/admin/batch-upload/preview', [
+            'import_type' => 'members',
+            'duplicate_mode' => 'skip',
+            'import_file' => $file,
+        ]);
+
+        $response->assertRedirect('/admin/batch-upload');
+        $response->assertSessionHasErrors('import_file');
+        $response->assertSessionDoesntHaveErrors('email');
+        $this->assertStringContainsString('Select Monthly Savings or Running Charges', session('errors')->first('import_file'));
+    }
+
+    public function test_savings_batch_ignores_email_column(): void
+    {
+        $memberUser = User::factory()->create([
+            'member_code' => 'MEM-EMAIL-IGNORED',
+        ]);
+
+        $csvContent = "\xEF\xBB\xBF" . "Member Code,Email,Current Slot No,Month (YYYY-MM),Amount (NGN),Payment Date (YYYY-MM-DD)\n" .
+            "MEM-EMAIL-IGNORED,not-an-email,1,2026-08,5000.00,2026-08-10\n";
+
+        $file = UploadedFile::fake()->createWithContent('savings-with-email-column.csv', $csvContent);
+
+        $response = $this->actingAs($this->admin)->post('/admin/batch-upload/preview', [
+            'import_type' => 'savings',
+            'duplicate_mode' => 'skip',
+            'import_file' => $file,
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertSee('Valid');
+        $response->assertDontSee('Valid Email address is required.');
+    }
+
+    public function test_savings_batch_allows_zero_amount(): void
+    {
+        $memberUser = User::factory()->create([
+            'member_code' => 'MEM-ZERO-AMOUNT',
+        ]);
+        $memberUser->savingsSlots()->create(['slot_number' => 1, 'is_active' => true]);
+
+        $csvContent = "\xEF\xBB\xBF" . "Member Code,Current Slot No,Month (YYYY-MM),Amount (NGN),Payment Date (YYYY-MM-DD)\n" .
+            "MEM-ZERO-AMOUNT,1,2026-09,0.00,2026-09-10\n";
+
+        $file = UploadedFile::fake()->createWithContent('zero-savings.csv', $csvContent);
+
+        $this->actingAs($this->admin)->post('/admin/batch-upload/preview', [
+            'import_type' => 'savings',
+            'duplicate_mode' => 'skip',
+            'import_file' => $file,
+        ]);
+
+        $response = $this->actingAs($this->admin)->post('/admin/batch-upload/confirm');
+
+        $response->assertRedirect('/admin/batch-upload');
+        $this->assertDatabaseHas('monthly_savings', [
+            'user_id' => $memberUser->id,
+            'amount' => 0,
+        ]);
+    }
+
+    public function test_savings_batch_rejects_management_role_member_code(): void
+    {
+        $manager = User::factory()->create([
+            'role' => 'treasurer',
+            'member_code' => 'MGMT-001',
+        ]);
+
+        $csvContent = "\xEF\xBB\xBF" . "Member Code,Current Slot No,Month (YYYY-MM),Amount (NGN),Payment Date (YYYY-MM-DD)\n" .
+            "MGMT-001,1,2026-08,5000.00,2026-08-10\n";
+
+        $file = UploadedFile::fake()->createWithContent('management-savings.csv', $csvContent);
+
+        $response = $this->actingAs($this->admin)->post('/admin/batch-upload/preview', [
+            'import_type' => 'savings',
+            'duplicate_mode' => 'skip',
+            'import_file' => $file,
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertSee('Invalid');
+        $response->assertSee('No member found matching Member Code');
+        $this->assertDatabaseMissing('monthly_savings', ['user_id' => $manager->id]);
     }
 
     public function test_upload_valid_members_csv_file_generates_preview(): void
     {
-        $csvContent = "\xEF\xBB\xBF" . "Full Name,Email,Phone Number,Contact Address,Date of Birth (YYYY-MM-DD),Registration Year,Role (member/treasurer/admin),Savings Slots (1-10),Next of Kin Name,Next of Kin Phone,Next of Kin Relationship,Next of Kin Email,Next of Kin Address\n" .
-            "Alice Smith,alice@example.com,08011112222,Lagos Nigeria,1992-04-10,2026,member,2,Bob Smith,08033334444,Spouse,bob@example.com,Lagos\n" .
-            "Charlie Brown,charlie@example.com,08055556666,Abuja,1995-11-20,2026,member,1,David Brown,08077778888,Brother,david@example.com,Abuja\n";
+        $csvContent = "\xEF\xBB\xBF" . "Full Name,Email,Phone Number,Contact Address,Registration Year,Role (member/treasurer/admin),Savings Slots (1-10),Next of Kin Name,Next of Kin Phone,Next of Kin Relationship,Next of Kin Address\n" .
+            "Alice Smith,alice@example.com,08011112222,Lagos Nigeria,2026,member,2,Bob Smith,08033334444,Spouse,Lagos\n" .
+            "Charlie Brown,charlie@example.com,08055556666,Abuja,2026,member,1,David Brown,08077778888,Brother,Abuja\n";
 
         $file = UploadedFile::fake()->createWithContent('members.csv', $csvContent);
 
@@ -108,8 +300,8 @@ class BatchUploadTest extends TestCase
 
     public function test_confirm_import_creates_members_slots_next_of_kin_and_audit_trail(): void
     {
-        $csvContent = "\xEF\xBB\xBF" . "Full Name,Email,Phone Number,Contact Address,Date of Birth (YYYY-MM-DD),Registration Year,Role (member/treasurer/admin),Savings Slots (1-10),Next of Kin Name,Next of Kin Phone,Next of Kin Relationship,Next of Kin Email,Next of Kin Address\n" .
-            "New User,newuser@example.com,08099990000,Enugu,1991-03-12,2026,member,3,Kin User,08011110000,Parent,kin@example.com,Enugu\n";
+        $csvContent = "\xEF\xBB\xBF" . "Full Name,Email,Phone Number,Contact Address,Registration Year,Role (member/treasurer/admin),Savings Slots (1-10),Next of Kin Name,Next of Kin Phone,Next of Kin Relationship,Next of Kin Address\n" .
+            "New User,newuser@example.com,08099990000,Enugu,2026,member,3,Kin User,08011110000,Parent,Enugu\n";
 
         $file = UploadedFile::fake()->createWithContent('members.csv', $csvContent);
 
@@ -143,8 +335,8 @@ class BatchUploadTest extends TestCase
 
     public function test_batch_upload_ignores_obsolete_registration_number_column_and_auto_generates_code(): void
     {
-        $csvContent = "\xEF\xBB\xBF" . "Registration Number,Full Name,Email,Phone Number,Contact Address,Date of Birth (YYYY-MM-DD),Registration Year,Role (member/treasurer/admin),Savings Slots (1-10),Next of Kin Name,Next of Kin Phone,Next of Kin Relationship,Next of Kin Email,Next of Kin Address\n" .
-            "OBSOLETE-999,Legacy User,legacy@example.com,08099990001,Enugu,1991-03-12,2026,member,1,Kin Legacy,08011110001,Parent,kinlegacy@example.com,Enugu\n";
+        $csvContent = "\xEF\xBB\xBF" . "Registration Number,Full Name,Email,Phone Number,Contact Address,Registration Year,Role (member/treasurer/admin),Savings Slots (1-10),Next of Kin Name,Next of Kin Phone,Next of Kin Relationship,Next of Kin Address\n" .
+            "OBSOLETE-999,Legacy User,legacy@example.com,08099990001,Enugu,2026,member,1,Kin Legacy,08011110001,Parent,Enugu\n";
 
         $file = UploadedFile::fake()->createWithContent('old_members.csv', $csvContent);
 
@@ -166,9 +358,9 @@ class BatchUploadTest extends TestCase
     {
         $rows = [];
         for ($i = 1; $i <= 5; $i++) {
-            $rows[] = "Member {$i},member{$i}@example.com,0800000000{$i},Lagos,1990-01-0{$i},2026,member,1,Kin {$i},0809999990{$i},Sibling,kin{$i}@example.com,Lagos";
+            $rows[] = "Member {$i},member{$i}@example.com,0800000000{$i},Lagos,2026,member,1,Kin {$i},0809999990{$i},Sibling,Lagos";
         }
-        $csvContent = "\xEF\xBB\xBF" . "Full Name,Email,Phone Number,Contact Address,Date of Birth (YYYY-MM-DD),Registration Year,Role (member/treasurer/admin),Savings Slots (1-10),Next of Kin Name,Next of Kin Phone,Next of Kin Relationship,Next of Kin Email,Next of Kin Address\n" . implode("\n", $rows) . "\n";
+        $csvContent = "\xEF\xBB\xBF" . "Full Name,Email,Phone Number,Contact Address,Registration Year,Role (member/treasurer/admin),Savings Slots (1-10),Next of Kin Name,Next of Kin Phone,Next of Kin Relationship,Next of Kin Address\n" . implode("\n", $rows) . "\n";
 
         $file = UploadedFile::fake()->createWithContent('batch_members.csv', $csvContent);
 
@@ -194,12 +386,13 @@ class BatchUploadTest extends TestCase
     {
         $memberUser = User::factory()->create([
             'email' => 'savingsuser@example.com',
+            'name' => 'Savings User',
             'member_code' => 'MEM-2026-555',
         ]);
         $memberUser->savingsSlots()->create(['slot_number' => 1, 'is_active' => true]);
 
-        $csvContent = "\xEF\xBB\xBF" . "Member Identifier (Email or Member Code),Month (YYYY-MM),Amount (NGN),Payment Date (YYYY-MM-DD),Slot Number\n" .
-            "savingsuser@example.com,2026-07,5000.00,2026-07-10,1\n";
+        $csvContent = "\xEF\xBB\xBF" . "Member Code,Current Slot No,Month (YYYY-MM),Amount (NGN),Payment Date (YYYY-MM-DD)\n" .
+            "MEM-2026-555,1,2026-07,5000.00,2026-07-10\n";
 
         $file = UploadedFile::fake()->createWithContent('savings.csv', $csvContent);
 
@@ -224,8 +417,8 @@ class BatchUploadTest extends TestCase
             'member_code' => 'MEM-2026-666',
         ]);
 
-        $csvContent = "\xEF\xBB\xBF" . "Member Identifier (Email or Member Code),Month (YYYY-MM),Amount (NGN),Payment Date (YYYY-MM-DD)\n" .
-            "MEM-2026-666,2026-07,500.00,2026-07-05\n";
+        $csvContent = "\xEF\xBB\xBF" . "Member Code,Full Name,Month (YYYY-MM),Amount (NGN),Payment Date (YYYY-MM-DD)\n" .
+            "MEM-2026-666,Charge User,2026-07,500.00,2026-07-05\n";
 
         $file = UploadedFile::fake()->createWithContent('charges.csv', $csvContent);
 
@@ -250,8 +443,8 @@ class BatchUploadTest extends TestCase
             'member_code' => 'MEM-2026-777',
         ]);
 
-        $csvContent = "\xEF\xBB\xBF" . "Member Identifier (Email or Member Code),Principal Amount (NGN),Profit Rate (%),Duration (Months),Date Granted (YYYY-MM-DD),Purpose,Status (active/completed/pending)\n" .
-            "loanuser@example.com,200000.00,10.00,10,2026-07-01,Business Expansion,active\n";
+        $csvContent = "\xEF\xBB\xBF" . "Member Code,Principal Amount (NGN),Profit Rate (%),Duration (Months),Date Granted (YYYY-MM-DD),Purpose,Status (active/completed/pending)\n" .
+            "MEM-2026-777,200000.00,10.00,10,2026-07-01,Business Expansion,active\n";
 
         $file = UploadedFile::fake()->createWithContent('loans.csv', $csvContent);
 
@@ -274,8 +467,8 @@ class BatchUploadTest extends TestCase
     {
         User::factory()->create(['email' => 'existing@example.com', 'name' => 'Original Name']);
 
-        $csvContent = "\xEF\xBB\xBF" . "Registration Number,Full Name,Email,Phone Number,Contact Address,Date of Birth (YYYY-MM-DD),Registration Year,Role (member/treasurer/admin),Savings Slots (1-10),Next of Kin Name,Next of Kin Phone,Next of Kin Relationship,Next of Kin Email,Next of Kin Address\n" .
-            "MEM-2026-999,Updated Name,existing@example.com,08000000000,Address,1990-01-01,2026,member,1,Kin,080,Rel,e@e.com,Addr\n";
+        $csvContent = "\xEF\xBB\xBF" . "Registration Number,Full Name,Email,Phone Number,Contact Address,Registration Year,Role (member/treasurer/admin),Savings Slots (1-10),Next of Kin Name,Next of Kin Phone,Next of Kin Relationship,Next of Kin Address\n" .
+            "MEM-2026-999,Updated Name,existing@example.com,08000000000,Address,2026,member,1,Kin,080,Rel,Addr\n";
 
         $file = UploadedFile::fake()->createWithContent('members.csv', $csvContent);
 
@@ -293,8 +486,8 @@ class BatchUploadTest extends TestCase
 
     public function test_non_existent_member_reference_is_rejected(): void
     {
-        $csvContent = "\xEF\xBB\xBF" . "Member Identifier (Email or Member Code),Month (YYYY-MM),Amount (NGN),Payment Date (YYYY-MM-DD),Slot Number\n" .
-            "nonexistent@example.com,2026-07,5000.00,2026-07-10,1\n";
+        $csvContent = "\xEF\xBB\xBF" . "Member Code,Current Slot No,Month (YYYY-MM),Amount (NGN),Payment Date (YYYY-MM-DD)\n" .
+            "MEM-DOES-NOT-EXIST,1,2026-07,5000.00,2026-07-10\n";
 
         $file = UploadedFile::fake()->createWithContent('savings.csv', $csvContent);
 
@@ -306,7 +499,7 @@ class BatchUploadTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee('Invalid');
-        $response->assertSee('No member found matching identifier');
+        $response->assertSee('No member found matching Member Code');
     }
 
     public function test_error_report_csv_download(): void
@@ -386,8 +579,8 @@ class BatchUploadTest extends TestCase
             'member_code' => 'MEM-2026-888',
         ]);
 
-        $csvContent = "\xEF\xBB\xBF" . "Member Identifier (Email or Member Code),Fee Amount (NGN),Payment Date (YYYY-MM-DD),Payment Method,Reference Number\n" .
-            "regfeeuser@example.com,1000.00,2026-07-01,Cash,BULK-REF-100\n";
+        $csvContent = "\xEF\xBB\xBF" . "Member Code,Fee Amount (NGN),Payment Date (YYYY-MM-DD),Payment Method,Reference Number\n" .
+            "MEM-2026-888,1000.00,2026-07-01,Cash,BULK-REF-100\n";
 
         $file = UploadedFile::fake()->createWithContent('registration_fees.csv', $csvContent);
 

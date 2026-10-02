@@ -22,6 +22,7 @@ class LoanController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $memberId = $request->input('member_id');
         $query = Loan::with('user');
 
         if ($search) {
@@ -31,15 +32,21 @@ class LoanController extends Controller
             });
         }
 
-        $loans = $query->latest()->paginate(15)->withQueryString();
+        if ($memberId) {
+            $query->where('user_id', $memberId);
+        }
 
-        return view('admin.loans.index', compact('loans', 'search'));
+        $loans = $query->latest()->paginate(15)->withQueryString();
+        $members = User::where('role', 'member')->orderBy('name')->get();
+
+        return view('admin.loans.index', compact('loans', 'search', 'memberId', 'members'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        $members = User::where('role', 'member')->where('is_active', true)->get();
-        return view('admin.loans.create', compact('members'));
+        $selectedUserId = $request->input('user_id');
+        $members = User::where('role', 'member')->where('is_active', true)->orderBy('name')->get();
+        return view('admin.loans.create', compact('members', 'selectedUserId'));
     }
 
     public function store(StoreLoanRequest $request)
@@ -59,7 +66,12 @@ class LoanController extends Controller
     public function show(Loan $loan)
     {
         $loan->load(['user', 'repayments', 'approver']);
-        return view('admin.loans.show', compact('loan'));
+
+        $previousLoan = Loan::where('id', '<', $loan->id)->latest('id')->first();
+        $nextLoan = Loan::where('id', '>', $loan->id)->oldest('id')->first();
+        $allLoans = Loan::with('user')->orderBy('id', 'desc')->get();
+
+        return view('admin.loans.show', compact('loan', 'previousLoan', 'nextLoan', 'allLoans'));
     }
 
     public function addRepayment(StoreRepaymentRequest $request, Loan $loan)

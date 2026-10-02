@@ -12,8 +12,11 @@
             <div class="card-header"><h6 class="m-0 fw-bold text-primary">Details</h6></div>
             <div class="card-body">
                 <div class="row mb-3">
-                    <div class="col-md-6"><strong>Name:</strong> {{ $investment->name }}</div>
-                    <div class="col-md-6"><strong>Type:</strong> {{ $investment->investmentType?->name ?? str_replace('_',' ',ucfirst($investment->type)) }}</div>
+                    <div class="col-md-{{ $investment->quantity !== null ? '4' : '6' }}"><strong>Name:</strong> {{ $investment->name }}</div>
+                    <div class="col-md-{{ $investment->quantity !== null ? '4' : '6' }}"><strong>Type:</strong> {{ $investment->investmentType?->name ?? str_replace('_',' ',ucfirst($investment->type)) }}</div>
+                    @if($investment->quantity !== null)
+                    <div class="col-md-4"><strong>Quantity:</strong> {{ number_format($investment->quantity, 2) }}</div>
+                    @endif
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-3"><strong>Capital:</strong> ₦{{ number_format($investment->capital_amount, 2) }}</div>
@@ -35,35 +38,39 @@
     </div>
     <div class="col-lg-4">
         <div class="card shadow mb-4">
-            <div class="card-header"><h6 class="m-0 fw-bold text-primary">Record Return</h6></div>
+            <div class="card-header"><h6 class="m-0 fw-bold text-primary">Record Return / Loss</h6></div>
             <div class="card-body">
                 @if($investment->status === 'completed')
                 <div class="alert alert-warning py-2 mb-3 small">
-                    <i class="bi bi-exclamation-triangle"></i> This business/financing run is completed/closed, but you can still capture additional returns.
+                    <i class="bi bi-exclamation-triangle"></i> This business/financing run is completed/closed, but you can still capture additional returns or losses.
                 </div>
                 @endif
                 <form method="POST" action="{{ route('treasurer.investments.return', $investment) }}">
                     @csrf
                     <div class="mb-3">
-                        <label class="form-label">Amount (₦)</label>
-                        <input type="number" step="0.01" name="amount" class="form-control" required>
+                        <label class="form-label fw-bold">Amount (₦) <span class="text-danger">*</span></label>
+                        <small class="text-muted d-block mb-1">(Enter positive for Gain/Profit, negative for Loss e.g. -5000)</small>
+                        <div class="input-group">
+                            <input type="number" step="0.01" name="amount" id="show_amount_input" class="form-control" required placeholder="0.00 or -5000.00">
+                            <button type="button" class="btn btn-outline-danger" id="toggleShowLossBtn" title="Toggle negative amount for loss"><i class="bi bi-dash-circle me-1"></i> Loss (-)</button>
+                        </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Date</label>
+                        <label class="form-label fw-bold">Date <span class="text-danger">*</span></label>
                         <input type="date" name="return_date" class="form-control" value="{{ date('Y-m-d') }}" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Description</label>
-                        <input type="text" name="description" class="form-control">
+                        <label class="form-label fw-bold">Description</label>
+                        <input type="text" name="description" class="form-control" placeholder="e.g. Profit / Loss details">
                     </div>
-                    <button type="submit" class="btn btn-success w-100"><i class="bi bi-plus-circle"></i> Record Return</button>
+                    <button type="submit" class="btn btn-success w-100"><i class="bi bi-plus-circle"></i> Save Return / Loss</button>
                 </form>
             </div>
         </div>
     </div>
 </div>
 <div class="card shadow mb-4">
-    <div class="card-header"><h6 class="m-0 fw-bold text-primary">Return History</h6></div>
+    <div class="card-header"><h6 class="m-0 fw-bold text-primary">Return & Loss History</h6></div>
     <div class="card-body">
         <table class="table table-bordered align-middle">
             <thead>
@@ -82,7 +89,13 @@
             @forelse($investment->returns as $i => $ret)
             <tr>
                 <td>{{ $i+1 }}</td>
-                <td>₦{{ number_format($ret->amount,2) }}</td>
+                <td>
+                    @if($ret->amount < 0)
+                        <span class="text-danger fw-bold">₦{{ number_format($ret->amount,2) }} <span class="badge bg-danger ms-1">Loss</span></span>
+                    @else
+                        <span class="text-success fw-bold">₦{{ number_format($ret->amount,2) }}</span>
+                    @endif
+                </td>
                 <td>{{ $ret->return_date?->format('d/m/Y') }}</td>
                 <td>{{ $ret->description ?? 'N/A' }}</td>
                 <td>{{ $ret->recorder->name ?? 'N/A' }}</td>
@@ -143,4 +156,25 @@
         </table>
     </div>
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleBtn = document.getElementById('toggleShowLossBtn');
+    const input = document.getElementById('show_amount_input');
+    if (toggleBtn && input) {
+        toggleBtn.addEventListener('click', function() {
+            let val = input.value.trim();
+            if (val.startsWith('-')) {
+                input.value = val.substring(1);
+            } else if (val !== '') {
+                input.value = '-' + val;
+            } else {
+                input.value = '-';
+            }
+        });
+    }
+});
+</script>
+@endpush
 @endsection

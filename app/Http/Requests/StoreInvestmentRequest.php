@@ -23,6 +23,7 @@ class StoreInvestmentRequest extends FormRequest
             'type' => 'required|in:' . implode(',', $types),
             'description' => 'nullable|string',
             'capital_amount' => 'required|numeric|min:1',
+            'quantity' => 'nullable|numeric|min:0',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
         ];

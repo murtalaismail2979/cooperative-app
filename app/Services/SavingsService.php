@@ -21,7 +21,7 @@ class SavingsService
     /**
      * Record monthly savings for a member across selected slots.
      */
-    public function recordSavings(User $member, string $month, array $slotIds, ?string $paymentDate = null): void
+    public function recordSavings(User $member, string $month, array $slotIds, ?string $paymentDate = null, ?array $slotAmounts = null): void
     {
         $paymentDate = $paymentDate ?? now();
         $monthDate = \Carbon\Carbon::parse($month)->startOfMonth()->format('Y-m-d');
@@ -34,7 +34,9 @@ class SavingsService
                     'month' => $monthDate,
                 ],
                 [
-                    'amount' => self::SLOT_AMOUNT,
+                    'amount' => $slotAmounts !== null && array_key_exists($slotId, $slotAmounts)
+                        ? (float) $slotAmounts[$slotId]
+                        : self::SLOT_AMOUNT,
                     'payment_date' => $paymentDate,
                     'status' => 'paid',
                     'recorded_by' => auth()->id(),
@@ -42,14 +44,22 @@ class SavingsService
             );
         }
 
-        // Also record running charge for this member for the same month
-        $this->runningChargeService->recordCharge($member->id, $monthDate);
+        // Running charges apply only when the member has paid a positive savings amount.
+        $hasPositiveSavings = MonthlySaving::where('user_id', $member->id)
+            ->whereDate('month', $monthDate)
+            ->where('status', 'paid')
+            ->where('amount', '>', 0)
+            ->exists();
+
+        if ($hasPositiveSavings) {
+            $this->runningChargeService->recordCharge($member->id, $monthDate);
+        }
     }
 
     /**
      * Update recorded monthly savings.
      */
-    public function updateSavings(User $member, string $oldMonth, string $newMonth, array $slotIds, string $paymentDate): void
+    public function updateSavings(User $member, string $oldMonth, string $newMonth, array $slotIds, string $paymentDate, ?array $slotAmounts = null): void
     {
         $oldMonthDate = \Carbon\Carbon::parse($oldMonth)->startOfMonth()->format('Y-m-d');
 
@@ -64,7 +74,7 @@ class SavingsService
             ->delete();
 
         // Record new savings and running charge
-        $this->recordSavings($member, $newMonth, $slotIds, $paymentDate);
+        $this->recordSavings($member, $newMonth, $slotIds, $paymentDate, $slotAmounts);
     }
 
     /**
@@ -150,5 +160,50 @@ class SavingsService
             ->count();
 
         return $activeSlots > 0 && $paidCount >= $activeSlots;
+    }
+
+    /**
+     * Get registered slots for a member as of a specific month.
+     */
+    public function getRegisteredSlotsForMonth(User $member, string $month): Collection
+    {
+        $adjustmentDate = \Carbon\Carbon::parse($month)->endOfMonth();
+
+        // Check slot history on or before adjustmentDate
+        $latestHistoryBefore = $member->slotHistories()
+            ->where('created_at', '<=', $adjustmentDate)
+            ->latest('created_at')
+            ->first();
+
+        if ($latestHistoryBefore) {
+            $allowedMaxSlotNumber = (int) $latestHistoryBefore->current_slots;
+        } else {
+            // If there's an earliest history after adjustmentDate, take its previous_slots
+            $earliestHistoryAfter = $member->slotHistories()
+                ->orderBy('created_at', 'asc')
+                ->first();
+
+            if ($earliestHistoryAfter) {
+                $allowedMaxSlotNumber = (int) $earliestHistoryAfter->previous_slots;
+            } else {
+                // Fallback to active savings slots count or total savings slots count
+                $allowedMaxSlotNumber = $member->savingsSlots()->where('is_active', true)->count();
+                if ($allowedMaxSlotNumber === 0) {
+                    $allowedMaxSlotNumber = $member->savingsSlots()->count();
+                }
+            }
+        }
+
+        $paidSlotIds = MonthlySaving::where('user_id', $member->id)
+            ->where('month', \Carbon\Carbon::parse($month)->startOfMonth()->format('Y-m-d'))
+            ->pluck('savings_slot_id')
+            ->toArray();
+
+        return $member->savingsSlots()
+            ->orderBy('slot_number')
+            ->get()
+            ->filter(function ($slot) use ($allowedMaxSlotNumber, $paidSlotIds) {
+                return $slot->slot_number <= $allowedMaxSlotNumber || in_array($slot->id, $paidSlotIds);
+            });
     }
 }

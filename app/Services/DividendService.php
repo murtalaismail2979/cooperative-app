@@ -63,9 +63,15 @@ class DividendService
         }
 
         $originalSharableProfit = $totalDividendAmount;
-        $cooperativeAmount = round($originalSharableProfit * 0.05, 2);
-        $managementAmount = round($originalSharableProfit * 0.05, 2);
-        $memberDistributionPool = $originalSharableProfit - $cooperativeAmount - $managementAmount;
+        if ($originalSharableProfit > 0) {
+            $cooperativeAmount = round($originalSharableProfit * 0.05, 2);
+            $managementAmount = round($originalSharableProfit * 0.05, 2);
+            $memberDistributionPool = $originalSharableProfit - $cooperativeAmount - $managementAmount;
+        } else {
+            $cooperativeAmount = 0.00;
+            $managementAmount = 0.00;
+            $memberDistributionPool = $originalSharableProfit;
+        }
 
         // 3. Calculate unit profit (member distribution pool / total units)
         $unitValue = $memberDistributionPool / $totalUnits;
@@ -104,18 +110,29 @@ class DividendService
     public function getMemberDividendSummary(User $member): array
     {
         $payouts = $member->dividendPayouts;
-        $adjustments = \App\Models\DividendAdjustment::where('user_id', $member->id)->get();
+        $adjustments = \App\Models\DividendAdjustment::where('user_id', $member->id)
+            ->whereHas('reconciliation', function ($q) {
+                $q->where('total_recognized_loss', '>', 0);
+            })
+            ->get();
 
-        $totalOriginal = (float) $payouts->sum('amount');
-        $totalLossAdjustment = (float) $adjustments->sum('loss_adjustment_amount');
+        $grossOriginal = (float) $payouts->where('amount', '>', 0)->sum('amount');
+        $businessLosses = abs((float) $payouts->where('amount', '<', 0)->sum('amount'));
+        $annualLossAdjustments = (float) $adjustments->sum('loss_adjustment_amount');
+
+        $totalLossAdjustment = $businessLosses + $annualLossAdjustments;
+        $totalOriginal = $grossOriginal > 0 ? $grossOriginal : (float) $payouts->sum('amount');
         $finalEntitlement = max(0.00, $totalOriginal - $totalLossAdjustment);
-        $totalPaid = (float) $payouts->where('paid', true)->sum('amount');
+        $totalPaid = (float) $payouts->where('paid', true)->where('amount', '>', 0)->sum('amount');
         $overpaid = (float) $adjustments->sum('overpayment_amount');
         $recovered = (float) $adjustments->sum('amount_recovered');
         $outstandingRecovery = max(0.00, $overpaid - $recovered);
 
         return [
             'total_amount' => $totalOriginal,
+            'gross_original' => $grossOriginal,
+            'business_losses' => $businessLosses,
+            'annual_loss_adjustments' => $annualLossAdjustments,
             'total_loss_adjustment' => $totalLossAdjustment,
             'final_entitlement' => $finalEntitlement,
             'total_paid' => $totalPaid,

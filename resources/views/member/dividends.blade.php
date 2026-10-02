@@ -5,36 +5,59 @@
 @endsection
 
 @section('content')
+@if($year || $month)
+<div class="card shadow mb-4 border-left-primary bg-light">
+    <div class="card-body py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h6 class="mb-1 fw-bold text-primary"><i class="bi bi-calculator me-1 fs-5"></i> Total Dividend @if($year) for Year {{ $year }}@endif @if($month)({{ $months[$month] ?? '' }})@endif</h6>
+            <span class="text-muted small">Showing total dividend earnings and entitlement for selected filter</span>
+        </div>
+        <div class="text-end">
+            <small class="text-muted d-block text-uppercase fw-bold">Total Selected Dividend</small>
+            <span class="fs-4 fw-bold text-success">₦{{ number_format($filteredTotalDividend, 2) }}</span>
+        </div>
+    </div>
+</div>
+@endif
+
 <div class="row mb-4">
     <div class="col-md-3">
         <div class="card shadow border-0 bg-primary text-white">
             <div class="card-body">
-                <small class="text-white-50 text-uppercase font-weight-bold">Original Dividends</small>
-                <h4 class="mb-0 mt-2">₦{{ number_format($summary['total_amount'] ?? $totalDividends, 2) }}</h4>
+                <small class="text-white-50 text-uppercase font-weight-bold">
+                    {{ $year ? "Original Dividends ($year)" : "Original Dividends" }}
+                </small>
+                <h4 class="mb-0 mt-2">₦{{ number_format(($year || $month) ? $filteredTotalDividend : ($summary['gross_original'] ?? $summary['total_amount'] ?? $totalDividends), 2) }}</h4>
             </div>
         </div>
     </div>
     <div class="col-md-3">
         <div class="card shadow border-0 bg-danger text-white">
             <div class="card-body">
-                <small class="text-white-50 text-uppercase font-weight-bold">Loss Adjustments</small>
-                <h4 class="mb-0 mt-2">-₦{{ number_format($summary['total_loss_adjustment'] ?? 0, 2) }}</h4>
+                <small class="text-white-50 text-uppercase font-weight-bold">
+                    {{ $year ? "Loss Adjustments ($year)" : "Loss Adjustments" }}
+                </small>
+                <h4 class="mb-0 mt-2">-₦{{ number_format(($year || $month) ? $selectedYearLoss : ($summary['total_loss_adjustment'] ?? 0), 2) }}</h4>
             </div>
         </div>
     </div>
     <div class="col-md-3">
         <div class="card shadow border-0 bg-success text-white">
             <div class="card-body">
-                <small class="text-white-50 text-uppercase font-weight-bold">Final Entitlement</small>
-                <h4 class="mb-0 mt-2">₦{{ number_format($summary['final_entitlement'] ?? $totalDividends, 2) }}</h4>
+                <small class="text-white-50 text-uppercase font-weight-bold">
+                    {{ $year ? "Final Entitlement ($year)" : "Final Entitlement" }}
+                </small>
+                <h4 class="mb-0 mt-2">₦{{ number_format(($year || $month) ? $selectedYearFinal : ($summary['final_entitlement'] ?? $totalDividends), 2) }}</h4>
             </div>
         </div>
     </div>
     <div class="col-md-3">
         <div class="card shadow border-0 bg-info text-white">
             <div class="card-body">
-                <small class="text-white-50 text-uppercase font-weight-bold">Total Paid</small>
-                <h4 class="mb-0 mt-2">₦{{ number_format($summary['total_paid'] ?? 0, 2) }}</h4>
+                <small class="text-white-50 text-uppercase font-weight-bold">
+                    {{ $year ? "Total Paid ($year)" : "Total Paid" }}
+                </small>
+                <h4 class="mb-0 mt-2">₦{{ number_format(($year || $month) ? $filteredTotalPaid : ($summary['total_paid'] ?? 0), 2) }}</h4>
             </div>
         </div>
     </div>
@@ -89,8 +112,34 @@
 <div class="row">
     <div class="col-12">
         <div class="card shadow mb-4">
-            <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                <h6 class="m-0 font-weight-bold text-primary">Dividend Payout Details</h6>
+            <div class="card-header py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h6 class="m-0 font-weight-bold text-primary"><i class="bi bi-list-stars me-1"></i> Dividend Payout Details</h6>
+                <form method="GET" action="{{ route('member.dividends') }}" class="d-flex align-items-center gap-2 flex-wrap mb-0">
+                    <div class="col-auto">
+                        <select name="month" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="">All Months</option>
+                            @foreach($months as $mNum => $mName)
+                                <option value="{{ $mNum }}" {{ (string)$month === (string)$mNum ? 'selected' : '' }}>{{ $mName }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="">All Years</option>
+                            @foreach($years as $yr)
+                                <option value="{{ $yr }}" {{ (string)$year === (string)$yr ? 'selected' : '' }}>Year {{ $yr }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-funnel"></i> Filter</button>
+                    </div>
+                    @if(!empty($month) || !empty($year))
+                    <div class="col-auto">
+                        <a href="{{ route('member.dividends') }}" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i> Clear</a>
+                    </div>
+                    @endif
+                </form>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -113,7 +162,13 @@
                                     <td>{{ $payout->dividend->investment->name ?? 'N/A (Year ' . ($payout->dividend->year ?? 'N/A') . ')' }}</td>
                                     <td>{{ $payout->dividend->investment?->start_date?->format('d/m/Y') ?? 'N/A' }}</td>
                                     <td>{{ $payout->units }}</td>
-                                    <td>₦{{ number_format($payout->amount, 2) }}</td>
+                                    <td>
+                                        @if($payout->amount < 0)
+                                            <span class="text-danger fw-bold">₦{{ number_format($payout->amount, 2) }} <span class="badge bg-danger ms-1">Loss</span></span>
+                                        @else
+                                            <span class="text-success fw-bold">₦{{ number_format($payout->amount, 2) }}</span>
+                                        @endif
+                                    </td>
                                     <td>
                                         @if($payout->paid)
                                             <span class="badge bg-success">Paid</span>

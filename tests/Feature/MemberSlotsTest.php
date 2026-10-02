@@ -27,7 +27,6 @@ class MemberSlotsTest extends TestCase
                 'nok_name' => 'Bob Cooper',
                 'nok_phone' => '0987654321',
                 'nok_relationship' => 'Spouse',
-                'nok_email' => 'bob@example.com',
                 'nok_address' => '123 Test St'
             ]);
 
@@ -65,7 +64,6 @@ class MemberSlotsTest extends TestCase
                 'nok_name' => 'Bob Cooper',
                 'nok_phone' => '0987654321',
                 'nok_relationship' => 'Spouse',
-                'nok_email' => 'bob@example.com',
                 'nok_address' => '123 Test St'
             ]);
 
@@ -162,7 +160,6 @@ class MemberSlotsTest extends TestCase
                 'nok_name' => 'Bob Cooper',
                 'nok_phone' => '0987654321',
                 'nok_relationship' => 'Spouse',
-                'nok_email' => 'bob@example.com',
                 'nok_address' => '123 Test St'
             ]);
 
@@ -192,7 +189,6 @@ class MemberSlotsTest extends TestCase
                 'nok_name' => 'Bob Cooper',
                 'nok_phone' => '0987654321',
                 'nok_relationship' => 'Spouse',
-                'nok_email' => 'bob@example.com',
                 'nok_address' => '123 Test St'
             ]);
 
@@ -214,6 +210,44 @@ class MemberSlotsTest extends TestCase
             'changed_by' => $admin->id,
             'reason' => 'Updated by Admin'
         ]);
+    }
+
+    public function test_admin_can_manage_slots_from_dedicated_page(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $member = User::factory()->create(['role' => 'member']);
+        $member->savingsSlots()->create(['slot_number' => 1, 'is_active' => true]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.members.slots', $member))
+            ->assertOk()
+            ->assertSee('Manage Savings Slots')
+            ->assertSee($member->member_code);
+
+        $this->actingAs($admin)
+            ->put(route('admin.members.slots.update', $member), [
+                'slots' => 3,
+                'slot_change_date' => '2026-09-14',
+            ])
+            ->assertRedirect(route('admin.members.slots', $member));
+
+        $this->assertEquals(3, $member->savingsSlots()->where('is_active', true)->count());
+        $this->assertDatabaseHas('member_slot_histories', [
+            'user_id' => $member->id,
+            'previous_slots' => 1,
+            'current_slots' => 3,
+            'changed_by' => $admin->id,
+        ]);
+    }
+
+    public function test_non_admin_cannot_access_dedicated_slot_management_page(): void
+    {
+        $treasurer = User::factory()->create(['role' => 'treasurer']);
+        $member = User::factory()->create(['role' => 'member']);
+
+        $this->actingAs($treasurer)
+            ->get(route('admin.members.slots', $member))
+            ->assertForbidden();
     }
 
     public function test_non_admin_cannot_modify_member_slots(): void
@@ -250,7 +284,6 @@ class MemberSlotsTest extends TestCase
                 'nok_name' => 'Bob Cooper',
                 'nok_phone' => '0987654321',
                 'nok_relationship' => 'Spouse',
-                'nok_email' => 'bob@example.com',
                 'nok_address' => '123 Test St'
             ]);
 
@@ -293,7 +326,6 @@ class MemberSlotsTest extends TestCase
                 'nok_name' => 'Bob Cooper',
                 'nok_phone' => '0987654321',
                 'nok_relationship' => 'Spouse',
-                'nok_email' => 'bob@example.com',
                 'nok_address' => '123 Test St'
             ]);
 

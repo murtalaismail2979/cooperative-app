@@ -16,12 +16,22 @@
                     <input type="text" name="search" id="treasurerLoansSearch" class="form-control border-start-0 auto-search" placeholder="Search member name or code..." value="{{ $search ?? '' }}">
                 </div>
             </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Search</button>
+            <div class="col-md-4 col-lg-3">
+                <select name="member_id" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- All Members --</option>
+                    @foreach($members ?? [] as $m)
+                        <option value="{{ $m->id }}" {{ ($memberId ?? '') == $m->id ? 'selected' : '' }}>
+                            {{ $m->name }} ({{ $m->member_code }})
+                        </option>
+                    @endforeach
+                </select>
             </div>
-            @if(!empty($search))
             <div class="col-auto">
-                <a href="{{ route('treasurer.loans.index') }}" class="btn btn-outline-danger"><i class="bi bi-x-circle"></i> Clear</a>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Filter</button>
+            </div>
+            @if(!empty($search) || !empty($memberId))
+            <div class="col-auto">
+                <a href="{{ route('treasurer.loans.index') }}" class="btn btn-outline-danger"><i class="bi bi-x-circle"></i> Clear Filter</a>
             </div>
             @endif
         </form>

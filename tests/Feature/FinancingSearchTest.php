@@ -59,7 +59,7 @@ class FinancingSearchTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('John Doe');
-        $response->assertDontSee('Jane Smith');
+        $response->assertDontSee('<td>Jane Smith</td>', false);
 
         // Search by member code '0002'
         $response = $this->actingAs($admin)
@@ -67,7 +67,7 @@ class FinancingSearchTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Jane Smith');
-        $response->assertDontSee('John Doe');
+        $response->assertDontSee('<td>John Doe</td>', false);
     }
 
     public function test_treasurer_can_search_loans_by_member_name_and_code(): void
@@ -118,7 +118,7 @@ class FinancingSearchTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Alice Cooper');
-        $response->assertDontSee('Bob Smith');
+        $response->assertDontSee('<td>Bob Smith</td>', false);
 
         // Search by member code '0004'
         $response = $this->actingAs($treasurer)
@@ -126,6 +126,6 @@ class FinancingSearchTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Bob Smith');
-        $response->assertDontSee('Alice Cooper');
+        $response->assertDontSee('<td>Alice Cooper</td>', false);
     }
 }

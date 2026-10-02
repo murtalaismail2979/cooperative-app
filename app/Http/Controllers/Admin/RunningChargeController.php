@@ -40,8 +40,9 @@ class RunningChargeController extends Controller
                 ->get();
         }
         $overallTotal = (float) \App\Models\RunningCharge::where('status', 'paid')->sum('amount');
+        $chargeRates = \App\Models\RunningChargeRate::orderBy('start_year')->get();
 
-        return view('admin.running-charges.index', compact('members', 'charges', 'monthlyCharges', 'overallTotal'));
+        return view('admin.running-charges.index', compact('members', 'charges', 'monthlyCharges', 'overallTotal', 'chargeRates'));
     }
 
     public function store(Request $request)
@@ -50,15 +51,35 @@ class RunningChargeController extends Controller
             'user_id' => 'required|exists:users,id',
             'month' => 'required|date',
             'amount' => 'nullable|numeric|min:0',
+            'payment_date' => 'required|date',
         ]);
 
         $this->runningChargeService->recordCharge(
             $validated['user_id'],
             $validated['month'],
-            $validated['amount'] ?? null
+            $validated['amount'] ?? null,
+            $validated['payment_date']
         );
 
         return redirect()->route('admin.running-charges.index')->with('success', 'Running charge recorded.');
+    }
+
+    public function updateInterval(Request $request)
+    {
+        $validated = $request->validate([
+            'start_year' => 'required|integer|min:2000|max:2100',
+            'end_year' => 'required|integer|min:2000|max:2100|gte:start_year',
+            'amount' => 'required|numeric|min:0',
+        ]);
+
+        $count = $this->runningChargeService->updateAmountForYearInterval(
+            (int)$validated['start_year'],
+            (int)$validated['end_year'],
+            (float)$validated['amount']
+        );
+
+        return redirect()->route('admin.running-charges.index')
+            ->with('success', "Updated charge amount to ₦" . number_format($validated['amount'], 2) . " for year interval {$validated['start_year']} - {$validated['end_year']} ({$count} record(s) updated).");
     }
 
     public function history(Request $request)
@@ -165,7 +186,7 @@ class RunningChargeController extends Controller
     public function destroy(\App\Models\RunningCharge $runningCharge)
     {
         $runningCharge->delete();
-        return redirect()->route('admin.running-charges.history')->with('success', 'Running charge deleted successfully.');
+        return redirect()->back(fallback: route('admin.running-charges.history'))->with('success', 'Running charge deleted successfully.');
     }
 }
 

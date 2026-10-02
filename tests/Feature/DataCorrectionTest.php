@@ -84,6 +84,10 @@ class DataCorrectionTest extends TestCase
             'old_month' => $month,
             'month' => $newMonth,
             'slots' => $newSlots,
+            'amounts' => [
+                $slots[0] => 2000,
+                $slots[1] => 0,
+            ],
             'payment_date' => '2026-07-05',
         ])->assertRedirect(route('admin.savings.history'));
 
@@ -94,6 +98,16 @@ class DataCorrectionTest extends TestCase
             'user_id' => $this->member->id,
             'month' => '2026-07-01 00:00:00',
             'payment_date' => '2026-07-05 00:00:00',
+        ]);
+        $this->assertDatabaseHas('monthly_savings', [
+            'user_id' => $this->member->id,
+            'savings_slot_id' => $slots[0],
+            'amount' => 2000,
+        ]);
+        $this->assertDatabaseHas('monthly_savings', [
+            'user_id' => $this->member->id,
+            'savings_slot_id' => $slots[1],
+            'amount' => 0,
         ]);
         $this->assertDatabaseHas('running_charges', [
             'user_id' => $this->member->id,
@@ -108,6 +122,72 @@ class DataCorrectionTest extends TestCase
 
         $this->assertDatabaseCount('monthly_savings', 0);
         $this->assertDatabaseCount('running_charges', 0);
+    }
+
+    /** @test */
+    public function admin_only_can_edit_savings_amounts_for_zero_amount_records()
+    {
+        $this->actingAs($this->admin);
+
+        $month = '2026-06-01';
+        $slots = $this->member->savingsSlots->pluck('id')->toArray();
+
+        $this->post(route('admin.savings.store'), [
+            'member_id' => $this->member->id,
+            'month' => $month,
+            'slots' => $slots,
+            'payment_date' => '2026-06-01',
+        ])->assertRedirect(route('admin.running-charges.index'));
+
+        $this->put(route('admin.savings.update'), [
+            'member_id' => $this->member->id,
+            'old_month' => $month,
+            'month' => '2026-07-01',
+            'slots' => [$slots[0]],
+            'amounts' => [$slots[0] => 0],
+            'payment_date' => '2026-07-05',
+        ])->assertRedirect(route('admin.savings.history'));
+
+        $this->assertDatabaseHas('monthly_savings', [
+            'user_id' => $this->member->id,
+            'savings_slot_id' => $slots[0],
+            'month' => '2026-07-01 00:00:00',
+            'amount' => 0,
+        ]);
+
+        $this->actingAs($this->treasurer);
+
+        $this->put(route('admin.savings.update'), [
+            'member_id' => $this->member->id,
+            'old_month' => '2026-07-01',
+            'month' => '2026-08-01',
+            'slots' => [$slots[0]],
+            'amounts' => [$slots[0] => 2000],
+            'payment_date' => '2026-08-05',
+        ])->assertStatus(403);
+    }
+
+    /** @test */
+    public function editing_savings_validates_amounts_against_slot_number()
+    {
+        $this->actingAs($this->admin);
+
+        $month = '2026-06-01';
+        $slots = $this->member->savingsSlots->pluck('id')->toArray();
+
+        // Submitting an arbitrary amount like 50000 for Slot #1 (which expects 2000) should be rejected
+        $response = $this->from(route('admin.savings.edit', ['user_id' => $this->member->id, 'month' => $month]))
+            ->put(route('admin.savings.update'), [
+                'member_id' => $this->member->id,
+                'old_month' => $month,
+                'month' => '2026-06-01',
+                'slots' => [$slots[0]],
+                'amounts' => [$slots[0] => 50000],
+                'payment_date' => '2026-06-05',
+            ]);
+
+        $response->assertRedirect(route('admin.savings.edit', ['user_id' => $this->member->id, 'month' => $month]));
+        $response->assertSessionHasErrors(["amounts.{$slots[0]}"]);
     }
 
     /** @test */

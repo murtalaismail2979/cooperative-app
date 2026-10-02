@@ -38,13 +38,13 @@
                     <div class="mb-3">
                         <label for="import_type" class="form-label text-muted small fw-bold text-uppercase">1. Select Data Type to Import <span class="text-danger">*</span></label>
                         <select name="import_type" id="import_type" class="form-select @error('import_type') is-invalid @enderror" required>
-                            <option value="members" {{ (old('import_type', request('type')) === 'members') ? 'selected' : '' }}>Members (Profiles, Slots, Next of Kin, Reg Fee)</option>
-                            <option value="savings" {{ (old('import_type', request('type')) === 'savings') ? 'selected' : '' }}>Monthly Savings</option>
-                            <option value="running_charges" {{ (old('import_type', request('type')) === 'running_charges') ? 'selected' : '' }}>Running Charges</option>
-                            <option value="loans" {{ (old('import_type', request('type')) === 'loans') ? 'selected' : '' }}>Financing / Loans</option>
-                            <option value="expenses" {{ (old('import_type', request('type')) === 'expenses') ? 'selected' : '' }}>Expenses</option>
-                            <option value="investments" {{ (old('import_type', request('type')) === 'investments') ? 'selected' : '' }}>Investments / Ventures</option>
-                            <option value="registration_fees" {{ (old('import_type', request('type')) === 'registration_fees') ? 'selected' : '' }}>Registration Fees</option>
+                            <option value="members" {{ (request('type', old('import_type', 'members')) === 'members') ? 'selected' : '' }}>Members (Profiles, Slots, Next of Kin, Reg Fee)</option>
+                            <option value="savings" {{ (request('type', old('import_type', 'members')) === 'savings') ? 'selected' : '' }}>Monthly Savings</option>
+                            <option value="running_charges" {{ (request('type', old('import_type', 'members')) === 'running_charges') ? 'selected' : '' }}>Running Charges</option>
+                            <option value="loans" {{ (request('type', old('import_type', 'members')) === 'loans') ? 'selected' : '' }}>Financing / Loans</option>
+                            <option value="expenses" {{ (request('type', old('import_type', 'members')) === 'expenses') ? 'selected' : '' }}>Expenses</option>
+                            <option value="investments" {{ (request('type', old('import_type', 'members')) === 'investments') ? 'selected' : '' }}>Investments / Ventures</option>
+                            <option value="registration_fees" {{ (request('type', old('import_type', 'members')) === 'registration_fees') ? 'selected' : '' }}>Registration Fees</option>
                         </select>
                         @error('import_type')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -145,7 +145,14 @@
                     <a href="{{ route('admin.batch-upload.template', 'running_charges') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3">
                         <div>
                             <div class="fw-bold text-info"><i class="bi bi-receipt me-1"></i> Running Charges Template</div>
-                            <small class="text-muted">Member identifier, Month (YYYY-MM), amount, payment date.</small>
+                            <small class="text-muted">Member Code, Full Name, Month (YYYY-MM), amount, payment date.</small>
+                        </div>
+                        <span class="btn btn-sm btn-outline-info"><i class="bi bi-download"></i> .CSV</span>
+                    </a>
+                    <a href="{{ route('admin.batch-upload.template', ['type' => 'running_charges', 'late_2021' => 1]) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3">
+                        <div>
+                            <div class="fw-bold text-info"><i class="bi bi-calendar3 me-1"></i> Running Charges: Nov-Dec 2021</div>
+                            <small class="text-muted">Member Code, Full Name, and only November and December 2021.</small>
                         </div>
                         <span class="btn btn-sm btn-outline-info"><i class="bi bi-download"></i> .CSV</span>
                     </a>
@@ -185,7 +192,7 @@
                         <li>Dates must use <strong>YYYY-MM-DD</strong> format (e.g. 1990-05-15).</li>
                         <li>Months must use <strong>YYYY-MM</strong> format (e.g. 2026-07).</li>
                         <li>Monetary amounts must be positive numbers without currency symbols.</li>
-                        <li>Existing member identifiers can be either Email Address or Registration Number (Member Code).</li>
+                        <li>Running charges use Member Code as the only member identifier.</li>
                     </ul>
                 </div>
             </div>

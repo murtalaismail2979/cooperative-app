@@ -16,8 +16,12 @@
     <div class="row mb-3">
         <div class="col-md-6">
             <label class="form-label fw-bold">Amount (₦) <span class="text-danger">*</span></label>
-            <input type="number" step="0.01" name="amount" class="form-control @error('amount') is-invalid @enderror" value="{{ old('amount', $return->amount) }}" required>
-            @error('amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            <small class="text-muted d-block mb-1">(Positive for Gain/Profit, negative for Loss e.g. -5000)</small>
+            <div class="input-group">
+                <input type="number" step="0.01" name="amount" id="edit_amount_input" class="form-control @error('amount') is-invalid @enderror" value="{{ old('amount', $return->amount) }}" required>
+                <button type="button" class="btn btn-outline-danger" id="toggleEditLossBtn" title="Toggle negative amount for loss"><i class="bi bi-dash-circle me-1"></i> Loss (-)</button>
+            </div>
+            @error('amount')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-6">
             <label class="form-label fw-bold">Return Date <span class="text-danger">*</span></label>
@@ -38,4 +42,25 @@
     </div>
 </form>
 </div></div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleBtn = document.getElementById('toggleEditLossBtn');
+    const input = document.getElementById('edit_amount_input');
+    if (toggleBtn && input) {
+        toggleBtn.addEventListener('click', function() {
+            let val = input.value.trim();
+            if (val.startsWith('-')) {
+                input.value = val.substring(1);
+            } else if (val !== '') {
+                input.value = '-' + val;
+            } else {
+                input.value = '-';
+            }
+        });
+    }
+});
+</script>
+@endpush
 @endsection

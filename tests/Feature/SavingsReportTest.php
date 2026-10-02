@@ -73,6 +73,39 @@ class SavingsReportTest extends TestCase
         $response->assertSee('₦3,500.00');
     }
 
+    public function test_yearly_savings_report_only_includes_years_with_positive_savings(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $member = User::factory()->create(['role' => 'member', 'name' => 'David Miller', 'member_code' => 'YLDA/26/0009']);
+        $slot = SavingsSlot::create(['user_id' => $member->id, 'slot_number' => 1, 'is_active' => true]);
+
+        // Savings in 2024 with amount 0 (no savings made)
+        MonthlySaving::create([
+            'user_id' => $member->id,
+            'savings_slot_id' => $slot->id,
+            'amount' => 0.00,
+            'month' => '2024-05-01',
+            'status' => 'paid'
+        ]);
+
+        // Savings in 2025 with amount > 0
+        MonthlySaving::create([
+            'user_id' => $member->id,
+            'savings_slot_id' => $slot->id,
+            'amount' => 5000.00,
+            'month' => '2025-05-01',
+            'status' => 'paid'
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.reports.savings', ['tab' => 'yearly', 'yearly_search' => 'David']));
+
+        $response->assertOk();
+        $response->assertSee('David Miller');
+        $response->assertSee('2025');
+        $response->assertDontSee('2024');
+    }
+
     public function test_admin_can_filter_yearly_savings_by_member_and_year(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

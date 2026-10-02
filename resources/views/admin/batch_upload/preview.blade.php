@@ -95,14 +95,14 @@
                         <tr class="{{ $row['status'] === 'invalid' ? 'table-danger bg-opacity-25' : ($row['status'] === 'duplicate' ? 'table-warning bg-opacity-25' : '') }}">
                             <td class="fw-bold text-muted">#{{ $row['row_number'] }}</td>
                             <td>
-                                <strong>{{ $row['data']['Full Name'] ?? $row['data']['Email'] ?? $row['data']['Member Identifier (Email or Member Code)'] ?? 'Row ' . $row['row_number'] }}</strong>
+                                <strong>{{ in_array($importType, ['savings', 'running_charges', 'loans', 'registration_fees'], true) ? ($row['data']['Member Code'] ?? 'Row ' . $row['row_number']) : ($row['data']['Full Name'] ?? $row['data']['Email'] ?? 'Row ' . $row['row_number']) }}</strong>
                                 @if(!empty($row['data']['Registration Number']))
                                     <span class="badge bg-info text-dark ms-1" title="Obsolete column ignored - system will auto-generate code"><i class="bi bi-magic"></i> Auto-Generated Code</span>
                                 @endif
                             </td>
                             <td class="small">
                                 @foreach($row['data'] as $key => $val)
-                                    @if(!empty($val) && !in_array($key, ['Full Name', 'Email']))
+                                    @if(!empty($val) && ($importType !== 'savings' || $key !== 'Email') && !in_array($key, ['Full Name', 'Email']))
                                         <span class="text-muted">{{ $key }}:</span> <strong>{{ $val }}</strong> &bull;
                                     @endif
                                 @endforeach

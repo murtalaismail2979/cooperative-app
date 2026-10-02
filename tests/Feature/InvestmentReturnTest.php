@@ -142,4 +142,138 @@ class InvestmentReturnTest extends TestCase
             'capital_amount' => 25000.00
         ]);
     }
+
+    public function test_admin_can_record_negative_return_as_loss(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $investment = Investment::create([
+            'name' => 'Poultry Business',
+            'type' => 'agriculture',
+            'capital_amount' => 50000.00,
+            'total_returns' => 10000.00,
+            'status' => 'active',
+            'start_date' => '2026-01-01',
+            'created_by' => $admin->id
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->from(route('admin.investments.show', $investment))
+            ->post(route('admin.investments.return', $investment), [
+                'amount' => -2500.00,
+                'return_date' => '2026-07-01',
+                'description' => 'Loss due to mortality'
+            ]);
+
+        $response->assertRedirect(route('admin.investments.show', $investment));
+        $this->assertDatabaseHas('investment_returns', [
+            'investment_id' => $investment->id,
+            'amount' => -2500.00,
+            'description' => 'Loss due to mortality'
+        ]);
+
+        // Total returns should drop from 10000 to 7500
+        $this->assertEquals(7500.00, $investment->fresh()->total_returns);
+    }
+
+    public function test_admin_can_create_and_update_investment_with_quantity(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        // Create buying and selling goods investment with quantity
+        $response = $this->actingAs($admin)
+            ->post(route('admin.investments.store'), [
+                'name' => 'Maize Trading',
+                'type' => 'buying_selling_goods',
+                'capital_amount' => 15000.00,
+                'quantity' => 120.50,
+                'start_date' => '2026-01-01',
+                'description' => 'Maize bulk purchase'
+            ]);
+
+        $response->assertRedirect(route('admin.investments.index'));
+        $this->assertDatabaseHas('investments', [
+            'name' => 'Maize Trading',
+            'type' => 'buying_selling_goods',
+            'quantity' => 120.50
+        ]);
+
+        $investment = Investment::where('name', 'Maize Trading')->first();
+
+        // Update investment quantity
+        $updateResponse = $this->actingAs($admin)
+            ->put(route('admin.investments.update', $investment), [
+                'name' => 'Maize Trading Updated',
+                'type' => 'agriculture',
+                'capital_amount' => 18000.00,
+                'quantity' => 150.00,
+                'start_date' => '2026-01-01',
+                'status' => 'active',
+                'description' => 'Updated maize bulk purchase'
+            ]);
+
+        $updateResponse->assertRedirect(route('admin.investments.show', $investment));
+        $this->assertDatabaseHas('investments', [
+            'id' => $investment->id,
+            'name' => 'Maize Trading Updated',
+            'type' => 'agriculture',
+            'quantity' => 150.00
+        ]);
+    }
+
+    public function test_admin_can_filter_investments_by_year_and_month(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $inv2025June = Investment::create([
+            'name' => '2025 June Project',
+            'type' => 'buying_selling_goods',
+            'capital_amount' => 10000.00,
+            'start_date' => '2025-06-15',
+            'status' => 'active',
+            'created_by' => $admin->id
+        ]);
+
+        $inv2026June = Investment::create([
+            'name' => '2026 June Project',
+            'type' => 'agriculture',
+            'capital_amount' => 20000.00,
+            'start_date' => '2026-06-20',
+            'status' => 'active',
+            'created_by' => $admin->id
+        ]);
+
+        $inv2026December = Investment::create([
+            'name' => '2026 December Project',
+            'type' => 'financing',
+            'capital_amount' => 30000.00,
+            'start_date' => '2026-12-10',
+            'status' => 'active',
+            'created_by' => $admin->id
+        ]);
+
+        // Filter by Year 2026
+        $responseYear = $this->actingAs($admin)
+            ->get(route('admin.investments.index', ['year' => 2026]));
+        $responseYear->assertStatus(200);
+        $responseYear->assertSee('2026 June Project');
+        $responseYear->assertSee('2026 December Project');
+        $responseYear->assertDontSee('2025 June Project');
+
+        // Filter by Year 2026 and Month 6 (June)
+        $responseMonth = $this->actingAs($admin)
+            ->get(route('admin.investments.index', ['year' => 2026, 'month' => 6]));
+        $responseMonth->assertStatus(200);
+        $responseMonth->assertSee('2026 June Project');
+        $responseMonth->assertDontSee('2026 December Project');
+        $responseMonth->assertDontSee('2025 June Project');
+
+        // Filter by Investment Type (financing)
+        $responseType = $this->actingAs($admin)
+            ->get(route('admin.investments.index', ['type' => 'financing']));
+        $responseType->assertStatus(200);
+        $responseType->assertSee('2026 December Project');
+        $responseType->assertDontSee('2026 June Project');
+        $responseType->assertDontSee('2025 June Project');
+    }
 }

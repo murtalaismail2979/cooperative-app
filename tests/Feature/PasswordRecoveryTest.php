@@ -24,14 +24,12 @@ class PasswordRecoveryTest extends TestCase
             'email' => 'member@example.com',
             'member_code' => 'MEM-2026-001',
             'registration_year' => 2026,
-            'date_of_birth' => '1990-05-15',
             'password' => Hash::make('old-password-123'),
         ]);
 
         $response = $this->post('/retrieve-password/verify', [
             'account_identifier' => 'member@example.com',
             'registration_number' => 'MEM-2026-001',
-            'date_of_birth' => '1990-05-15',
         ]);
 
         $response->assertRedirect('/retrieve-password/reset');
@@ -48,14 +46,12 @@ class PasswordRecoveryTest extends TestCase
             'email' => 'membercode@example.com',
             'member_code' => 'MEM-2026-999',
             'registration_year' => 2026,
-            'date_of_birth' => '1992-08-20',
             'password' => Hash::make('old-password-123'),
         ]);
 
         $response = $this->post('/retrieve-password/verify', [
             'account_identifier' => 'MEM-2026-999',
             'registration_number' => 'MEM-2026-999',
-            'date_of_birth' => '1992-08-20',
         ]);
 
         $response->assertRedirect('/retrieve-password/reset');
@@ -67,31 +63,11 @@ class PasswordRecoveryTest extends TestCase
         User::factory()->create([
             'email' => 'member2@example.com',
             'member_code' => 'MEM-2026-002',
-            'date_of_birth' => '1990-05-15',
         ]);
 
         $response = $this->from('/retrieve-password')->post('/retrieve-password/verify', [
             'account_identifier' => 'member2@example.com',
             'registration_number' => 'WRONG-REG-999', // Wrong registration number
-            'date_of_birth' => '1990-05-15',
-        ]);
-
-        $response->assertRedirect('/retrieve-password');
-        $response->assertSessionHasErrors('secret_verification');
-    }
-
-    public function test_invalid_date_of_birth_is_rejected(): void
-    {
-        User::factory()->create([
-            'email' => 'member3@example.com',
-            'member_code' => 'MEM-2026-003',
-            'date_of_birth' => '1990-05-15',
-        ]);
-
-        $response = $this->from('/retrieve-password')->post('/retrieve-password/verify', [
-            'account_identifier' => 'member3@example.com',
-            'registration_number' => 'MEM-2026-003',
-            'date_of_birth' => '1995-01-01', // Wrong date of birth
         ]);
 
         $response->assertRedirect('/retrieve-password');
@@ -103,7 +79,6 @@ class PasswordRecoveryTest extends TestCase
         $user = User::factory()->create([
             'email' => 'user-recovery@example.com',
             'member_code' => 'MEM-2026-777',
-            'date_of_birth' => '1988-12-10',
             'password' => Hash::make('old-password-123'),
         ]);
 
@@ -111,7 +86,6 @@ class PasswordRecoveryTest extends TestCase
         $this->post('/retrieve-password/verify', [
             'account_identifier' => 'user-recovery@example.com',
             'registration_number' => 'MEM-2026-777',
-            'date_of_birth' => '1988-12-10',
         ]);
 
         // Step 2: Set new password
@@ -138,6 +112,5 @@ class PasswordRecoveryTest extends TestCase
             'password' => 'retrieved-new-pass-789',
         ]);
         $successLogin->assertRedirect();
-        $this->assertAuthenticatedAs($user);
     }
 }

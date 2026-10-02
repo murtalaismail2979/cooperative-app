@@ -8,6 +8,44 @@
 @endsection
 
 @section('content')
+<div class="card shadow mb-4">
+    <div class="card-body py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div class="d-flex gap-2 align-items-center">
+            @if(isset($previousLoan) && $previousLoan)
+                <a href="{{ route('treasurer.loans.show', $previousLoan) }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Previous (#{{ $previousLoan->id }})
+                </a>
+            @else
+                <button class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-arrow-left"></i> Previous</button>
+            @endif
+
+            @if(isset($nextLoan) && $nextLoan)
+                <a href="{{ route('treasurer.loans.show', $nextLoan) }}" class="btn btn-sm btn-outline-secondary">
+                    Next (#{{ $nextLoan->id }}) <i class="bi bi-arrow-right"></i>
+                </a>
+            @else
+                <button class="btn btn-sm btn-outline-secondary" disabled>Next <i class="bi bi-arrow-right"></i></button>
+            @endif
+        </div>
+
+        <div class="d-flex gap-2 align-items-center">
+            @if(isset($allLoans) && $allLoans->count() > 0)
+            <select class="form-select form-select-sm" style="max-width: 250px;" onchange="if(this.value) window.location.href=this.value;">
+                <option value="">-- Jump to Member Financing --</option>
+                @foreach($allLoans as $lItem)
+                    <option value="{{ route('treasurer.loans.show', $lItem) }}" {{ $lItem->id == $loan->id ? 'selected' : '' }}>
+                        #{{ $lItem->id }} - {{ $lItem->user->name ?? 'N/A' }} (₦{{ number_format($lItem->principal_amount) }})
+                    </option>
+                @endforeach
+            </select>
+            @endif
+
+            <a href="{{ route('treasurer.loans.index') }}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-list me-1"></i> All Active Financing
+            </a>
+        </div>
+    </div>
+</div>
 <div class="row">
     <div class="col-lg-8">
         <div class="card shadow mb-4">
@@ -18,9 +56,10 @@
                     <div class="col-md-6"><strong>Status:</strong> <span class="badge bg-{{ $loan->status === 'active' ? 'warning' : ($loan->status === 'fully_paid' ? 'success' : 'secondary') }}">{{ str_replace('_', ' ', ucfirst($loan->status)) }}</span></div>
                 </div>
                 <div class="row mb-3">
-                    <div class="col-md-4"><strong>Principal:</strong> ₦{{ number_format($loan->principal_amount, 2) }}</div>
-                    <div class="col-md-4"><strong>Profit Rate:</strong> {{ $loan->profit_rate }}%</div>
-                    <div class="col-md-4"><strong>Total:</strong> ₦{{ number_format($loan->total_amount, 2) }}</div>
+                    <div class="col-md-3"><strong>Principal:</strong> ₦{{ number_format($loan->principal_amount, 2) }}</div>
+                    <div class="col-md-3"><strong>Profit Rate:</strong> {{ $loan->profit_rate }}%</div>
+                    <div class="col-md-3"><strong>Profit Amount:</strong> <span class="text-success fw-bold">₦{{ number_format($loan->profit_amount, 2) }}</span></div>
+                    <div class="col-md-3"><strong>Total Payable:</strong> ₦{{ number_format($loan->total_amount, 2) }}</div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-4"><strong>Monthly Payment:</strong> ₦{{ number_format($loan->monthly_payment, 2) }}</div>

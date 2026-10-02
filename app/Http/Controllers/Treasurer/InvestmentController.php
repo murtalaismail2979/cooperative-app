@@ -21,6 +21,10 @@ class InvestmentController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $year = $request->input('year');
+        $month = $request->input('month');
+        $type = $request->input('type');
+
         $query = Investment::with(['creator', 'investmentType']);
 
         if (!empty($search)) {
@@ -34,8 +38,59 @@ class InvestmentController extends Controller
             });
         }
 
-        $investments = $query->latest()->paginate(15)->appends($request->only('search'));
-        return view('treasurer.investments.index', compact('investments', 'search'));
+        if (!empty($year)) {
+            $query->whereYear('start_date', $year);
+        }
+
+        if (!empty($month)) {
+            $query->whereMonth('start_date', $month);
+        }
+
+        if (!empty($type)) {
+            $query->where(function($q) use ($type) {
+                $slugType = strtolower(str_replace([' ', '&'], ['_', 'and'], trim($type)));
+                $q->where('type', $type)
+                  ->orWhere('type', $slugType)
+                  ->orWhereHas('investmentType', function($itQuery) use ($type, $slugType) {
+                      $itQuery->where('slug', $type)
+                              ->orWhere('slug', $slugType)
+                              ->orWhere('name', 'like', "%{$type}%")
+                              ->orWhere('id', $type);
+                  });
+                if (is_numeric($type)) {
+                    $q->orWhere('type', (int)$type);
+                }
+            });
+        }
+
+        $yearsFromDb = Investment::whereNotNull('start_date')
+            ->get()
+            ->map(fn($inv) => (int) $inv->start_date->format('Y'))
+            ->unique()
+            ->toArray();
+
+        $availableYears = array_unique(array_merge($yearsFromDb, range((int)date('Y'), 2020)));
+        rsort($availableYears);
+
+        $months = [
+            1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+            5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+            9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+        ];
+
+        $dbTypes = InvestmentType::all();
+        if ($dbTypes->isEmpty()) {
+            $investmentTypes = collect([
+                (object) ['slug' => 'buying_selling_goods', 'name' => 'Buying & Selling Goods'],
+                (object) ['slug' => 'agriculture', 'name' => 'Agriculture'],
+                (object) ['slug' => 'financing', 'name' => 'Financing'],
+            ]);
+        } else {
+            $investmentTypes = $dbTypes->map(fn($t) => (object) ['slug' => $t->slug ?? $t->name, 'name' => $t->name]);
+        }
+
+        $investments = $query->latest()->paginate(15)->appends($request->only(['search', 'year', 'month', 'type']));
+        return view('treasurer.investments.index', compact('investments', 'search', 'year', 'month', 'type', 'availableYears', 'months', 'investmentTypes'));
     }
 
     public function create()
@@ -67,7 +122,7 @@ class InvestmentController extends Controller
     public function addReturn(Request $request, Investment $investment)
     {
         $validated = $request->validate([
-            'amount' => 'required|numeric|min:1',
+            'amount' => 'required|numeric',
             'return_date' => 'required|date',
             'description' => 'nullable|string',
         ]);
@@ -108,6 +163,7 @@ class InvestmentController extends Controller
             'name' => 'required|string|max:255',
             'type' => 'required|string|max:255',
             'capital_amount' => 'required|numeric|min:0',
+            'quantity' => 'nullable|numeric|min:0',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'status' => 'required|in:active,completed',
@@ -133,7 +189,7 @@ class InvestmentController extends Controller
     public function updateReturn(Request $request, Investment $investment, \App\Models\InvestmentReturn $return)
     {
         $validated = $request->validate([
-            'amount' => 'required|numeric|min:1',
+            'amount' => 'required|numeric',
             'return_date' => 'required|date',
             'description' => 'nullable|string',
         ]);

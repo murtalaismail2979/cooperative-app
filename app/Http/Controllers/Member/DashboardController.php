@@ -7,6 +7,7 @@ use App\Models\MonthlySaving;
 use App\Models\RunningCharge;
 use App\Services\SavingsService;
 use App\Services\DividendService;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
@@ -44,10 +45,18 @@ class DashboardController extends Controller
         return view('member.dashboard', compact('data'));
     }
 
-    public function savings()
+    public function savings(Request $request)
     {
         $user = auth()->user();
+        $selectedYear = $request->input('year');
+
         $history = $this->getSavingsHistory($user);
+
+        if ($selectedYear) {
+            $history = $history->filter(function ($item) use ($selectedYear) {
+                return (int) \Carbon\Carbon::parse($item->month)->format('Y') === (int) $selectedYear;
+            })->values();
+        }
 
         $page = request()->get('page', 1);
         $perPage = 15;
@@ -65,7 +74,24 @@ class DashboardController extends Controller
 
         $totalSavings = $this->savingsService->getTotalSavings($user);
 
-        return view('member.savings', compact('savings', 'totalSavings'));
+        $driver = \DB::connection()->getDriverName();
+        $yearExpr = $driver === 'sqlite' ? "strftime('%Y', month)" : "YEAR(month)";
+        $yearsFromDb = MonthlySaving::where('user_id', $user->id)
+            ->selectRaw("DISTINCT {$yearExpr} as yr")
+            ->whereNotNull('month')
+            ->orderBy('yr', 'desc')
+            ->pluck('yr')
+            ->map(fn($y) => (int)$y)
+            ->filter()
+            ->toArray();
+
+        $regYear = (int) ($user->registration_year ?? date('Y'));
+        $currentYear = (int) date('Y');
+        $years = array_unique(array_merge($yearsFromDb, [$regYear, $currentYear]));
+        rsort($years);
+        $years = array_values($years);
+
+        return view('member.savings', compact('savings', 'totalSavings', 'years', 'selectedYear'));
     }
 
     private function getSavingsHistory($user)
@@ -95,7 +121,7 @@ class DashboardController extends Controller
         }
 
         $paidSavings = MonthlySaving::where('user_id', $user->id)
-            ->selectRaw('month, COUNT(id) as slots_count, SUM(amount) as total_amount, MAX(payment_date) as latest_payment_date')
+            ->selectRaw('month, CASE WHEN SUM(amount) > 0 THEN CAST(ROUND(SUM(amount) / 2000) AS INTEGER) ELSE COUNT(id) END as slots_count, SUM(amount) as total_amount, MAX(payment_date) as latest_payment_date')
             ->groupBy('month')
             ->get()
             ->keyBy(function($item) {
@@ -129,13 +155,108 @@ class DashboardController extends Controller
         return view('member.loans', compact('loans'));
     }
 
-    public function dividends()
+    public function dividends(Request $request)
     {
         $user = auth()->user();
-        $payouts = $user->dividendPayouts()->with('dividend.investment')->latest()->paginate(15);
+
+        $month = $request->input('month');
+        $year = $request->input('year');
+
+        $baseQuery = $user->dividendPayouts()->with('dividend.investment');
+
+        if ($year) {
+            $baseQuery->where(function ($q) use ($year) {
+                $q->whereHas('dividend.investment', function ($q2) use ($year) {
+                    $q2->whereYear('start_date', $year);
+                })
+                ->orWhereHas('dividend', function ($q2) use ($year) {
+                    $q2->where('year', $year)
+                       ->orWhereYear('distributed_at', $year);
+                })
+                ->orWhereYear('paid_date', $year);
+            });
+        }
+
+        if ($month) {
+            $baseQuery->where(function ($q) use ($month) {
+                $q->whereHas('dividend.investment', function ($q2) use ($month) {
+                    $q2->whereMonth('start_date', $month);
+                })
+                ->orWhereHas('dividend', function ($q2) use ($month) {
+                    $q2->whereMonth('distributed_at', $month)
+                       ->orWhereMonth('created_at', $month);
+                })
+                ->orWhereMonth('paid_date', $month)
+                ->orWhereMonth('created_at', $month);
+            });
+        }
+
+        $payouts = (clone $baseQuery)->latest()->paginate(15)->withQueryString();
+
         $summary = $this->dividendService->getMemberDividendSummary($user);
         $adjustments = \App\Models\DividendAdjustment::where('user_id', $user->id)->with('reconciliation')->latest()->get();
         $totalDividends = $summary['final_entitlement'];
-        return view('member.dividends', compact('payouts', 'totalDividends', 'summary', 'adjustments'));
+
+        // Filtered calculations
+        $grossOriginal = (float) (clone $baseQuery)->where('amount', '>', 0)->sum('amount');
+        $businessLosses = abs((float) (clone $baseQuery)->where('amount', '<', 0)->sum('amount'));
+
+        if ($year) {
+            $selectedYearAdjustment = \App\Models\DividendAdjustment::where('user_id', $user->id)
+                ->where('year', $year)
+                ->whereHas('reconciliation', function ($q) {
+                    $q->where('total_recognized_loss', '>', 0);
+                })
+                ->first();
+            $annualLossAdjustment = $selectedYearAdjustment ? (float) $selectedYearAdjustment->loss_adjustment_amount : 0.00;
+        } else {
+            $annualLossAdjustment = (float) \App\Models\DividendAdjustment::where('user_id', $user->id)
+                ->whereHas('reconciliation', function ($q) {
+                    $q->where('total_recognized_loss', '>', 0);
+                })
+                ->sum('loss_adjustment_amount');
+        }
+
+        $selectedYearLoss = $businessLosses + $annualLossAdjustment;
+        $filteredTotalDividend = $grossOriginal > 0 ? $grossOriginal : (float) (clone $baseQuery)->sum('amount');
+        $selectedYearFinal = max(0.00, $filteredTotalDividend - $selectedYearLoss);
+        $filteredTotalPaid = (float) (clone $baseQuery)->where('paid', true)->where('amount', '>', 0)->sum('amount');
+
+        // Get available years for filtering
+        $years = \App\Models\Dividend::selectRaw('year as yr')
+            ->whereNotNull('year')
+            ->distinct()
+            ->pluck('yr')
+            ->map(fn($y) => (int)$y)
+            ->filter()
+            ->toArray();
+
+        $currentYearNum = (int) date('Y');
+        if (!in_array($currentYearNum, $years)) {
+            array_unshift($years, $currentYearNum);
+        }
+        $years = array_values(array_unique($years));
+        rsort($years);
+
+        $months = [
+            1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+            5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+            9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+        ];
+
+        return view('member.dividends', compact(
+            'payouts',
+            'totalDividends',
+            'summary',
+            'adjustments',
+            'years',
+            'months',
+            'year',
+            'month',
+            'filteredTotalDividend',
+            'filteredTotalPaid',
+            'selectedYearLoss',
+            'selectedYearFinal'
+        ));
     }
 }

@@ -6,17 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     */
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->date('date_of_birth')->nullable()->after('registration_year');
+            $table->unsignedTinyInteger('registration_month')->nullable()->after('registration_year');
         });
     }
 
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('date_of_birth');
+            $table->dropColumn('registration_month');
         });
     }
 };

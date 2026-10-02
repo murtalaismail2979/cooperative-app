@@ -10,7 +10,7 @@ class Investment extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name', 'type', 'description', 'capital_amount',
+        'name', 'type', 'description', 'capital_amount', 'quantity',
         'total_returns', 'start_date', 'end_date', 'status', 'created_by',
     ];
 
@@ -19,6 +19,7 @@ class Investment extends Model
         'end_date' => 'date',
         'capital_amount' => 'decimal:2',
         'total_returns' => 'decimal:2',
+        'quantity' => 'decimal:2',
     ];
 
     public function returns()
@@ -67,6 +68,11 @@ class Investment extends Model
     public function dividend()
     {
         return $this->hasOne(Dividend::class);
+    }
+
+    public function dividends()
+    {
+        return $this->hasMany(Dividend::class);
     }
 
     public function investmentType()

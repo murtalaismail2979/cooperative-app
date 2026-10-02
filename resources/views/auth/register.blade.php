@@ -80,13 +80,6 @@
                     <x-input-error :messages="$errors->get('nok_phone')" class="mt-2" />
                 </div>
 
-                <!-- Next of Kin Email -->
-                <div>
-                    <x-input-label for="nok_email" :value="__('Next of Kin Email Address')" />
-                    <x-text-input id="nok_email" class="block mt-1 w-full" type="email" name="nok_email" :value="old('nok_email')" />
-                    <x-input-error :messages="$errors->get('nok_email')" class="mt-2" />
-                </div>
-
                 <!-- Next of Kin Address -->
                 <div>
                     <x-input-label for="nok_address" :value="__('Next of Kin Contact Address')" />

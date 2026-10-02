@@ -17,11 +17,11 @@ class User extends Authenticatable
         'password',
         'member_code',
         'registration_year',
+        'registration_month',
         'phone',
         'address',
         'role',
         'is_active',
-        'date_of_birth',
     ];
 
     protected $hidden = [
@@ -33,7 +33,6 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'is_active' => 'boolean',
-        'date_of_birth' => 'date',
     ];
 
     // Relationships
@@ -114,6 +113,16 @@ class User extends Authenticatable
         return $this->role === 'admin';
     }
 
+    public function isChairman(): bool
+    {
+        return $this->role === 'chairman';
+    }
+
+    public function isSecretary(): bool
+    {
+        return $this->role === 'secretary';
+    }
+
     public function isTreasurer(): bool
     {
         return $this->role === 'treasurer';
@@ -124,9 +133,38 @@ class User extends Authenticatable
         return $this->role === 'member';
     }
 
+    public function isManagementRole(): bool
+    {
+        return in_array($this->role, ['admin', 'chairman', 'secretary', 'treasurer']);
+    }
+
     public function isAdminOrTreasurer(): bool
     {
         return in_array($this->role, ['admin', 'treasurer']);
+    }
+
+    public function getRegistrationMonthNameAttribute(): ?string
+    {
+        if (!$this->registration_month) {
+            return null;
+        }
+        $months = [
+            1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+            5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+            9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+        ];
+        return $months[(int)$this->registration_month] ?? null;
+    }
+
+    public function getRegistrationMonthYearAttribute(): string
+    {
+        if ($this->registration_month_name && $this->registration_year) {
+            return $this->registration_month_name . ' ' . $this->registration_year;
+        }
+        if ($this->registration_year) {
+            return (string) $this->registration_year;
+        }
+        return 'N/A';
     }
 
     /**

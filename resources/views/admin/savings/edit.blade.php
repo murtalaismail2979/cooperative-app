@@ -35,14 +35,32 @@
     <div class="mb-3">
         <label class="form-label fw-bold">Savings Slots <span class="text-danger">*</span></label>
         <div id="slots-container" class="mb-2">
-            @foreach($member->savingsSlots as $slot)
-                <div class="form-check mb-2">
-                    <input class="form-check-input slot-checkbox" type="checkbox" name="slots[]" value="{{ $slot->id }}" id="slot_{{ $slot->id }}" {{ in_array($slot->id, $paidSlotIds) ? 'checked' : '' }}>
-                    <label class="form-check-label" for="slot_{{ $slot->id }}">
-                        Slot #{{ $slot->id }} (₦{{ number_format(2000, 2) }}) - {{ $slot->is_active ? 'Active' : 'Inactive' }}
-                    </label>
+            @forelse($displaySlots as $slot)
+                @php
+                    $configuredSlotAmount = \App\Models\Slot::where('slot_number', $slot->slot_number)->value('amount');
+                    $expectedAmount = $configuredSlotAmount !== null ? (float)$configuredSlotAmount : ($slot->slot_number * 2000);
+                    $slotValue = old('amounts.' . $slot->id, $slotAmounts[$slot->id] ?? $expectedAmount);
+                @endphp
+                <div class="form-check mb-3 p-3 border rounded bg-light">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div>
+                            <input class="form-check-input slot-checkbox" type="checkbox" name="slots[]" value="{{ $slot->id }}" id="slot_{{ $slot->id }}" {{ in_array($slot->id, $paidSlotIds) ? 'checked' : '' }} data-default-amount="{{ $expectedAmount }}">
+                            <label class="form-check-label fw-bold ms-1" for="slot_{{ $slot->id }}">
+                                Slot #{{ $slot->slot_number }} - {{ $slot->is_active ? 'Active' : 'Inactive' }} ({{ $slot->slot_number }} {{ Str::plural('Slot', $slot->slot_number) }})
+                            </label>
+                        </div>
+                        <span class="badge bg-primary">Allowed Amount: ₦{{ number_format($expectedAmount, 2) }}</span>
+                    </div>
+                    <div>
+                        <label class="form-label text-muted small mb-1" for="amount_{{ $slot->id }}">Slot Amount (₦):</label>
+                        <input type="number" id="amount_{{ $slot->id }}" name="amounts[{{ $slot->id }}]" class="form-control form-control-sm slot-amount @error('amounts.'.$slot->id) is-invalid @enderror" min="0" step="0.01" value="{{ number_format((float)$slotValue, 2, '.', '') }}" aria-label="Amount for slot {{ $slot->slot_number }}">
+                        <small class="text-muted d-block mt-1">Must correspond to Slot #{{ $slot->slot_number }} (₦{{ number_format($expectedAmount, 2) }}) or ₦0.00 for zero savings.</small>
+                        @error('amounts.'.$slot->id)<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                    </div>
                 </div>
-            @endforeach
+            @empty
+                <div class="alert alert-warning mb-0">This member has no registered savings slots.</div>
+            @endforelse
         </div>
         <div class="mt-2 text-dark">
             Total Amount to Pay: <strong class="fs-5 text-success" id="total-amount">₦0.00</strong>
@@ -61,19 +79,36 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const checkboxes = document.querySelectorAll('.slot-checkbox');
+    const amountInputs = document.querySelectorAll('.slot-amount');
     const totalAmount = document.getElementById('total-amount');
 
     function calculateTotal() {
-        let count = 0;
+        let total = 0;
         checkboxes.forEach(cb => {
-            if (cb.checked) count++;
+            if (cb.checked) {
+                const amountInput = document.querySelector(`input[name="amounts[${cb.value}]"]`);
+                total += parseFloat(amountInput?.value || 0);
+            }
         });
-        const total = count * 2000;
         totalAmount.textContent = '₦' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     checkboxes.forEach(cb => {
-        cb.addEventListener('change', calculateTotal);
+        cb.addEventListener('change', function() {
+            if (this.checked) {
+                // When another slot is checked, automatically uncheck current/other checked slots
+                checkboxes.forEach(otherCb => {
+                    if (otherCb !== this) {
+                        otherCb.checked = false;
+                    }
+                });
+            }
+            calculateTotal();
+        });
+    });
+
+    amountInputs.forEach(input => {
+        input.addEventListener('input', calculateTotal);
     });
 
     calculateTotal();

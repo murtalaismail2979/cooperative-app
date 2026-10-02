@@ -4,7 +4,12 @@
 <div class="card shadow mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>All My Expense Requests</span>
-        <a href="{{ route('treasurer.expenses.create') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-circle"></i> New Request</a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('admin.batch-upload.index', ['type' => 'expenses']) }}" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-cloud-arrow-up me-1"></i> Batch Upload Expenses
+            </a>
+            <a href="{{ route('treasurer.expenses.create') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-circle"></i> New Request</a>
+        </div>
     </div>
     <div class="card-body">
         <table class="table table-bordered">

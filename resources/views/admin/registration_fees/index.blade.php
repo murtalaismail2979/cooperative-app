@@ -81,7 +81,7 @@
                     <label class="form-label fw-medium">Search Member</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" name="search" class="form-control" placeholder="Name, Code or Email..." value="{{ $search }}">
+                        <input type="text" name="search" id="adminRegistrationSearch" class="form-control auto-search" placeholder="Name, Code or Email..." value="{{ $search }}">
                     </div>
                 </div>
                 <div class="col-md-3">

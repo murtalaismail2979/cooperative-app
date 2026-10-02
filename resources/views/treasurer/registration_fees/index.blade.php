@@ -9,9 +9,14 @@
             <h2 class="fw-bold mb-1"><i class="bi bi-card-checklist me-2 text-primary"></i>Member Registration Fees</h2>
             <p class="text-muted mb-0">Record and manage member registration fee payments.</p>
         </div>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#recordPaymentModal">
-            <i class="bi bi-plus-lg me-1"></i> Record Payment
-        </button>
+        <div class="d-flex gap-2">
+            <a href="{{ route('admin.batch-upload.index', ['type' => 'registration_fees']) }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center">
+                <i class="bi bi-cloud-arrow-up me-1"></i> Batch Upload
+            </a>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#recordPaymentModal">
+                <i class="bi bi-plus-lg me-1"></i> Record Payment
+            </button>
+        </div>
     </div>
 
     @if(session('success'))
@@ -69,7 +74,7 @@
                     <label class="form-label fw-medium">Search Member</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" name="search" class="form-control" placeholder="Name, Code or Email..." value="{{ $search }}">
+                        <input type="text" name="search" id="treasurerRegistrationSearch" class="form-control auto-search" placeholder="Name, Code or Email..." value="{{ $search }}">
                     </div>
                 </div>
                 <div class="col-md-4">

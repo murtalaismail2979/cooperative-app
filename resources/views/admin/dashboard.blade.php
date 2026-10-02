@@ -142,7 +142,7 @@
                     @forelse($data['recentMembers'] as $member)
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             {{ $member->name }}
-                            <span class="badge bg-primary rounded-pill">{{ $member->member_code }}</span>
+                            <span style="background-color: #007bff; color: white;" class="badge bg-primary rounded-pill">{{ $member->member_code }}</span>
                         </li>
                     @empty
                         <li class="list-group-item text-muted">No members yet</li>

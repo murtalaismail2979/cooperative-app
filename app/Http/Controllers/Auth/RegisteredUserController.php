@@ -39,7 +39,6 @@ class RegisteredUserController extends Controller
             'nok_name' => ['required', 'string', 'max:255'],
             'nok_phone' => ['required', 'string', 'max:20'],
             'nok_relationship' => ['required', 'string', 'max:255'],
-            'nok_email' => ['nullable', 'email', 'max:255'],
             'nok_address' => ['nullable', 'string', 'max:500'],
         ]);
 
@@ -52,6 +51,7 @@ class RegisteredUserController extends Controller
                 'address' => $request->address,
                 'member_code' => User::generateMemberCode(),
                 'registration_year' => date('Y'),
+                'registration_month' => (int) date('n'),
                 'role' => 'member',
                 'is_active' => true,
             ]);
@@ -75,7 +75,6 @@ class RegisteredUserController extends Controller
                 'name' => $request->nok_name,
                 'phone' => $request->nok_phone,
                 'relationship' => $request->nok_relationship,
-                'email' => $request->nok_email,
                 'address' => $request->nok_address,
             ]);
 

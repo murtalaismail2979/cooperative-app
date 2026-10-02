@@ -21,7 +21,8 @@ class LoanController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
-        $query = Loan::with('user'); // Let treasurer see all loans, not just active, so they can edit fully paid ones if needed!
+        $memberId = $request->input('member_id');
+        $query = Loan::with('user');
 
         if ($search) {
             $query->whereHas('user', function ($q) use ($search) {
@@ -30,15 +31,25 @@ class LoanController extends Controller
             });
         }
 
-        $loans = $query->latest()->paginate(15)->withQueryString();
+        if ($memberId) {
+            $query->where('user_id', $memberId);
+        }
 
-        return view('treasurer.loans.index', compact('loans', 'search'));
+        $loans = $query->latest()->paginate(15)->withQueryString();
+        $members = User::where('role', 'member')->orderBy('name')->get();
+
+        return view('treasurer.loans.index', compact('loans', 'search', 'memberId', 'members'));
     }
 
     public function show(Loan $loan)
     {
         $loan->load(['user', 'repayments', 'approver']);
-        return view('treasurer.loans.show', compact('loan'));
+
+        $previousLoan = Loan::where('id', '<', $loan->id)->latest('id')->first();
+        $nextLoan = Loan::where('id', '>', $loan->id)->oldest('id')->first();
+        $allLoans = Loan::with('user')->orderBy('id', 'desc')->get();
+
+        return view('treasurer.loans.show', compact('loan', 'previousLoan', 'nextLoan', 'allLoans'));
     }
 
     public function addRepayment(StoreRepaymentRequest $request, Loan $loan)

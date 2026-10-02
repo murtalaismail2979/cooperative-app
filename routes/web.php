@@ -18,10 +18,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard redirect based on role
     Route::get('/dashboard', function () {
         $user = auth()->user();
-        if ($user->role === 'admin') {
+        if (in_array($user->role, ['admin', 'chairman', 'secretary', 'treasurer'])) {
             return redirect()->route('admin.dashboard');
-        } elseif ($user->role === 'treasurer') {
-            return redirect()->route('treasurer.dashboard');
         }
         return redirect()->route('member.dashboard');
     })->name('dashboard');
@@ -38,19 +36,63 @@ Route::middleware(['auth', 'verified'])->group(function () {
         );
     })->name('members.active-slots');
 
+    // Get member savings info (shared by Admin/Treasurer)
+    Route::get('/members/{user}/savings-info', function (App\Models\User $user) {
+        $activeSlots = $user->savingsSlots()->where('is_active', true)->get();
+        
+        $totalSavings = \App\Models\MonthlySaving::where('user_id', $user->id)
+            ->where('status', 'paid')
+            ->sum('amount');
+
+        $latestSaving = \App\Models\MonthlySaving::where('user_id', $user->id)
+            ->selectRaw('month, SUM(amount) as total_amount, MAX(payment_date) as max_payment_date')
+            ->groupBy('month')
+            ->orderBy('month', 'desc')
+            ->first();
+
+        $suggestedNextMonth = date('Y-m');
+        if ($latestSaving && $latestSaving->month) {
+            $suggestedNextMonth = \Carbon\Carbon::parse($latestSaving->month)->addMonth()->format('Y-m');
+        }
+
+        return response()->json([
+            'active_slots_count' => $activeSlots->count(),
+            'total_savings' => (float) $totalSavings,
+            'formatted_total_savings' => '₦' . number_format($totalSavings, 2),
+            'latest_month' => $latestSaving ? \Carbon\Carbon::parse($latestSaving->month)->format('F Y') : null,
+            'latest_amount' => $latestSaving ? '₦' . number_format($latestSaving->total_amount, 2) : null,
+            'latest_payment_date' => $latestSaving && $latestSaving->max_payment_date ? \Carbon\Carbon::parse($latestSaving->max_payment_date)->format('M d, Y') : null,
+            'suggested_next_month' => $suggestedNextMonth,
+        ]);
+    })->name('members.savings-info');
+
     // ========== ADMIN ROUTES ==========
-    Route::middleware(['role:admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::middleware(['role:admin,chairman,secretary,treasurer'])->prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
 
-        // User Management
-        Route::resource('members', App\Http\Controllers\Admin\UserController::class)->names([
-            'index' => 'members.index',
-            'create' => 'members.create',
-            'store' => 'members.store',
-            'edit' => 'members.edit',
-            'update' => 'members.update',
-            'destroy' => 'members.destroy',
-        ]);
+        Route::get('/member-list', [App\Http\Controllers\Admin\UserController::class, 'memberList'])->name('members.view');
+        Route::get('/member-list/export', [App\Http\Controllers\Admin\UserController::class, 'exportMembers'])->name('members.export');
+
+        // User management is restricted to admins.
+        Route::middleware(['role:admin'])->group(function () {
+            Route::get('/members', [App\Http\Controllers\Admin\UserController::class, 'index'])->name('members.index');
+            Route::get('/members/create', [App\Http\Controllers\Admin\UserController::class, 'create'])->name('members.create');
+            Route::post('/members', [App\Http\Controllers\Admin\UserController::class, 'store'])->name('members.store');
+            Route::get('/members/{member}/edit', [App\Http\Controllers\Admin\UserController::class, 'edit'])->name('members.edit');
+            Route::get('/members/{member}/slots', [App\Http\Controllers\Admin\UserController::class, 'slots'])->name('members.slots');
+            Route::put('/members/{member}/slots', [App\Http\Controllers\Admin\UserController::class, 'updateSlots'])->name('members.slots.update');
+            Route::put('/members/{member}', [App\Http\Controllers\Admin\UserController::class, 'update'])->name('members.update');
+            Route::patch('/members/{member}', [App\Http\Controllers\Admin\UserController::class, 'update']);
+            Route::delete('/members/{member}', [App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('members.destroy');
+            Route::get('/slots', [App\Http\Controllers\Admin\SlotController::class, 'index'])->name('slots.index');
+            Route::post('/slots', [App\Http\Controllers\Admin\SlotController::class, 'store'])->name('slots.store');
+            Route::put('/slots/{slot}', [App\Http\Controllers\Admin\SlotController::class, 'update'])->name('slots.update');
+
+            // Investment Type Management
+            Route::get('/investment-types', [App\Http\Controllers\Admin\InvestmentTypeController::class, 'index'])->name('investment-types.index');
+            Route::post('/investment-types', [App\Http\Controllers\Admin\InvestmentTypeController::class, 'store'])->name('investment-types.store');
+            Route::delete('/investment-types/{investmentType}', [App\Http\Controllers\Admin\InvestmentTypeController::class, 'destroy'])->name('investment-types.destroy');
+        });
 
         // Savings Management
         Route::get('/savings', [App\Http\Controllers\Admin\SavingsController::class, 'index'])->name('savings.index');
@@ -64,6 +106,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Running Charges
         Route::get('/running-charges', [App\Http\Controllers\Admin\RunningChargeController::class, 'index'])->name('running-charges.index');
         Route::post('/running-charges', [App\Http\Controllers\Admin\RunningChargeController::class, 'store'])->name('running-charges.store');
+        Route::post('/running-charges/update-interval', [App\Http\Controllers\Admin\RunningChargeController::class, 'updateInterval'])->name('running-charges.update-interval');
         Route::get('/running-charges/history', [App\Http\Controllers\Admin\RunningChargeController::class, 'history'])->name('running-charges.history');
         Route::get('/running-charges/{running_charge}/edit', [App\Http\Controllers\Admin\RunningChargeController::class, 'edit'])->name('running-charges.edit');
         Route::put('/running-charges/{running_charge}', [App\Http\Controllers\Admin\RunningChargeController::class, 'update'])->name('running-charges.update');
@@ -83,10 +126,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/investments/{investment}/returns/{return}/edit', [App\Http\Controllers\Admin\InvestmentController::class, 'editReturn'])->name('investments.returns.edit');
         Route::put('/investments/{investment}/returns/{return}', [App\Http\Controllers\Admin\InvestmentController::class, 'updateReturn'])->name('investments.returns.update');
 
-        // Investment Type Management
-        Route::get('/investment-types', [App\Http\Controllers\Admin\InvestmentTypeController::class, 'index'])->name('investment-types.index');
-        Route::post('/investment-types', [App\Http\Controllers\Admin\InvestmentTypeController::class, 'store'])->name('investment-types.store');
-        Route::delete('/investment-types/{investmentType}', [App\Http\Controllers\Admin\InvestmentTypeController::class, 'destroy'])->name('investment-types.destroy');
+
 
         // Expense Management (Admin approves)
         Route::get('/expenses', [App\Http\Controllers\Admin\ExpenseController::class, 'index'])->name('expenses.index');

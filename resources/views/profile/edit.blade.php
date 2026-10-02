@@ -33,14 +33,6 @@
                         @enderror
                     </div>
 
-                    <div class="mb-3">
-                        <label for="date_of_birth" class="form-label text-muted small fw-bold text-uppercase">Date of Birth (Secret Question 2)</label>
-                        <input type="date" name="date_of_birth" id="date_of_birth" class="form-control @error('date_of_birth') is-invalid @enderror" value="{{ old('date_of_birth', $user->date_of_birth ? $user->date_of_birth->format('Y-m-d') : '') }}">
-                        @error('date_of_birth')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-
                     <div class="mt-4">
                         <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Save Changes</button>
                     </div>

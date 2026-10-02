@@ -217,4 +217,103 @@ class SavingsHistoryTest extends TestCase
         $response->assertSee('₦2,000.00');
         $response->assertSee('1 Slot');
     }
+
+    public function test_record_savings_link_preselects_member_and_provides_savings_info_endpoint(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $member = User::factory()->create(['role' => 'member']);
+        $slot = SavingsSlot::create(['user_id' => $member->id, 'slot_number' => 1, 'is_active' => true]);
+
+        MonthlySaving::create([
+            'user_id' => $member->id,
+            'savings_slot_id' => $slot->id,
+            'amount' => 2000,
+            'month' => '2026-05-01',
+            'status' => 'paid',
+            'payment_date' => '2026-05-05'
+        ]);
+
+        // 1. Visit Record Savings with member_id
+        $createResponse = $this->actingAs($admin)->get(route('admin.savings.create', ['member_id' => $member->id]));
+        $createResponse->assertOk();
+        $createResponse->assertSee('value="' . $member->id . '" selected', false);
+
+        // 2. Query savings-info API
+        $infoResponse = $this->actingAs($admin)->get(route('members.savings-info', $member));
+        $infoResponse->assertOk();
+        $infoResponse->assertJson([
+            'active_slots_count' => 1,
+            'total_savings' => 2000,
+            'formatted_total_savings' => '₦2,000.00',
+            'latest_month' => 'May 2026',
+            'latest_amount' => '₦2,000.00',
+            'suggested_next_month' => '2026-06',
+        ]);
+    }
+
+    public function test_member_can_filter_savings_by_year(): void
+    {
+        $member = User::factory()->create([
+            'role' => 'member',
+            'registration_year' => 2025,
+        ]);
+        $slot = SavingsSlot::create(['user_id' => $member->id, 'slot_number' => 1, 'is_active' => true]);
+
+        MonthlySaving::create([
+            'user_id' => $member->id,
+            'savings_slot_id' => $slot->id,
+            'amount' => 2000,
+            'month' => '2025-06-01',
+            'status' => 'paid',
+            'payment_date' => '2025-06-05'
+        ]);
+
+        MonthlySaving::create([
+            'user_id' => $member->id,
+            'savings_slot_id' => $slot->id,
+            'amount' => 2000,
+            'month' => '2026-06-01',
+            'status' => 'paid',
+            'payment_date' => '2026-06-05'
+        ]);
+
+        // Filter by 2025
+        $res2025 = $this->actingAs($member)->get(route('member.savings', ['year' => 2025]));
+        $res2025->assertOk();
+        $res2025->assertSee('June 2025');
+        $res2025->assertDontSee('June 2026');
+
+        // Filter by 2026
+        $res2026 = $this->actingAs($member)->get(route('member.savings', ['year' => 2026]));
+        $res2026->assertOk();
+        $res2026->assertSee('June 2026');
+        $res2026->assertDontSee('June 2025');
+    }
+
+    public function test_inactive_members_have_disabled_record_button_and_cannot_record_savings(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $inactiveMember = User::factory()->create(['role' => 'member', 'is_active' => false, 'name' => 'Inactive User']);
+        $slot = SavingsSlot::create(['user_id' => $inactiveMember->id, 'slot_number' => 1, 'is_active' => true]);
+
+        // 1. Admin savings index shows disabled button for inactive member
+        $indexResponse = $this->actingAs($admin)->get(route('admin.savings.index'));
+        $indexResponse->assertOk();
+        $indexResponse->assertSee('Inactive User');
+        $indexResponse->assertSee('disabled', false);
+
+        // 2. Attempting to store savings for inactive member fails validation
+        $storeResponse = $this->actingAs($admin)->post(route('admin.savings.store'), [
+            'member_id' => $inactiveMember->id,
+            'month' => '2026-06',
+            'slots' => [$slot->id],
+            'payment_date' => '2026-06-05'
+        ]);
+
+        $storeResponse->assertSessionHasErrors('member_id');
+        $this->assertDatabaseMissing('monthly_savings', [
+            'user_id' => $inactiveMember->id,
+            'month' => '2026-06-01'
+        ]);
+    }
 }

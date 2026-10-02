@@ -42,4 +42,9 @@ class Loan extends Model
         $totalPaid = $this->repayments()->sum('amount');
         return $this->total_amount - $totalPaid;
     }
+
+    public function getProfitAmountAttribute(): float
+    {
+        return (float) $this->principal_amount * ((float) $this->profit_rate / 100);
+    }
 }

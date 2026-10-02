@@ -12,7 +12,7 @@ return new class extends Migration
             $table->string('member_code')->nullable()->unique()->after('id');
             $table->year('registration_year')->nullable()->after('member_code');
             $table->string('phone')->nullable()->after('email');
-            $table->enum('role', ['admin', 'treasurer', 'member'])->default('member')->after('phone');
+            $table->enum('role', ['admin', 'chairman', 'secretary', 'treasurer', 'member'])->default('member')->after('phone');
             $table->boolean('is_active')->default(true)->after('role');
         });
     }

@@ -138,7 +138,8 @@ class TreasurerRunningChargesTest extends TestCase
         $response = $this->actingAs($treasurer)
             ->post(route('treasurer.running-charges.store'), [
                 'user_id' => $member->id,
-                'month' => '2026-06-01'
+                'month' => '2026-06-01',
+                'payment_date' => '2026-06-15',
             ]);
 
         $response->assertRedirect(route('treasurer.running-charges.index'));
@@ -220,7 +221,8 @@ class TreasurerRunningChargesTest extends TestCase
             ->post(route('admin.running-charges.store'), [
                 'user_id' => $member->id,
                 'month' => '2025-06-01',
-                'amount' => 100.00
+                'amount' => 100.00,
+                'payment_date' => '2025-06-20',
             ]);
 
         $this->assertDatabaseHas('running_charges', [

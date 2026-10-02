@@ -24,6 +24,10 @@
             <label class="form-label">Capital Amount (₦) <span class="text-danger">*</span></label>
             <input type="number" step="0.01" name="capital_amount" class="form-control" required>
         </div>
+        <div class="col-md-4" id="quantity_wrapper" style="display: none;">
+            <label class="form-label">Quantity</label>
+            <input type="number" step="0.01" name="quantity" id="quantity_input" class="form-control" value="{{ old('quantity') }}" placeholder="e.g. 100">
+        </div>
         <div class="col-md-4">
             <label class="form-label">Start Date <span class="text-danger">*</span></label>
             <input type="date" name="start_date" class="form-control" value="{{ date('Y-m-d') }}" required>
@@ -43,4 +47,34 @@
     </div>
 </form>
 </div></div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const typeSelect = document.querySelector('select[name="type"]');
+    const quantityWrapper = document.getElementById('quantity_wrapper');
+
+    function toggleQuantityField() {
+        if (!typeSelect || !quantityWrapper) return;
+        const val = (typeSelect.value || '').toLowerCase();
+        const selectedOption = typeSelect.options[typeSelect.selectedIndex];
+        const text = selectedOption ? selectedOption.text.toLowerCase() : '';
+
+        const isTargetType = val === 'buying_selling_goods' || val === 'agriculture' ||
+                             text.includes('buying') || text.includes('agriculture') || text.includes('goods');
+
+        if (isTargetType) {
+            quantityWrapper.style.display = 'block';
+        } else {
+            quantityWrapper.style.display = 'none';
+        }
+    }
+
+    if (typeSelect) {
+        typeSelect.addEventListener('change', toggleQuantityField);
+        toggleQuantityField();
+    }
+});
+</script>
+@endpush
 @endsection

@@ -8,9 +8,14 @@
 <div class="card shadow mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>All Financing</span>
-        <a href="{{ route('admin.loans.create') }}" class="btn btn-primary btn-sm">
-            <i class="bi bi-plus-circle"></i> New Financing
-        </a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('admin.batch-upload.index', ['type' => 'loans']) }}" class="btn btn-outline-warning btn-sm">
+                <i class="bi bi-cloud-arrow-up me-1"></i> Batch Upload Financing
+            </a>
+            <a href="{{ route('admin.loans.create') }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-circle"></i> New Financing
+            </a>
+        </div>
     </div>
     <div class="card-body">
         <form method="GET" action="{{ route('admin.loans.index') }}" class="row g-3 align-items-center mb-4">
@@ -20,12 +25,22 @@
                     <input type="text" name="search" id="adminLoansSearch" class="form-control border-start-0 auto-search" placeholder="Search member name or code..." value="{{ $search ?? '' }}">
                 </div>
             </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Search</button>
+            <div class="col-md-4 col-lg-3">
+                <select name="member_id" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- All Members --</option>
+                    @foreach($members ?? [] as $m)
+                        <option value="{{ $m->id }}" {{ ($memberId ?? '') == $m->id ? 'selected' : '' }}>
+                            {{ $m->name }} ({{ $m->member_code }})
+                        </option>
+                    @endforeach
+                </select>
             </div>
-            @if(!empty($search))
             <div class="col-auto">
-                <a href="{{ route('admin.loans.index') }}" class="btn btn-outline-danger"><i class="bi bi-x-circle"></i> Clear</a>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Filter</button>
+            </div>
+            @if(!empty($search) || !empty($memberId))
+            <div class="col-auto">
+                <a href="{{ route('admin.loans.index') }}" class="btn btn-outline-danger"><i class="bi bi-x-circle"></i> Clear Filter</a>
             </div>
             @endif
         </form>
