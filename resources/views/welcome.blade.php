@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config('app.name', 'YLDA Association') }} - Financial Empowerment</title>
+    <title>{{ config('app.name', 'MyCoopSuite') }} - Financial Empowerment Platform</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -116,6 +116,11 @@
         }
 
         .logo i {
+            font-size: 2rem;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             -webkit-text-fill-color: initial;
             background: linear-gradient(135deg, var(--accent-indigo), var(--accent-violet));
             -webkit-background-clip: text;
@@ -622,8 +627,8 @@
     <header>
         <div class="container nav-container">
             <a href="/" class="logo">
-                <i class="bi bi-wallet2"></i>
-                YLDA Association
+                <i class="bi bi-stack"></i>
+                {{ config('app.name', 'MyCoopSuite') }}
             </a>
             <ul class="nav-links">
                 <li><a href="#features">Features</a></li>
@@ -636,9 +641,8 @@
                         <a href="{{ url('/dashboard') }}" class="btn btn-primary">Dashboard</a>
                     @else
                         <a href="{{ route('login') }}" class="btn btn-outline">Sign In</a>
-                        @if (Route::has('register'))
-                            <a href="{{ route('register') }}" class="btn btn-primary">Register</a>
-                        @endif
+                        <a href="{{ route('register') }}" class="btn btn-outline">Join Member</a>
+                        <a href="{{ route('register.cooperative') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i> Register Cooperative</a>
                     @endauth
                 @endif
             </div>
@@ -649,14 +653,15 @@
     <section class="hero">
         <div class="container">
             <div class="hero-badge">
-                <i class="bi bi-shield-check"></i> Secure & Managed Financial Association
+                <i class="bi bi-shield-check"></i> Multi-Tenant Cooperative Management Platform
             </div>
-            <h1 class="hero-title">Association Finance,<br>Redefined for Everyone</h1>
+            <h1 class="hero-title">Cooperative Management,<br>Empowered & Streamlined</h1>
             <p class="hero-subtitle">
-                Grow your wealth collectively, access easy and soft financing, and enjoy seamless financial returns through our slot-based modern Association system.
+                Serve multiple cooperative societies independently. Manage savings slots, financing, investments, monthly charges, and annual dividends in one secure multi-tenant platform.
             </p>
-            <div class="hero-ctas">
-                <a href="{{ route('login') }}" class="btn btn-primary btn-lg">Access Portal <i class="bi bi-arrow-right"></i></a>
+            <div class="hero-ctas" style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <a href="{{ route('register.cooperative') }}" class="btn btn-primary btn-lg"><i class="bi bi-building-add me-2"></i> Register New Cooperative</a>
+                <a href="{{ route('login') }}" class="btn btn-outline btn-lg">Member / Admin Sign In <i class="bi bi-arrow-right"></i></a>
             </div>
         </div>
     </section>
@@ -666,7 +671,7 @@
         <div class="container">
             <div class="section-header">
                 <span class="section-tag">Value Proposition</span>
-                <h2 class="section-title">Why Join Yusra Long-Term Development Association (YLDA)?</h2>
+                <h2 class="section-title">Why Choose {{ config('app.name', 'MyCoopSuite') }}?</h2>
             </div>
             <div class="features-grid">
                 <!-- Savings slots -->
@@ -770,7 +775,7 @@
             <div class="cta-card">
                 <h2 class="cta-title">Ready to secure your financial future?</h2>
                 <p class="cta-desc">
-                    Join Yusra Long-Term Development Association today and explore the best way to save, borrow, and build wealth with a trusted community.
+                    Join an active cooperative society or register a new one today and explore the best way to save, borrow, and build wealth with a trusted community.
                 </p>
                 <a href="{{ route('login') }}" class="btn btn-primary btn-lg">Access Portal</a>
             </div>
@@ -783,8 +788,8 @@
             <div class="footer-grid">
                 <div class="footer-logo-col">
                     <a href="/" class="logo">
-                        <i class="bi bi-wallet2"></i>
-                        YLDA Association
+                        <i class="bi bi-stack"></i>
+                        {{ config('app.name', 'MyCoopSuite') }}
                     </a>
                     <p class="footer-desc">
                         Providing flexible, secure, and modern financial Association services for personal and collective growth.
@@ -823,7 +828,7 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <span>&copy; {{ date('Y') }} YLDA Association. All rights reserved.</span>
+                <span>&copy; {{ date('Y') }} {{ config('app.name', 'MyCoopSuite') }}. All rights reserved.</span>
                 <span>Designed for excellence</span>
             </div>
         </div>

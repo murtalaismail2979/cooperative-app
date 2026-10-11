@@ -12,6 +12,7 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
+        'cooperative_id',
         'name',
         'email',
         'password',
@@ -36,6 +37,11 @@ class User extends Authenticatable
     ];
 
     // Relationships
+    public function cooperative()
+    {
+        return $this->belongsTo(Cooperative::class);
+    }
+
     public function savingsSlots()
     {
         return $this->hasMany(SavingsSlot::class);
@@ -108,9 +114,14 @@ class User extends Authenticatable
     }
 
     // Helper methods
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'super_admin';
+    }
+
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return in_array($this->role, ['admin', 'super_admin']);
     }
 
     public function isChairman(): bool
@@ -135,12 +146,12 @@ class User extends Authenticatable
 
     public function isManagementRole(): bool
     {
-        return in_array($this->role, ['admin', 'chairman', 'secretary', 'treasurer']);
+        return in_array($this->role, ['admin', 'super_admin', 'chairman', 'secretary', 'treasurer']);
     }
 
     public function isAdminOrTreasurer(): bool
     {
-        return in_array($this->role, ['admin', 'treasurer']);
+        return in_array($this->role, ['admin', 'super_admin', 'treasurer']);
     }
 
     public function getRegistrationMonthNameAttribute(): ?string
@@ -168,14 +179,26 @@ class User extends Authenticatable
     }
 
     /**
-     * Auto-generate member code in format: YLDA/YY/XXXX
+     * Auto-generate member code in format: PREFIX/YY/XXXX
      */
-    public static function generateMemberCode(?int $registrationYear = null): string
+    public static function generateMemberCode(?int $registrationYear = null, ?int $cooperativeId = null): string
     {
         $year = $registrationYear ? substr((string) $registrationYear, -2) : date('y');
-        $lastMember = self::where('member_code', 'like', "YLDA/%/%")
-            ->orderBy('id', 'desc')
-            ->first();
+        
+        $prefix = 'YLDA';
+        if ($cooperativeId) {
+            $coop = Cooperative::find($cooperativeId);
+            if ($coop && !empty($coop->slug)) {
+                $prefix = strtoupper($coop->slug);
+            }
+        }
+
+        $query = self::where('member_code', 'like', "{$prefix}/%/%");
+        if ($cooperativeId) {
+            $query->where('cooperative_id', $cooperativeId);
+        }
+
+        $lastMember = $query->orderBy('id', 'desc')->first();
 
         if ($lastMember && $lastMember->member_code) {
             $parts = explode('/', $lastMember->member_code);
@@ -185,6 +208,6 @@ class User extends Authenticatable
             $newNumber = 1;
         }
 
-        return sprintf('YLDA/%s/%04d', $year, $newNumber);
+        return sprintf('%s/%s/%04d', $prefix, $year, $newNumber);
     }
 }

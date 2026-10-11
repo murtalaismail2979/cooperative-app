@@ -10,7 +10,7 @@
         <div class="card shadow-sm">
             <div class="card-body">
                 <h5 class="card-title text-primary">Welcome, {{ auth()->user()->name }}!</h5>
-                <p class="card-text">You are successfully logged into the YLDA Cooperative Management System.</p>
+                <p class="card-text">You are successfully logged into the {{ auth()->user()->cooperative->name ?? config('app.name', 'MyCoopSuite') }} Portal.</p>
                 <hr>
                 <p class="text-muted small">You will be automatically redirected to your role-based dashboard. If you are not redirected, please contact the administrator.</p>
             </div>

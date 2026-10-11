@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\Cooperative;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -10,16 +11,21 @@ class RegistrationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_registration_screen_is_not_accessible(): void
+    public function test_registration_screen_can_be_rendered(): void
     {
+        Cooperative::factory()->create(['is_active' => true]);
+
         $response = $this->get('/register');
 
-        $response->assertStatus(404);
+        $response->assertStatus(200);
     }
 
-    public function test_new_users_cannot_register_publicly(): void
+    public function test_new_member_can_register(): void
     {
+        $coop = Cooperative::factory()->create(['is_active' => true]);
+
         $response = $this->post('/register', [
+            'cooperative_id' => $coop->id,
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => 'password',
@@ -29,7 +35,34 @@ class RegistrationTest extends TestCase
             'nok_relationship' => 'Spouse',
         ]);
 
-        $response->assertStatus(404);
-        $this->assertGuest();
+        $this->assertAuthenticated();
+        $response->assertRedirect(RouteServiceProvider::HOME);
+    }
+
+    public function test_cooperative_registration_screen_can_be_rendered(): void
+    {
+        $response = $this->get('/register-cooperative');
+
+        $response->assertStatus(200);
+        $response->assertSee('MyCoopSuite');
+        $response->assertDontSee('YLDA Association');
+    }
+
+    public function test_new_cooperative_can_be_registered(): void
+    {
+        $response = $this->post('/register-cooperative', [
+            'cooperative_name' => 'Test Mutual Cooperative',
+            'cooperative_slug' => 'TEST-MUTUAL',
+            'base_slot_amount' => 3000,
+            'dividend_allocation_basis' => 'savings_only',
+            'name' => 'Admin User',
+            'email' => 'admin@testmutual.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $this->assertAuthenticated();
+        $this->assertDatabaseHas('cooperatives', ['slug' => 'TEST-MUTUAL']);
+        $response->assertRedirect(route('admin.dashboard'));
     }
 }

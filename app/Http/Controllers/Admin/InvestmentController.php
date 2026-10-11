@@ -25,7 +25,13 @@ class InvestmentController extends Controller
         $month = $request->input('month');
         $type = $request->input('type');
 
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
         $query = Investment::with(['creator', 'investmentType']);
+        if ($cooperativeId) {
+            $query->whereHas('createdBy', fn($u) => $u->where('cooperative_id', $cooperativeId));
+        }
 
         if (!empty($search)) {
             $query->where(function($q) use ($search) {

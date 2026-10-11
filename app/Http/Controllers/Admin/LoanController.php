@@ -23,7 +23,14 @@ class LoanController extends Controller
     {
         $search = $request->input('search');
         $memberId = $request->input('member_id');
+
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
         $query = Loan::with('user');
+        if ($cooperativeId) {
+            $query->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
 
         if ($search) {
             $query->whereHas('user', function ($q) use ($search) {
@@ -37,7 +44,12 @@ class LoanController extends Controller
         }
 
         $loans = $query->latest()->paginate(15)->withQueryString();
-        $members = User::where('role', 'member')->orderBy('name')->get();
+
+        $memberQuery = User::where('role', 'member');
+        if ($cooperativeId) {
+            $memberQuery->where('cooperative_id', $cooperativeId);
+        }
+        $members = $memberQuery->orderBy('name')->get();
 
         return view('admin.loans.index', compact('loans', 'search', 'memberId', 'members'));
     }
@@ -45,7 +57,16 @@ class LoanController extends Controller
     public function create(Request $request)
     {
         $selectedUserId = $request->input('user_id');
-        $members = User::where('role', 'member')->where('is_active', true)->orderBy('name')->get();
+
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
+        $memberQuery = User::where('role', 'member')->where('is_active', true);
+        if ($cooperativeId) {
+            $memberQuery->where('cooperative_id', $cooperativeId);
+        }
+        $members = $memberQuery->orderBy('name')->get();
+
         return view('admin.loans.create', compact('members', 'selectedUserId'));
     }
 

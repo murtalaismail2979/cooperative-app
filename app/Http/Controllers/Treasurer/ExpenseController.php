@@ -24,7 +24,10 @@ class ExpenseController extends Controller
 
     public function create()
     {
-        $investments = \App\Models\Investment::where('status', 'active')->get();
+        $cooperativeId = auth()->user()->cooperative_id;
+        $investments = \App\Models\Investment::where('status', 'active')
+            ->whereHas('createdBy', fn($q) => $q->where('cooperative_id', $cooperativeId))
+            ->get();
         return view('treasurer.expenses.create', compact('investments'));
     }
 

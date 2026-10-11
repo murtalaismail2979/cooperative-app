@@ -148,9 +148,15 @@ class LoanService
     /**
      * Get active loans summary stats.
      */
-    public function getActiveLoansStats(): array
+    public function getActiveLoansStats(?int $cooperativeId = null): array
     {
-        $activeLoans = Loan::where('status', 'active')->get();
+        $query = Loan::where('status', 'active');
+        if ($cooperativeId) {
+            $query->whereHas('user', function ($q) use ($cooperativeId) {
+                $q->where('cooperative_id', $cooperativeId);
+            });
+        }
+        $activeLoans = $query->get();
 
         return [
             'count' => $activeLoans->count(),

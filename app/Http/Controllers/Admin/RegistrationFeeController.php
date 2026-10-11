@@ -26,9 +26,16 @@ class RegistrationFeeController extends Controller
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
 
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
         $query = User::where('role', 'member')->with(['registrationFee.payments' => function ($q) {
             $q->where('status', 'completed')->latest();
         }]);
+
+        if ($cooperativeId) {
+            $query->where('cooperative_id', $cooperativeId);
+        }
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -54,7 +61,7 @@ class RegistrationFeeController extends Controller
             }
         }
 
-        $stats = $this->registrationFeeService->getDashboardStats($startDate, $endDate);
+        $stats = $this->registrationFeeService->getDashboardStats($startDate, $endDate, $cooperativeId);
 
         return view('admin.registration_fees.index', compact('members', 'search', 'status', 'startDate', 'endDate', 'stats'));
     }

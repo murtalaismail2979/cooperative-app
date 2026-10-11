@@ -15,13 +15,22 @@ class ReportController extends Controller
 {
     public function savings(Request $request)
     {
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
         $driver = \DB::connection()->getDriverName();
         $yearExpr = $driver === 'sqlite' ? "strftime('%Y', month)" : "YEAR(month)";
         $monthExpr = $driver === 'sqlite' ? "strftime('%m', month)" : "MONTH(month)";
 
         // 1. Monthly Breakdown
-        $monthlySavings = MonthlySaving::selectRaw("{$yearExpr} as year, {$monthExpr} as month_num, SUM(amount) as total, COUNT(DISTINCT user_id) as members")
-            ->where('status', 'paid')
+        $monthlySavingsQuery = MonthlySaving::selectRaw("{$yearExpr} as year, {$monthExpr} as month_num, SUM(amount) as total, COUNT(DISTINCT user_id) as members")
+            ->where('status', 'paid');
+
+        if ($cooperativeId) {
+            $monthlySavingsQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
+        $monthlySavings = $monthlySavingsQuery
             ->groupBy('year', 'month_num')
             ->orderBy('year', 'desc')
             ->orderBy('month_num', 'desc')
@@ -37,6 +46,10 @@ class ReportController extends Controller
         // 1) Find distinct member user_ids that match search and year criteria
         $yearlyUserIdsQuery = MonthlySaving::where('monthly_savings.status', 'paid')
             ->where('monthly_savings.amount', '>', 0);
+
+        if ($cooperativeId) {
+            $yearlyUserIdsQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
 
         if ($yearlySearch) {
             $yearlyUserIdsQuery->whereHas('user', function ($q) use ($yearlySearch) {
@@ -72,6 +85,10 @@ class ReportController extends Controller
                 ->where('monthly_savings.amount', '>', 0)
                 ->whereIn('monthly_savings.user_id', $pageUserIds)
                 ->with('user');
+
+            if ($cooperativeId) {
+                $yearlySavingsQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            }
 
             if ($yearlyYear) {
                 if ($driver === 'sqlite') {
@@ -115,8 +132,13 @@ class ReportController extends Controller
         $yearlySavings->withQueryString();
 
         // Get list of years for selection in dropdown
-        $availableYears = MonthlySaving::where('status', 'paid')
-            ->where('amount', '>', 0)
+        $availableYearsQuery = MonthlySaving::where('status', 'paid')
+            ->where('amount', '>', 0);
+        if ($cooperativeId) {
+            $availableYearsQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
+        $availableYears = $availableYearsQuery
             ->selectRaw("DISTINCT {$yearExpr} as year")
             ->orderBy('year', 'desc')
             ->pluck('year')
@@ -137,6 +159,10 @@ class ReportController extends Controller
             ->where('monthly_savings.amount', '>', 0)
             ->with('user');
 
+        if ($cooperativeId) {
+            $lifetimeQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
         if ($lifetimeSearch) {
             $lifetimeQuery->whereHas('user', function ($q) use ($lifetimeSearch) {
                 $q->where('name', 'like', "%{$lifetimeSearch}%")
@@ -151,8 +177,16 @@ class ReportController extends Controller
             ->paginate(15, ['*'], 'lifetime_page')
             ->withQueryString();
 
-        $totalSavings = MonthlySaving::where('status', 'paid')->sum('amount');
-        $totalCharges = RunningCharge::where('status', 'paid')->sum('amount');
+        $totalSavingsQuery = MonthlySaving::where('status', 'paid');
+        $totalChargesQuery = RunningCharge::where('status', 'paid');
+
+        if ($cooperativeId) {
+            $totalSavingsQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            $totalChargesQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
+        $totalSavings = $totalSavingsQuery->sum('amount');
+        $totalCharges = $totalChargesQuery->sum('amount');
 
         // Determine which tab is active based on request
         $activeTab = $request->input('tab', 'monthly');
@@ -162,8 +196,14 @@ class ReportController extends Controller
             $yearExprGranted = $driver === 'sqlite' ? "strftime('%Y', date_granted)" : "YEAR(date_granted)";
             $monthExprGranted = $driver === 'sqlite' ? "strftime('%m', date_granted)" : "MONTH(date_granted)";
 
-            $loanDates = Loan::selectRaw("{$yearExprGranted} as year, {$monthExprGranted} as month_num")
-                ->whereNotNull('date_granted')
+            $loanDatesQuery = Loan::selectRaw("{$yearExprGranted} as year, {$monthExprGranted} as month_num")
+                ->whereNotNull('date_granted');
+
+            if ($cooperativeId) {
+                $loanDatesQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            }
+
+            $loanDates = $loanDatesQuery
                 ->groupBy('year', 'month_num')
                 ->get()
                 ->map(fn($item) => ['year' => (int) $item->year, 'month' => (int) $item->month_num])
@@ -186,14 +226,18 @@ class ReportController extends Controller
                 $month = $period['month'];
 
                 if ($driver === 'sqlite') {
-                    $loanSummary = Loan::whereRaw("strftime('%Y', date_granted) = ? AND strftime('%m', date_granted) = ?", [(string)$year, sprintf('%02d', $month)])
-                        ->selectRaw("COUNT(*) as count, SUM(principal_amount) as principal, SUM(total_amount - principal_amount) as profit")
-                        ->first();
+                    $loanSummaryQuery = Loan::whereRaw("strftime('%Y', date_granted) = ? AND strftime('%m', date_granted) = ?", [(string)$year, sprintf('%02d', $month)]);
                 } else {
-                    $loanSummary = Loan::whereRaw("YEAR(date_granted) = ? AND MONTH(date_granted) = ?", [$year, $month])
-                        ->selectRaw("COUNT(*) as count, SUM(principal_amount) as principal, SUM(total_amount - principal_amount) as profit")
-                        ->first();
+                    $loanSummaryQuery = Loan::whereRaw("YEAR(date_granted) = ? AND MONTH(date_granted) = ?", [$year, $month]);
                 }
+
+                if ($cooperativeId) {
+                    $loanSummaryQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+                }
+
+                $loanSummary = $loanSummaryQuery
+                    ->selectRaw("COUNT(*) as count, SUM(principal_amount) as principal, SUM(total_amount - principal_amount) as profit")
+                    ->first();
 
                 $period['loan_count'] = (int) ($loanSummary->count ?? 0);
                 $period['loan_principal'] = (float) ($loanSummary->principal ?? 0);
@@ -211,7 +255,7 @@ class ReportController extends Controller
 
         $paginatedBusinesses = null;
         if ($activeTab === 'businesses') {
-            $periods = $this->getInvestmentPeriods();
+            $periods = $this->getInvestmentPeriods($cooperativeId);
 
             $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
             $perPage = 12;
@@ -222,10 +266,16 @@ class ReportController extends Controller
                 $month = $period['month'];
 
                 if ($driver === 'sqlite') {
-                    $investments = Investment::whereRaw("strftime('%Y', start_date) = ? AND strftime('%m', start_date) = ?", [(string)$year, sprintf('%02d', $month)])->get();
+                    $invQuery = Investment::whereRaw("strftime('%Y', start_date) = ? AND strftime('%m', start_date) = ?", [(string)$year, sprintf('%02d', $month)]);
                 } else {
-                    $investments = Investment::whereRaw("YEAR(start_date) = ? AND MONTH(start_date) = ?", [$year, $month])->get();
+                    $invQuery = Investment::whereRaw("YEAR(start_date) = ? AND MONTH(start_date) = ?", [$year, $month]);
                 }
+
+                if ($cooperativeId) {
+                    $invQuery->whereHas('createdBy', fn($q) => $q->where('cooperative_id', $cooperativeId));
+                }
+
+                $investments = $invQuery->get();
 
                 $period['investment_count'] = $investments->count();
                 $period['investment_capital'] = (float) $investments->sum('capital_amount');
@@ -262,6 +312,10 @@ class ReportController extends Controller
                     {$monthExprCharges} as month_num
                 ")
                 ->with('user');
+
+            if ($cooperativeId) {
+                $chargesQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            }
 
             if ($chargesSearch) {
                 $chargesQuery->whereHas('user', function ($q) use ($chargesSearch) {
@@ -306,6 +360,9 @@ class ReportController extends Controller
             $dividendsSearch = $request->input('dividends_search');
 
             $memberQuery = \App\Models\User::where('role', 'member');
+            if ($cooperativeId) {
+                $memberQuery->where('cooperative_id', $cooperativeId);
+            }
 
             if ($dividendsSearch) {
                 $memberQuery->where(function ($q) use ($dividendsSearch) {
@@ -326,11 +383,18 @@ class ReportController extends Controller
                 ->paginate(15, ['*'], 'dividends_page')
                 ->withQueryString();
 
-            $totalAllShared = (float) \App\Models\DividendPayout::sum('amount');
-            $totalAllPaid = (float) \App\Models\DividendPayout::where('paid', true)->sum('amount');
-            $totalAllPending = (float) \App\Models\DividendPayout::where('paid', false)->sum('amount');
-            $totalCooperativeDeductions = (float) \App\Models\Dividend::sum('cooperative_amount');
-            $totalManagementDeductions = (float) \App\Models\Dividend::sum('management_amount');
+            $payoutQuery = \App\Models\DividendPayout::query();
+            $dividendQuery = \App\Models\Dividend::query();
+            if ($cooperativeId) {
+                $payoutQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+                $dividendQuery->whereHas('payouts.user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            }
+
+            $totalAllShared = (float) (clone $payoutQuery)->sum('amount');
+            $totalAllPaid = (float) (clone $payoutQuery)->where('paid', true)->sum('amount');
+            $totalAllPending = (float) (clone $payoutQuery)->where('paid', false)->sum('amount');
+            $totalCooperativeDeductions = (float) (clone $dividendQuery)->sum('cooperative_amount');
+            $totalManagementDeductions = (float) (clone $dividendQuery)->sum('management_amount');
             $totalDeductedAmount = $totalCooperativeDeductions + $totalManagementDeductions;
         }
 
@@ -340,7 +404,7 @@ class ReportController extends Controller
         $totalCombinedEarnings = 0.0;
 
         if ($activeTab === 'earnings') {
-            list($headers, $rows) = $this->getEarningsReportData();
+            list($headers, $rows) = $this->getEarningsReportData($cooperativeId);
             
             $earningsData = [];
             foreach ($rows as $row) {
@@ -407,27 +471,57 @@ class ReportController extends Controller
         ));
     }
 
-    public function loans()
+    public function loans(Request $request)
     {
-        $loans = Loan::with('user')->latest()->paginate(15);
-        $activeLoans = Loan::where('status', 'active')->get();
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
+        $loansQuery = Loan::with('user');
+        $activeLoansQuery = Loan::where('status', 'active');
+        $totalPrincipalQuery = Loan::query();
+        $totalAmountQuery = Loan::query();
+
+        if ($cooperativeId) {
+            $loansQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            $activeLoansQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            $totalPrincipalQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            $totalAmountQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
+        $loans = $loansQuery->latest()->paginate(15);
+        $activeLoans = $activeLoansQuery->get();
         $totalOutstanding = $activeLoans->sum('outstanding_balance');
-        $totalPrincipal = Loan::sum('principal_amount');
-        $totalProfit = Loan::sum('total_amount') - Loan::sum('principal_amount');
+        $totalPrincipal = $totalPrincipalQuery->sum('principal_amount');
+        $totalProfit = $totalAmountQuery->sum('total_amount') - (clone $totalAmountQuery)->sum('principal_amount');
 
         return view('admin.reports.loans', compact('loans', 'totalOutstanding', 'totalPrincipal', 'totalProfit'));
     }
 
-    public function financial()
+    public function financial(Request $request)
     {
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
+        $investmentQuery = Investment::query();
+        $expenseQuery = Expense::where('status', 'approved');
+        $loanQuery = Loan::query();
+        $dividendQuery = Dividend::query();
+
+        if ($cooperativeId) {
+            $investmentQuery->whereHas('createdBy', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            $expenseQuery->whereHas('requestedBy', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            $loanQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            $dividendQuery->whereHas('payouts.user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
         // Revenue from investments
-        $investmentReturns = Investment::sum('total_returns');
+        $investmentReturns = $investmentQuery->sum('total_returns');
         
         // Expenses
-        $totalExpenses = Expense::where('status', 'approved')->sum('amount');
+        $totalExpenses = $expenseQuery->sum('amount');
         
         // Loan profit income
-        $totalLoanProfit = Loan::sum('total_amount') - Loan::sum('principal_amount');
+        $totalLoanProfit = $loanQuery->sum('total_amount') - (clone $loanQuery)->sum('principal_amount');
         
         // Total revenue
         $totalRevenue = $investmentReturns + $totalLoanProfit;
@@ -437,22 +531,25 @@ class ReportController extends Controller
         
         $yearExprGranted = $driver === 'sqlite' ? "strftime('%Y', date_granted)" : "YEAR(date_granted)";
         $monthExprGranted = $driver === 'sqlite' ? "strftime('%m', date_granted)" : "MONTH(date_granted)";
-        
-        $yearExprStart = $driver === 'sqlite' ? "strftime('%Y', start_date)" : "YEAR(start_date)";
-        $monthExprStart = $driver === 'sqlite' ? "strftime('%m', start_date)" : "MONTH(start_date)";
 
         // Get unique periods
-        $loanDates = Loan::selectRaw("
+        $loanDatesQuery = Loan::selectRaw("
                 {$yearExprGranted} as year,
                 {$monthExprGranted} as month_num
             ")
-            ->whereNotNull('date_granted')
+            ->whereNotNull('date_granted');
+
+        if ($cooperativeId) {
+            $loanDatesQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
+        $loanDates = $loanDatesQuery
             ->groupBy('year', 'month_num')
             ->get()
             ->map(fn($item) => ['year' => (int) $item->year, 'month' => (int) $item->month_num])
             ->toArray();
 
-        $investmentDates = $this->getInvestmentPeriods();
+        $investmentDates = $this->getInvestmentPeriods($cooperativeId);
 
         $allPeriods = [];
         foreach (array_merge($loanDates, $investmentDates) as $period) {
@@ -473,21 +570,31 @@ class ReportController extends Controller
 
             // Query loans for this month/year
             if ($driver === 'sqlite') {
-                $loanSummary = Loan::whereRaw("strftime('%Y', date_granted) = ? AND strftime('%m', date_granted) = ?", [(string)$year, sprintf('%02d', $month)])
-                    ->selectRaw("COUNT(*) as count, SUM(principal_amount) as principal, SUM(total_amount - principal_amount) as profit")
-                    ->first();
+                $loanSummaryQuery = Loan::whereRaw("strftime('%Y', date_granted) = ? AND strftime('%m', date_granted) = ?", [(string)$year, sprintf('%02d', $month)]);
             } else {
-                $loanSummary = Loan::whereRaw("YEAR(date_granted) = ? AND MONTH(date_granted) = ?", [$year, $month])
-                    ->selectRaw("COUNT(*) as count, SUM(principal_amount) as principal, SUM(total_amount - principal_amount) as profit")
-                    ->first();
+                $loanSummaryQuery = Loan::whereRaw("YEAR(date_granted) = ? AND MONTH(date_granted) = ?", [$year, $month]);
             }
+
+            if ($cooperativeId) {
+                $loanSummaryQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            }
+
+            $loanSummary = $loanSummaryQuery
+                ->selectRaw("COUNT(*) as count, SUM(principal_amount) as principal, SUM(total_amount - principal_amount) as profit")
+                ->first();
 
             // Query investments for this month/year
             if ($driver === 'sqlite') {
-                $investments = Investment::whereRaw("strftime('%Y', start_date) = ? AND strftime('%m', start_date) = ?", [(string)$year, sprintf('%02d', $month)])->get();
+                $invQuery = Investment::whereRaw("strftime('%Y', start_date) = ? AND strftime('%m', start_date) = ?", [(string)$year, sprintf('%02d', $month)]);
             } else {
-                $investments = Investment::whereRaw("YEAR(start_date) = ? AND MONTH(start_date) = ?", [$year, $month])->get();
+                $invQuery = Investment::whereRaw("YEAR(start_date) = ? AND MONTH(start_date) = ?", [$year, $month]);
             }
+
+            if ($cooperativeId) {
+                $invQuery->whereHas('createdBy', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            }
+
+            $investments = $invQuery->get();
 
             $period['loan_count'] = (int) ($loanSummary->count ?? 0);
             $period['loan_principal'] = (float) ($loanSummary->principal ?? 0);
@@ -499,10 +606,10 @@ class ReportController extends Controller
             });
         }
 
-        $cooperativeDeductions = (float) Dividend::sum('cooperative_amount');
-        $managementDeductions = (float) Dividend::sum('management_amount');
+        $cooperativeDeductions = (float) (clone $dividendQuery)->sum('cooperative_amount');
+        $managementDeductions = (float) (clone $dividendQuery)->sum('management_amount');
         $totalDeductions = $cooperativeDeductions + $managementDeductions;
-        $totalMemberDividends = (float) Dividend::sum('total_dividend_amount');
+        $totalMemberDividends = (float) (clone $dividendQuery)->sum('total_dividend_amount');
 
         $paginatedPeriods = new \Illuminate\Pagination\LengthAwarePaginator(
             $currentItems,
@@ -520,56 +627,65 @@ class ReportController extends Controller
 
     public function exportSavings(Request $request)
     {
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
         $tab = $request->input('tab', 'monthly');
         if ($tab === 'yearly') {
             $search = $request->input('yearly_search');
             $year = $request->input('yearly_year');
-            list($headers, $rows) = $this->getYearlySavingsData($search, $year);
+            list($headers, $rows) = $this->getYearlySavingsData($search, $year, $cooperativeId);
             return $this->streamCsv($headers, $rows, 'yearly_savings_report_' . date('Y-m-d') . '.csv');
         } elseif ($tab === 'lifetime') {
             $search = $request->input('lifetime_search');
-            list($headers, $rows) = $this->getLifetimeSavingsData($search);
+            list($headers, $rows) = $this->getLifetimeSavingsData($search, $cooperativeId);
             return $this->streamCsv($headers, $rows, 'lifetime_savings_report_' . date('Y-m-d') . '.csv');
         } elseif ($tab === 'financing') {
-            list($headers, $rows) = $this->getFinancingActivityData();
+            list($headers, $rows) = $this->getFinancingActivityData($cooperativeId);
             return $this->streamCsv($headers, $rows, 'financing_report_' . date('Y-m-d') . '.csv');
         } elseif ($tab === 'businesses') {
-            list($headers, $rows) = $this->getBusinessesActivityData();
+            list($headers, $rows) = $this->getBusinessesActivityData($cooperativeId);
             return $this->streamCsv($headers, $rows, 'businesses_report_' . date('Y-m-d') . '.csv');
         } elseif ($tab === 'charges') {
             $search = $request->input('charges_search');
             $year = $request->input('charges_year');
             $month = $request->input('charges_month');
-            list($headers, $rows) = $this->getRunningChargesReportData($search, $year, $month);
+            list($headers, $rows) = $this->getRunningChargesReportData($search, $year, $month, $cooperativeId);
             return $this->streamCsv($headers, $rows, 'running_charges_report_' . date('Y-m-d') . '.csv');
         } elseif ($tab === 'dividends') {
             $search = $request->input('dividends_search');
-            list($headers, $rows) = $this->getDividendsReportData($search);
+            list($headers, $rows) = $this->getDividendsReportData($search, $cooperativeId);
             return $this->streamCsv($headers, $rows, 'dividends_report_' . date('Y-m-d') . '.csv');
         } elseif ($tab === 'earnings') {
-            list($headers, $rows) = $this->getEarningsReportData();
+            list($headers, $rows) = $this->getEarningsReportData($cooperativeId);
             return $this->streamCsv($headers, $rows, 'cooperative_and_management_earnings_report_' . date('Y-m-d') . '.csv');
         } elseif ($tab === 'registration_fees') {
             $search = $request->input('search');
             $status = $request->input('status');
-            list($headers, $rows) = $this->getRegistrationFeesData($search, $status);
+            list($headers, $rows) = $this->getRegistrationFeesData($search, $status, $cooperativeId);
             return $this->streamCsv($headers, $rows, 'registration_fees_report_' . date('Y-m-d') . '.csv');
         } else {
-            list($headers, $rows) = $this->getMonthlySavingsData();
+            list($headers, $rows) = $this->getMonthlySavingsData($cooperativeId);
             return $this->streamCsv($headers, $rows, 'monthly_savings_report_' . date('Y-m-d') . '.csv');
         }
     }
 
-    public function exportLoans()
+    public function exportLoans(Request $request)
     {
-        list($headers, $rows) = $this->getLoansData();
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
+        list($headers, $rows) = $this->getLoansData($cooperativeId);
         return $this->streamCsv($headers, $rows, 'financing_report_' . date('Y-m-d') . '.csv');
     }
 
-    public function exportFinancial()
+    public function exportFinancial(Request $request)
     {
-        list($summaryHeaders, $summaryRows) = $this->getFinancialData();
-        list($breakdownHeaders, $breakdownRows) = $this->getActivityBreakdownData();
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
+        list($summaryHeaders, $summaryRows) = $this->getFinancialData($cooperativeId);
+        list($breakdownHeaders, $breakdownRows) = $this->getActivityBreakdownData($cooperativeId);
 
         $responseHeaders = [
             "Content-type"        => "text/csv; charset=UTF-8",
@@ -607,8 +723,11 @@ class ReportController extends Controller
         return response()->stream($callback, 200, $responseHeaders);
     }
 
-    public function exportAll()
+    public function exportAll(Request $request)
     {
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
         $zipFileName = 'ylda_cooperative_all_reports_' . date('Y-m-d_His') . '.zip';
         $zipPath = storage_path('app/' . $zipFileName);
 
@@ -617,47 +736,47 @@ class ReportController extends Controller
             
             // Generate Monthly Savings CSV
             $monthlyFile = storage_path('app/monthly_savings_breakdown.csv');
-            $this->writeCsvFile($monthlyFile, ...$this->getMonthlySavingsData());
+            $this->writeCsvFile($monthlyFile, ...$this->getMonthlySavingsData($cooperativeId));
             $zip->addFile($monthlyFile, 'monthly_savings_breakdown.csv');
 
             // Generate Yearly Savings CSV
             $yearlyFile = storage_path('app/yearly_savings_by_member.csv');
-            $this->writeCsvFile($yearlyFile, ...$this->getYearlySavingsData());
+            $this->writeCsvFile($yearlyFile, ...$this->getYearlySavingsData(null, null, $cooperativeId));
             $zip->addFile($yearlyFile, 'yearly_savings_by_member.csv');
 
             // Generate Lifetime Savings CSV
             $lifetimeFile = storage_path('app/lifetime_savings_by_member.csv');
-            $this->writeCsvFile($lifetimeFile, ...$this->getLifetimeSavingsData());
+            $this->writeCsvFile($lifetimeFile, ...$this->getLifetimeSavingsData(null, $cooperativeId));
             $zip->addFile($lifetimeFile, 'lifetime_savings_by_member.csv');
 
             // Generate Loans CSV
             $loansFile = storage_path('app/loans_report.csv');
-            $this->writeCsvFile($loansFile, ...$this->getLoansData());
+            $this->writeCsvFile($loansFile, ...$this->getLoansData($cooperativeId));
             $zip->addFile($loansFile, 'loans_report.csv');
 
             // Generate Financial CSV
             $financialFile = storage_path('app/financial_summary.csv');
-            $this->writeCsvFile($financialFile, ...$this->getFinancialData());
+            $this->writeCsvFile($financialFile, ...$this->getFinancialData($cooperativeId));
             $zip->addFile($financialFile, 'financial_summary.csv');
 
             // Generate Financing & Businesses Breakdown CSV
             $breakdownFile = storage_path('app/financing_and_businesses_breakdown.csv');
-            $this->writeCsvFile($breakdownFile, ...$this->getActivityBreakdownData());
+            $this->writeCsvFile($breakdownFile, ...$this->getActivityBreakdownData($cooperativeId));
             $zip->addFile($breakdownFile, 'financing_and_businesses_breakdown.csv');
 
             // Generate Running Charges CSV
             $chargesFile = storage_path('app/running_charges_by_member.csv');
-            $this->writeCsvFile($chargesFile, ...$this->getRunningChargesReportData());
+            $this->writeCsvFile($chargesFile, ...$this->getRunningChargesReportData(null, null, null, $cooperativeId));
             $zip->addFile($chargesFile, 'running_charges_by_member.csv');
 
             // Generate Dividends CSV
             $dividendsFile = storage_path('app/dividends_by_member.csv');
-            $this->writeCsvFile($dividendsFile, ...$this->getDividendsReportData());
+            $this->writeCsvFile($dividendsFile, ...$this->getDividendsReportData(null, $cooperativeId));
             $zip->addFile($dividendsFile, 'dividends_by_member.csv');
 
             // Generate Cooperative & Management Earnings CSV
             $earningsFile = storage_path('app/cooperative_and_management_earnings.csv');
-            $this->writeCsvFile($earningsFile, ...$this->getEarningsReportData());
+            $this->writeCsvFile($earningsFile, ...$this->getEarningsReportData($cooperativeId));
             $zip->addFile($earningsFile, 'cooperative_and_management_earnings.csv');
 
             $zip->close();
@@ -679,28 +798,31 @@ class ReportController extends Controller
         return redirect()->back()->with('error', 'Failed to generate ZIP archive.');
     }
 
-    protected function getActivityBreakdownData()
+    protected function getActivityBreakdownData(?int $cooperativeId = null)
     {
         $driver = \DB::connection()->getDriverName();
         
         $yearExprGranted = $driver === 'sqlite' ? "strftime('%Y', date_granted)" : "YEAR(date_granted)";
         $monthExprGranted = $driver === 'sqlite' ? "strftime('%m', date_granted)" : "MONTH(date_granted)";
-        
-        $yearExprStart = $driver === 'sqlite' ? "strftime('%Y', start_date)" : "YEAR(start_date)";
-        $monthExprStart = $driver === 'sqlite' ? "strftime('%m', start_date)" : "MONTH(start_date)";
 
         // Get unique periods
-        $loanDates = Loan::selectRaw("
+        $loanDatesQuery = Loan::selectRaw("
                 {$yearExprGranted} as year,
                 {$monthExprGranted} as month_num
             ")
-            ->whereNotNull('date_granted')
+            ->whereNotNull('date_granted');
+
+        if ($cooperativeId) {
+            $loanDatesQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
+        $loanDates = $loanDatesQuery
             ->groupBy('year', 'month_num')
             ->get()
             ->map(fn($item) => ['year' => (int) $item->year, 'month' => (int) $item->month_num])
             ->toArray();
 
-        $investmentDates = $this->getInvestmentPeriods();
+        $investmentDates = $this->getInvestmentPeriods($cooperativeId);
 
         $allPeriods = [];
         foreach (array_merge($loanDates, $investmentDates) as $period) {
@@ -729,21 +851,31 @@ class ReportController extends Controller
 
             // Query loans for this month/year
             if ($driver === 'sqlite') {
-                $loanSummary = Loan::whereRaw("strftime('%Y', date_granted) = ? AND strftime('%m', date_granted) = ?", [(string)$year, sprintf('%02d', $month)])
-                    ->selectRaw("COUNT(*) as count, SUM(principal_amount) as principal, SUM(total_amount - principal_amount) as profit")
-                    ->first();
+                $loanSummaryQuery = Loan::whereRaw("strftime('%Y', date_granted) = ? AND strftime('%m', date_granted) = ?", [(string)$year, sprintf('%02d', $month)]);
             } else {
-                $loanSummary = Loan::whereRaw("YEAR(date_granted) = ? AND MONTH(date_granted) = ?", [$year, $month])
-                    ->selectRaw("COUNT(*) as count, SUM(principal_amount) as principal, SUM(total_amount - principal_amount) as profit")
-                    ->first();
+                $loanSummaryQuery = Loan::whereRaw("YEAR(date_granted) = ? AND MONTH(date_granted) = ?", [$year, $month]);
             }
+
+            if ($cooperativeId) {
+                $loanSummaryQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            }
+
+            $loanSummary = $loanSummaryQuery
+                ->selectRaw("COUNT(*) as count, SUM(principal_amount) as principal, SUM(total_amount - principal_amount) as profit")
+                ->first();
 
             // Query investments for this month/year
             if ($driver === 'sqlite') {
-                $investments = Investment::whereRaw("strftime('%Y', start_date) = ? AND strftime('%m', start_date) = ?", [(string)$year, sprintf('%02d', $month)])->get();
+                $invQuery = Investment::whereRaw("strftime('%Y', start_date) = ? AND strftime('%m', start_date) = ?", [(string)$year, sprintf('%02d', $month)]);
             } else {
-                $investments = Investment::whereRaw("YEAR(start_date) = ? AND MONTH(start_date) = ?", [$year, $month])->get();
+                $invQuery = Investment::whereRaw("YEAR(start_date) = ? AND MONTH(start_date) = ?", [$year, $month]);
             }
+
+            if ($cooperativeId) {
+                $invQuery->whereHas('createdBy', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            }
+
+            $investments = $invQuery->get();
 
             $monthName = date('F', mktime(0, 0, 0, $month, 1));
             
@@ -762,14 +894,20 @@ class ReportController extends Controller
         return [$headers, $rows];
     }
 
-    protected function getFinancingActivityData()
+    protected function getFinancingActivityData(?int $cooperativeId = null)
     {
         $driver = \DB::connection()->getDriverName();
         $yearExprGranted = $driver === 'sqlite' ? "strftime('%Y', date_granted)" : "YEAR(date_granted)";
         $monthExprGranted = $driver === 'sqlite' ? "strftime('%m', date_granted)" : "MONTH(date_granted)";
 
-        $loanDates = Loan::selectRaw("{$yearExprGranted} as year, {$monthExprGranted} as month_num")
-            ->whereNotNull('date_granted')
+        $loanDatesQuery = Loan::selectRaw("{$yearExprGranted} as year, {$monthExprGranted} as month_num")
+            ->whereNotNull('date_granted');
+
+        if ($cooperativeId) {
+            $loanDatesQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
+        $loanDates = $loanDatesQuery
             ->groupBy('year', 'month_num')
             ->get()
             ->map(fn($item) => ['year' => (int) $item->year, 'month' => (int) $item->month_num])
@@ -790,14 +928,18 @@ class ReportController extends Controller
             $month = $period['month'];
 
             if ($driver === 'sqlite') {
-                $loanSummary = Loan::whereRaw("strftime('%Y', date_granted) = ? AND strftime('%m', date_granted) = ?", [(string)$year, sprintf('%02d', $month)])
-                    ->selectRaw("COUNT(*) as count, SUM(principal_amount) as principal, SUM(total_amount - principal_amount) as profit")
-                    ->first();
+                $loanSummaryQuery = Loan::whereRaw("strftime('%Y', date_granted) = ? AND strftime('%m', date_granted) = ?", [(string)$year, sprintf('%02d', $month)]);
             } else {
-                $loanSummary = Loan::whereRaw("YEAR(date_granted) = ? AND MONTH(date_granted) = ?", [$year, $month])
-                    ->selectRaw("COUNT(*) as count, SUM(principal_amount) as principal, SUM(total_amount - principal_amount) as profit")
-                    ->first();
+                $loanSummaryQuery = Loan::whereRaw("YEAR(date_granted) = ? AND MONTH(date_granted) = ?", [$year, $month]);
             }
+
+            if ($cooperativeId) {
+                $loanSummaryQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            }
+
+            $loanSummary = $loanSummaryQuery
+                ->selectRaw("COUNT(*) as count, SUM(principal_amount) as principal, SUM(total_amount - principal_amount) as profit")
+                ->first();
 
             $monthName = date('F', mktime(0, 0, 0, $month, 1));
             $rows[] = [
@@ -812,13 +954,10 @@ class ReportController extends Controller
         return [$headers, $rows];
     }
 
-    protected function getBusinessesActivityData()
+    protected function getBusinessesActivityData(?int $cooperativeId = null)
     {
         $driver = \DB::connection()->getDriverName();
-        $yearExprStart = $driver === 'sqlite' ? "strftime('%Y', start_date)" : "YEAR(start_date)";
-        $monthExprStart = $driver === 'sqlite' ? "strftime('%m', start_date)" : "MONTH(start_date)";
-
-        $periods = $this->getInvestmentPeriods();
+        $periods = $this->getInvestmentPeriods($cooperativeId);
 
         $headers = ['Year', 'Month', 'Business Count', 'Capital Invested (₦)', 'Sharable Profit (₦)'];
         $rows = [];
@@ -827,10 +966,16 @@ class ReportController extends Controller
             $month = $period['month'];
 
             if ($driver === 'sqlite') {
-                $investments = Investment::whereRaw("strftime('%Y', start_date) = ? AND strftime('%m', start_date) = ?", [(string)$year, sprintf('%02d', $month)])->get();
+                $invQuery = Investment::whereRaw("strftime('%Y', start_date) = ? AND strftime('%m', start_date) = ?", [(string)$year, sprintf('%02d', $month)]);
             } else {
-                $investments = Investment::whereRaw("YEAR(start_date) = ? AND MONTH(start_date) = ?", [$year, $month])->get();
+                $invQuery = Investment::whereRaw("YEAR(start_date) = ? AND MONTH(start_date) = ?", [$year, $month]);
             }
+
+            if ($cooperativeId) {
+                $invQuery->whereHas('createdBy', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            }
+
+            $investments = $invQuery->get();
 
             $monthName = date('F', mktime(0, 0, 0, $month, 1));
             $rows[] = [
@@ -845,14 +990,20 @@ class ReportController extends Controller
         return [$headers, $rows];
     }
 
-    protected function getMonthlySavingsData()
+    protected function getMonthlySavingsData(?int $cooperativeId = null)
     {
         $driver = \DB::connection()->getDriverName();
         $yearExpr = $driver === 'sqlite' ? "strftime('%Y', month)" : "YEAR(month)";
         $monthExpr = $driver === 'sqlite' ? "strftime('%m', month)" : "MONTH(month)";
 
-        $monthlySavings = MonthlySaving::selectRaw("{$yearExpr} as year, {$monthExpr} as month_num, SUM(amount) as total, COUNT(DISTINCT user_id) as members")
-            ->where('status', 'paid')
+        $monthlySavingsQuery = MonthlySaving::selectRaw("{$yearExpr} as year, {$monthExpr} as month_num, SUM(amount) as total, COUNT(DISTINCT user_id) as members")
+            ->where('status', 'paid');
+
+        if ($cooperativeId) {
+            $monthlySavingsQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
+        $monthlySavings = $monthlySavingsQuery
             ->groupBy('year', 'month_num')
             ->orderBy('year', 'desc')
             ->orderBy('month_num', 'desc')
@@ -873,7 +1024,7 @@ class ReportController extends Controller
         return [$headers, $rows];
     }
 
-    protected function getYearlySavingsData(?string $search = null, ?string $year = null)
+    protected function getYearlySavingsData(?string $search = null, ?string $year = null, ?int $cooperativeId = null)
     {
         $driver = \DB::connection()->getDriverName();
         $yearExprOuter = $driver === 'sqlite' ? "strftime('%Y', monthly_savings.month)" : "YEAR(monthly_savings.month)";
@@ -886,6 +1037,10 @@ class ReportController extends Controller
             ->where('monthly_savings.status', 'paid')
             ->where('monthly_savings.amount', '>', 0)
             ->with('user');
+
+        if ($cooperativeId) {
+            $query->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
 
         if ($search) {
             $query->whereHas('user', function ($q) use ($search) {
@@ -930,7 +1085,7 @@ class ReportController extends Controller
         return [$headers, $rows];
     }
 
-    protected function getLifetimeSavingsData(?string $search = null)
+    protected function getLifetimeSavingsData(?string $search = null, ?int $cooperativeId = null)
     {
         $driver = \DB::connection()->getDriverName();
         $yearExprOuter = $driver === 'sqlite' ? "strftime('%Y', monthly_savings.month)" : "YEAR(monthly_savings.month)";
@@ -943,6 +1098,10 @@ class ReportController extends Controller
             ")
             ->where('monthly_savings.status', 'paid')
             ->with('user');
+
+        if ($cooperativeId) {
+            $query->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
 
         if ($search) {
             $query->whereHas('user', function ($q) use ($search) {
@@ -971,9 +1130,14 @@ class ReportController extends Controller
         return [$headers, $rows];
     }
 
-    protected function getLoansData()
+    protected function getLoansData(?int $cooperativeId = null)
     {
-        $loans = Loan::with('user')->latest()->get();
+        $loansQuery = Loan::with('user');
+        if ($cooperativeId) {
+            $loansQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
+        $loans = $loansQuery->latest()->get();
         $headers = ['Financing ID', 'Member Code', 'Member Name', 'Principal Amount (₦)', 'Total Financing Amount (₦)', 'Outstanding Balance (₦)', 'Status'];
         $rows = [];
         foreach ($loans as $l) {
@@ -991,18 +1155,30 @@ class ReportController extends Controller
         return [$headers, $rows];
     }
 
-    protected function getFinancialData()
+    protected function getFinancialData(?int $cooperativeId = null)
     {
-        $investmentReturns = Investment::sum('total_returns');
-        $totalExpenses = Expense::where('status', 'approved')->sum('amount');
-        $totalLoanProfit = Loan::sum('total_amount') - Loan::sum('principal_amount');
+        $investmentQuery = Investment::query();
+        $expenseQuery = Expense::where('status', 'approved');
+        $loanQuery = Loan::query();
+        $dividendQuery = Dividend::query();
+
+        if ($cooperativeId) {
+            $investmentQuery->whereHas('createdBy', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            $expenseQuery->whereHas('requestedBy', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            $loanQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            $dividendQuery->whereHas('payouts.user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
+        $investmentReturns = $investmentQuery->sum('total_returns');
+        $totalExpenses = $expenseQuery->sum('amount');
+        $totalLoanProfit = $loanQuery->sum('total_amount') - (clone $loanQuery)->sum('principal_amount');
         $totalRevenue = $investmentReturns + $totalLoanProfit;
         $netIncome = $totalRevenue - $totalExpenses;
 
-        $cooperativeDeductions = (float) Dividend::sum('cooperative_amount');
-        $managementDeductions = (float) Dividend::sum('management_amount');
+        $cooperativeDeductions = (float) (clone $dividendQuery)->sum('cooperative_amount');
+        $managementDeductions = (float) (clone $dividendQuery)->sum('management_amount');
         $totalDeductions = $cooperativeDeductions + $managementDeductions;
-        $totalMemberDividends = (float) Dividend::sum('total_dividend_amount');
+        $totalMemberDividends = (float) (clone $dividendQuery)->sum('total_dividend_amount');
 
         $headers = ['Financial Indicator', 'Amount (₦)'];
         $rows = [
@@ -1054,7 +1230,7 @@ class ReportController extends Controller
         fclose($file);
     }
 
-    protected function getRunningChargesReportData(?string $search = null, ?string $year = null, ?string $month = null)
+    protected function getRunningChargesReportData(?string $search = null, ?string $year = null, ?string $month = null, ?int $cooperativeId = null)
     {
         $driver = \DB::connection()->getDriverName();
         $yearExprOuter = $driver === 'sqlite' ? "strftime('%Y', running_charges.month)" : "YEAR(running_charges.month)";
@@ -1066,6 +1242,10 @@ class ReportController extends Controller
                 {$monthExprOuter} as month_num
             ")
             ->with('user');
+
+        if ($cooperativeId) {
+            $query->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
 
         if ($search) {
             $query->whereHas('user', function ($q) use ($search) {
@@ -1113,9 +1293,14 @@ class ReportController extends Controller
         return [$headers, $rows];
     }
 
-    protected function getInvestmentPeriods()
+    protected function getInvestmentPeriods(?int $cooperativeId = null)
     {
-        $investments = Investment::whereNotNull('start_date')->get();
+        $invQuery = Investment::whereNotNull('start_date');
+        if ($cooperativeId) {
+            $invQuery->whereHas('createdBy', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
+        $investments = $invQuery->get();
         $periods = [];
         foreach ($investments as $inv) {
             $start = \Carbon\Carbon::parse($inv->start_date);
@@ -1130,9 +1315,12 @@ class ReportController extends Controller
         return array_values($periods);
     }
 
-    protected function getDividendsReportData(?string $search = null)
+    protected function getDividendsReportData(?string $search = null, ?int $cooperativeId = null)
     {
         $query = \App\Models\User::where('role', 'member');
+        if ($cooperativeId) {
+            $query->where('cooperative_id', $cooperativeId);
+        }
         
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -1167,13 +1355,21 @@ class ReportController extends Controller
         return [$headers, $rows];
     }
 
-    protected function getEarningsReportData()
+    protected function getEarningsReportData(?int $cooperativeId = null)
     {
         $driver = \DB::connection()->getDriverName();
         $yearExprGranted = $driver === 'sqlite' ? "strftime('%Y', date_granted)" : "YEAR(date_granted)";
         
-        $dividendYears = \App\Models\Dividend::select('year')->distinct()->pluck('year')->toArray();
-        $loanYears = \App\Models\Loan::selectRaw("DISTINCT {$yearExprGranted} as year")
+        $dividendQuery = \App\Models\Dividend::query();
+        $loanQuery = \App\Models\Loan::query();
+
+        if ($cooperativeId) {
+            $dividendQuery->whereHas('payouts.user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            $loanQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
+        $dividendYears = (clone $dividendQuery)->select('year')->distinct()->pluck('year')->toArray();
+        $loanYears = (clone $loanQuery)->selectRaw("DISTINCT {$yearExprGranted} as year")
             ->whereNotNull('date_granted')
             ->pluck('year')
             ->map(fn($y) => (int)$y)
@@ -1197,19 +1393,28 @@ class ReportController extends Controller
 
         $rows = [];
         foreach ($years as $year) {
-            $businessProfit = (float) \App\Models\Dividend::where('year', $year)->sum('original_sharable_profit');
-            $businessCoop = (float) \App\Models\Dividend::where('year', $year)->sum('cooperative_amount');
-            $businessMgmt = (float) \App\Models\Dividend::where('year', $year)->sum('management_amount');
+            $divYearQuery = \App\Models\Dividend::where('year', $year);
+            if ($cooperativeId) {
+                $divYearQuery->whereHas('payouts.user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            }
+
+            $businessProfit = (float) (clone $divYearQuery)->sum('original_sharable_profit');
+            $businessCoop = (float) (clone $divYearQuery)->sum('cooperative_amount');
+            $businessMgmt = (float) (clone $divYearQuery)->sum('management_amount');
 
             if ($driver === 'sqlite') {
-                $financingProfit = (float) \App\Models\Loan::whereRaw("strftime('%Y', date_granted) = ?", [(string)$year])
-                    ->selectRaw("SUM(total_amount - principal_amount) as profit")
-                    ->value('profit');
+                $loanYearQuery = \App\Models\Loan::whereRaw("strftime('%Y', date_granted) = ?", [(string)$year]);
             } else {
-                $financingProfit = (float) \App\Models\Loan::whereRaw("YEAR(date_granted) = ?", [$year])
-                    ->selectRaw("SUM(total_amount - principal_amount) as profit")
-                    ->value('profit');
+                $loanYearQuery = \App\Models\Loan::whereRaw("YEAR(date_granted) = ?", [$year]);
             }
+
+            if ($cooperativeId) {
+                $loanYearQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            }
+
+            $financingProfit = (float) $loanYearQuery
+                ->selectRaw("SUM(total_amount - principal_amount) as profit")
+                ->value('profit');
 
             $financingCoop = round($financingProfit * 0.05, 2);
             $financingMgmt = round($financingProfit * 0.05, 2);
@@ -1235,10 +1440,12 @@ class ReportController extends Controller
         return [$headers, $rows];
     }
 
-    protected function getRegistrationFeesData(?string $search = null, ?string $status = null)
+    protected function getRegistrationFeesData(?string $search = null, ?string $status = null, ?int $cooperativeId = null)
     {
-        $query = \App\Models::class ? \App\Models\User::where('role', 'member')->with('registrationFee') : null;
         $query = \App\Models\User::where('role', 'member')->with('registrationFee');
+        if ($cooperativeId) {
+            $query->where('cooperative_id', $cooperativeId);
+        }
 
         if ($search) {
             $query->where(function ($q) use ($search) {

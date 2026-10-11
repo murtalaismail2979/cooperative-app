@@ -20,12 +20,15 @@ class InvestmentController extends Controller
 
     public function index(Request $request)
     {
+        $cooperativeId = auth()->user()->cooperative_id;
+
         $search = $request->input('search');
         $year = $request->input('year');
         $month = $request->input('month');
         $type = $request->input('type');
 
-        $query = Investment::with(['creator', 'investmentType']);
+        $query = Investment::with(['creator', 'investmentType'])
+            ->whereHas('createdBy', fn($q) => $q->where('cooperative_id', $cooperativeId));
 
         if (!empty($search)) {
             $query->where(function($q) use ($search) {
@@ -64,6 +67,7 @@ class InvestmentController extends Controller
         }
 
         $yearsFromDb = Investment::whereNotNull('start_date')
+            ->whereHas('createdBy', fn($q) => $q->where('cooperative_id', $cooperativeId))
             ->get()
             ->map(fn($inv) => (int) $inv->start_date->format('Y'))
             ->unique()

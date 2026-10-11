@@ -21,14 +21,17 @@ class DashboardController extends Controller
 
     public function index()
     {
+        $cooperativeId = auth()->user()->cooperative_id;
+
         $data = [
-            'totalMembers' => User::where('role', 'member')->count(),
-            'activeLoans' => Loan::where('status', 'active')->count(),
-            'pendingApprovals' => \App\Models\Expense::where('status', 'pending')->count(),
-            'currentMonthSavings' => $this->savingsService->getTotalCurrentMonthSavings(),
+            'totalMembers' => User::where('role', 'member')->where('cooperative_id', $cooperativeId)->count(),
+            'activeLoans' => Loan::where('status', 'active')->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId))->count(),
+            'pendingApprovals' => \App\Models\Expense::where('status', 'pending')->whereHas('requestedBy', fn($q) => $q->where('cooperative_id', $cooperativeId))->count(),
+            'currentMonthSavings' => $this->savingsService->getTotalCurrentMonthSavings($cooperativeId),
             'pendingSavings' => \App\Models\MonthlySaving::whereMonth('month', now()->month)
                 ->whereYear('month', now()->year)
                 ->where('status', 'pending')
+                ->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId))
                 ->count(),
         ];
 

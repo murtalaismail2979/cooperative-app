@@ -31,6 +31,7 @@ class RegisteredUserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
+            'cooperative_id' => ['required', 'exists:cooperatives,id'],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
@@ -44,12 +45,13 @@ class RegisteredUserController extends Controller
 
         $user = \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
             $createdUser = User::create([
+                'cooperative_id' => $request->cooperative_id,
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'phone' => $request->phone,
                 'address' => $request->address,
-                'member_code' => User::generateMemberCode(),
+                'member_code' => User::generateMemberCode((int) date('Y'), (int) $request->cooperative_id),
                 'registration_year' => date('Y'),
                 'registration_month' => (int) date('n'),
                 'role' => 'member',

@@ -36,37 +36,56 @@ class DashboardController extends Controller
         $this->registrationFeeService = $registrationFeeService;
     }
 
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        $loanStats = $this->loanService->getActiveLoansStats();
-        $investmentStats = $this->investmentService->getInvestmentStats();
-        $expenseStats = $this->expenseService->getExpenseStats();
-        $regFeeStats = $this->registrationFeeService->getDashboardStats();
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
+        $loanStats = $this->loanService->getActiveLoansStats($cooperativeId);
+        $investmentStats = $this->investmentService->getInvestmentStats($cooperativeId);
+        $expenseStats = $this->expenseService->getExpenseStats($cooperativeId);
+        $regFeeStats = $this->registrationFeeService->getDashboardStats(null, null, $cooperativeId);
 
         $driver = \DB::connection()->getDriverName();
         $yearExpr = $driver === 'sqlite' ? "strftime('%Y', month)" : "YEAR(month)";
         $monthExpr = $driver === 'sqlite' ? "strftime('%m', month)" : "MONTH(month)";
 
+        $membersQuery = User::where('role', 'member');
+        if ($cooperativeId) {
+            $membersQuery->where('cooperative_id', $cooperativeId);
+        }
+
+        $savingsQuery = MonthlySaving::where('status', 'paid');
+        if ($cooperativeId) {
+            $savingsQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
+        $breakdownQuery = MonthlySaving::selectRaw("{$yearExpr} as year, {$monthExpr} as month_num, SUM(amount) as total, COUNT(DISTINCT user_id) as members")
+            ->where('status', 'paid');
+        if ($cooperativeId) {
+            $breakdownQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
         $data = [
-            'totalMembers' => User::where('role', 'member')->count(),
-            'activeMembers' => User::where('role', 'member')->where('is_active', true)->count(),
+            'totalMembers' => (clone $membersQuery)->count(),
+            'activeMembers' => (clone $membersQuery)->where('is_active', true)->count(),
             'activeLoans' => $loanStats['count'],
             'totalOutstanding' => $loanStats['totalOutstanding'],
             'pendingExpenses' => $expenseStats['pending'],
             'approvedExpenses' => $expenseStats['totalApproved'],
             'activeInvestments' => $investmentStats['count'],
             'totalInvestmentCapital' => $investmentStats['totalCapital'],
-            'currentMonthSavings' => $this->savingsService->getTotalCurrentMonthSavings(),
-            'totalSavings' => MonthlySaving::where('status', 'paid')->sum('amount'),
+            'currentMonthSavings' => $this->savingsService->getTotalCurrentMonthSavings($cooperativeId),
+            'totalSavings' => $savingsQuery->sum('amount'),
             'registrationFeeStats' => $regFeeStats,
-            'savingsBreakdown' => MonthlySaving::selectRaw("{$yearExpr} as year, {$monthExpr} as month_num, SUM(amount) as total, COUNT(DISTINCT user_id) as members")
-                ->where('status', 'paid')
+            'savingsBreakdown' => $breakdownQuery
                 ->groupBy('year', 'month_num')
                 ->orderBy('year', 'desc')
                 ->orderBy('month_num', 'desc')
                 ->take(12)
                 ->get(),
-            'recentMembers' => User::where('role', 'member')->latest()->take(5)->get(),
+            'recentMembers' => (clone $membersQuery)->latest()->take(5)->get(),
+            'selectedCooperativeId' => $cooperativeId,
         ];
 
         return view('admin.dashboard', compact('data'));

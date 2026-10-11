@@ -1,0 +1,88 @@
+@extends('layouts.app')
+
+@section('title', 'Register New Cooperative')
+
+@section('page-title')
+    <h2 class="h4 mb-0"><i class="bi bi-building-add me-2 text-primary"></i> Register New Cooperative</h2>
+@endsection
+
+@section('content')
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3">
+        <h5 class="mb-0 text-gray-800 fw-bold">Cooperative Information & Configuration</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ route('admin.cooperatives.store') }}">
+            @csrf
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="name" class="form-label font-weight-bold">Cooperative Full Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name') }}" required placeholder="e.g. Apex Horizon Multipurpose Cooperative">
+                    @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+
+                <div class="col-md-6">
+                    <label for="slug" class="form-label font-weight-bold">Cooperative Code / Slug <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control @error('slug') is-invalid @enderror" id="slug" name="slug" value="{{ old('slug') }}" placeholder="e.g. APEX-HORIZON (Used in Member Code)">
+                    <small class="text-muted">Unique prefix for member IDs (e.g. APEX-HORIZON/26/0001)</small>
+                    @error('slug') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+
+                <div class="col-md-6">
+                    <label for="email" class="form-label">Official Email</label>
+                    <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email') }}" placeholder="info@cooperative.org">
+                    @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+
+                <div class="col-md-6">
+                    <label for="phone" class="form-label">Phone Number</label>
+                    <input type="text" class="form-control @error('phone') is-invalid @enderror" id="phone" name="phone" value="{{ old('phone') }}" placeholder="+234 800 000 0000">
+                    @error('phone') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+
+                <div class="col-12">
+                    <label for="address" class="form-label">Address</label>
+                    <textarea class="form-control @error('address') is-invalid @enderror" id="address" name="address" rows="2" placeholder="Full official address">{{ old('address') }}</textarea>
+                    @error('address') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+
+                <hr class="my-4">
+
+                <h6 class="fw-bold text-primary mb-3"><i class="bi bi-sliders me-1"></i> Financial & Slot Settings</h6>
+
+                <div class="col-md-6">
+                    <label for="base_slot_amount" class="form-label font-weight-bold">Base Slot Monthly Amount (₦) <span class="text-danger">*</span></label>
+                    <input type="number" step="0.01" class="form-control @error('base_slot_amount') is-invalid @enderror" id="base_slot_amount" name="base_slot_amount" value="{{ old('base_slot_amount', '2000.00') }}" required>
+                    @error('base_slot_amount') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+
+                <div class="col-md-6">
+                    <label for="dividend_allocation_basis" class="form-label font-weight-bold">Dividend Allocation Method <span class="text-danger">*</span></label>
+                    <select class="form-select @error('dividend_allocation_basis') is-invalid @enderror" id="dividend_allocation_basis" name="dividend_allocation_basis" required>
+                        <option value="savings_only" {{ old('dividend_allocation_basis') == 'savings_only' ? 'selected' : '' }}>Savings Only (100% based on total savings pool)</option>
+                        <option value="shares_only" {{ old('dividend_allocation_basis') == 'shares_only' ? 'selected' : '' }}>Shares Only</option>
+                        <option value="hybrid" {{ old('dividend_allocation_basis') == 'hybrid' ? 'selected' : '' }}>Hybrid (Savings & Shares)</option>
+                    </select>
+                    @error('dividend_allocation_basis') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+
+                <div class="col-md-6">
+                    <label for="primary_color" class="form-label">Primary Theme Color</label>
+                    <input type="color" class="form-control form-control-color w-100" id="primary_color" name="primary_color" value="{{ old('primary_color', '#2563eb') }}">
+                </div>
+
+                <div class="col-md-6">
+                    <label for="secondary_color" class="form-label">Secondary Theme Color</label>
+                    <input type="color" class="form-control form-control-color w-100" id="secondary_color" name="secondary_color" value="{{ old('secondary_color', '#1e293b') }}">
+                </div>
+
+                <div class="col-12 mt-4 d-flex justify-content-between">
+                    <a href="{{ route('admin.cooperatives.index') }}" class="btn btn-secondary"><i class="bi bi-arrow-left me-1"></i> Back</a>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> Save Cooperative</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+@endsection

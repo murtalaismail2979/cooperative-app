@@ -7,6 +7,20 @@
             <div class="register-col">
                 <h3 class="border-b border-gray-700 pb-2 mb-2 text-primary font-semibold text-lg">{{ __('Member Details') }}</h3>
                 
+                <!-- Cooperative Selection -->
+                <div>
+                    <x-input-label for="cooperative_id" :value="__('Select Cooperative *')" />
+                    <select id="cooperative_id" name="cooperative_id" required class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                        <option value="" disabled {{ old('cooperative_id') ? '' : 'selected' }}>Select Cooperative</option>
+                        @foreach(\App\Models\Cooperative::active()->get() as $cooperative)
+                            <option value="{{ $cooperative->id }}" {{ old('cooperative_id') == $cooperative->id ? 'selected' : '' }}>
+                                {{ $cooperative->name }} ({{ $cooperative->slug }})
+                            </option>
+                        @endforeach
+                    </select>
+                    <x-input-error :messages="$errors->get('cooperative_id')" class="mt-2" />
+                </div>
+
                 <!-- Name -->
                 <div>
                     <x-input-label for="name" :value="__('Name')" />

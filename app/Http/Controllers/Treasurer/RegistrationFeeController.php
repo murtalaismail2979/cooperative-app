@@ -19,12 +19,16 @@ class RegistrationFeeController extends Controller
 
     public function index(Request $request)
     {
+        $cooperativeId = auth()->user()->cooperative_id;
+
         $search = $request->input('search');
         $status = $request->input('status');
 
-        $query = User::where('role', 'member')->with(['registrationFee.payments' => function ($q) {
-            $q->where('status', 'completed')->latest();
-        }]);
+        $query = User::where('role', 'member')
+            ->where('cooperative_id', $cooperativeId)
+            ->with(['registrationFee.payments' => function ($q) {
+                $q->where('status', 'completed')->latest();
+            }]);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -49,7 +53,7 @@ class RegistrationFeeController extends Controller
             }
         }
 
-        $stats = $this->registrationFeeService->getDashboardStats();
+        $stats = $this->registrationFeeService->getDashboardStats(null, null, $cooperativeId);
 
         return view('treasurer.registration_fees.index', compact('members', 'search', 'status', 'stats'));
     }

@@ -5,7 +5,14 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'YLDA Cooperative') }}</title>
+        @php
+            $guestCoop = auth()->check() ? auth()->user()->cooperative : null;
+            $appName = config('app.name', 'MyCoopSuite');
+            $guestTitle = $guestCoop ? ($guestCoop->slug ?: $guestCoop->name) : $appName;
+            $guestName = $guestCoop ? ($guestCoop->name ?: $guestCoop->slug) : $appName;
+            $guestTagline = $guestCoop ? 'Financial Empowerment Cooperative' : 'Multi-Tenant Cooperative Management Platform';
+        @endphp
+        <title>{{ $guestTitle }}</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -115,6 +122,11 @@
             }
 
             .logo i {
+                font-size: 2.75rem;
+                line-height: 1;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
                 -webkit-text-fill-color: initial;
                 background: linear-gradient(135deg, var(--accent-indigo), var(--accent-violet));
                 -webkit-background-clip: text;
@@ -366,10 +378,10 @@
 
         <div class="auth-container">
             <a href="/" class="logo">
-                <i class="bi bi-wallet2"></i>
-                YLDA Association
+                <i class="bi bi-stack"></i>
+                {{ $guestName }}
             </a>
-            <p class="tagline">Financial Empowerment Cooperative</p>
+            <p class="tagline">{{ $guestTagline }}</p>
 
             <div class="auth-card">
                 {{ $slot }}

@@ -21,7 +21,8 @@ class SavingsController extends Controller
 
     public function index(Request $request)
     {
-        $members = $this->savingsService->getActiveMembersWithSlots();
+        $cooperativeId = auth()->user()->cooperative_id;
+        $members = $this->savingsService->getActiveMembersWithSlots($cooperativeId);
         $currentMonth = now()->startOfMonth()->format('Y-m-d');
         $selectedMemberId = $request->query('user_id') ?? $request->query('member_id');
         return view('treasurer.savings.index', compact('members', 'currentMonth', 'selectedMemberId'));
@@ -49,11 +50,14 @@ class SavingsController extends Controller
 
     public function history(Request $request)
     {
+        $cooperativeId = auth()->user()->cooperative_id;
+
         $search = $request->input('search');
         $month = $request->input('month');
         $year = $request->input('year');
 
-        $baseQuery = MonthlySaving::query();
+        $baseQuery = MonthlySaving::query()
+            ->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
 
         if ($search) {
             $baseQuery->whereHas('user', function ($q) use ($search) {
@@ -82,7 +86,8 @@ class SavingsController extends Controller
 
         $driver = \DB::connection()->getDriverName();
         $yearExpr = $driver === 'sqlite' ? "strftime('%Y', month)" : "YEAR(month)";
-        $years = MonthlySaving::selectRaw("DISTINCT {$yearExpr} as yr")
+        $years = MonthlySaving::whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId))
+            ->selectRaw("DISTINCT {$yearExpr} as yr")
             ->whereNotNull('month')
             ->orderBy('yr', 'desc')
             ->pluck('yr')

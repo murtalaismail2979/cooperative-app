@@ -18,7 +18,13 @@ class UserController extends Controller
         $status = $request->input('status');
         $roleFilter = $request->input('role');
 
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
         $query = User::with('savingsSlots');
+        if ($cooperativeId) {
+            $query->where('cooperative_id', $cooperativeId);
+        }
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -54,7 +60,11 @@ class UserController extends Controller
 
         $members = $query->paginate(15)->withQueryString();
 
-        $registrationYears = User::whereNotNull('registration_year')
+        $regYearQuery = User::whereNotNull('registration_year');
+        if ($cooperativeId) {
+            $regYearQuery->where('cooperative_id', $cooperativeId);
+        }
+        $registrationYears = $regYearQuery
             ->select('registration_year')
             ->distinct()
             ->orderBy('registration_year', 'desc')
@@ -73,7 +83,13 @@ class UserController extends Controller
         $slots = $request->input('slots');
         $status = $request->input('status');
 
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
         $query = User::with('savingsSlots')->where('role', 'member');
+        if ($cooperativeId) {
+            $query->where('cooperative_id', $cooperativeId);
+        }
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -100,8 +116,12 @@ class UserController extends Controller
         $query->orderByRaw('CASE WHEN member_code IS NULL OR member_code = "" THEN 1 ELSE 0 END, member_code ASC, name ASC');
 
         $members = $query->paginate(15)->withQueryString();
-        $registrationYears = User::where('role', 'member')
-            ->whereNotNull('registration_year')
+
+        $regYearQuery = User::where('role', 'member')->whereNotNull('registration_year');
+        if ($cooperativeId) {
+            $regYearQuery->where('cooperative_id', $cooperativeId);
+        }
+        $registrationYears = $regYearQuery
             ->pluck('registration_year')
             ->unique()
             ->sortDesc()
@@ -122,7 +142,13 @@ class UserController extends Controller
 
     public function exportMembers(Request $request)
     {
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
         $query = User::with(['savingsSlots', 'nextOfKin'])->where('role', 'member');
+        if ($cooperativeId) {
+            $query->where('cooperative_id', $cooperativeId);
+        }
         $search = $request->input('search');
         $regYear = $request->input('reg_year');
         $slots = $request->input('slots');
@@ -189,6 +215,7 @@ class UserController extends Controller
         $request->merge(['role' => $request->input('role', 'member')]);
 
         $validated = $request->validate([
+            'cooperative_id' => 'nullable|exists:cooperatives,id',
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
             'phone' => 'nullable|string|max:20',
@@ -209,15 +236,17 @@ class UserController extends Controller
 
         $regYear = $validated['registration_year'] ?? (int) date('Y');
         $regMonth = isset($validated['registration_month']) && $validated['registration_month'] !== null ? (int) $validated['registration_month'] : (int) date('n');
+        $coopId = $validated['cooperative_id'] ?? auth()->user()->cooperative_id ?? 1;
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $regYear, $regMonth) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $regYear, $regMonth, $coopId) {
             $user = User::create([
+                'cooperative_id' => $coopId,
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),
                 'phone' => $validated['phone'] ?? null,
                 'address' => $validated['address'] ?? null,
-                'member_code' => $validated['role'] === 'member' ? User::generateMemberCode($regYear) : null,
+                'member_code' => $validated['role'] === 'member' ? User::generateMemberCode($regYear, $coopId) : null,
                 'registration_year' => $validated['role'] === 'member' ? $regYear : null,
                 'registration_month' => $validated['role'] === 'member' ? $regMonth : null,
                 'role' => $validated['role'],

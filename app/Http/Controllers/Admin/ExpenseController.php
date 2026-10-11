@@ -17,10 +17,23 @@ class ExpenseController extends Controller
         $this->expenseService = $expenseService;
     }
 
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        $expenses = Expense::with(['requester', 'approver', 'investment'])->latest()->paginate(15);
-        $investments = \App\Models\Investment::where('status', 'active')->get();
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
+        $query = Expense::with(['requester', 'approver', 'investment']);
+        if ($cooperativeId) {
+            $query->whereHas('requestedBy', fn($u) => $u->where('cooperative_id', $cooperativeId));
+        }
+        $expenses = $query->latest()->paginate(15);
+
+        $invQuery = \App\Models\Investment::where('status', 'active');
+        if ($cooperativeId) {
+            $invQuery->whereHas('createdBy', fn($u) => $u->where('cooperative_id', $cooperativeId));
+        }
+        $investments = $invQuery->get();
+
         return view('admin.expenses.index', compact('expenses', 'investments'));
     }
 
@@ -31,9 +44,17 @@ class ExpenseController extends Controller
         return redirect()->route('admin.expenses.index')->with('success', 'Expense recorded successfully.');
     }
 
-    public function pending()
+    public function pending(\Illuminate\Http\Request $request)
     {
-        $expenses = Expense::where('status', 'pending')->with(['requester', 'investment'])->latest()->paginate(15);
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
+        $query = Expense::where('status', 'pending')->with(['requester', 'investment']);
+        if ($cooperativeId) {
+            $query->whereHas('requestedBy', fn($u) => $u->where('cooperative_id', $cooperativeId));
+        }
+        $expenses = $query->latest()->paginate(15);
+
         return view('admin.expenses.pending', compact('expenses'));
     }
 

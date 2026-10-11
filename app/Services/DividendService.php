@@ -11,11 +11,16 @@ class DividendService
     /**
      * Get investments available for dividend distribution.
      */
-    public function getAvailableInvestments()
+    public function getAvailableInvestments(?int $cooperativeId = null)
     {
-        return \App\Models\Investment::whereDoesntHave('dividend')
-            ->latest()
-            ->get();
+        $cooperativeId = $cooperativeId ?? (auth()->check() && !auth()->user()->isSuperAdmin() ? auth()->user()->cooperative_id : null);
+
+        $query = \App\Models\Investment::whereDoesntHave('dividend');
+        if ($cooperativeId) {
+            $query->whereHas('createdBy', fn($u) => $u->where('cooperative_id', $cooperativeId));
+        }
+
+        return $query->latest()->get();
     }
 
     /**
@@ -36,9 +41,14 @@ class DividendService
         }
 
         $businessMonth = $investment->start_date->startOfMonth()->format('Y-m-d');
+        $cooperativeId = $investment->createdBy?->cooperative_id ?? auth()->user()?->cooperative_id;
 
-        // 2. Fetch active members and calculate units
-        $members = User::where('role', 'member')->where('is_active', true)->get();
+        // 2. Fetch active members of this cooperative and calculate units
+        $membersQuery = User::where('role', 'member')->where('is_active', true);
+        if ($cooperativeId) {
+            $membersQuery->where('cooperative_id', $cooperativeId);
+        }
+        $members = $membersQuery->get();
         $totalUnits = 0;
         $memberUnits = [];
 

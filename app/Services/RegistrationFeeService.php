@@ -200,11 +200,18 @@ class RegistrationFeeService
     /**
      * Get summary metrics for Admin & Reports.
      */
-    public function getDashboardStats(?string $startDate = null, ?string $endDate = null): array
+    public function getDashboardStats(?string $startDate = null, ?string $endDate = null, ?int $cooperativeId = null): array
     {
-        $memberCount = User::where('role', 'member')->count();
+        $memberQuery = User::where('role', 'member');
+        if ($cooperativeId) {
+            $memberQuery->where('cooperative_id', $cooperativeId);
+        }
+        $memberCount = $memberQuery->count();
 
         $query = RegistrationFee::query();
+        if ($cooperativeId) {
+            $query->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
 
         if ($startDate) {
             $query->whereDate('created_at', '>=', $startDate);
@@ -221,7 +228,12 @@ class RegistrationFeeService
         $requiresVerificationCount = $fees->where('status', 'requires_verification')->count();
 
         $totalExpected = $fees->sum('fee_amount');
-        $totalCollected = RegistrationFeePayment::where('status', 'completed')
+        
+        $paymentQuery = RegistrationFeePayment::where('status', 'completed');
+        if ($cooperativeId) {
+            $paymentQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+        $totalCollected = $paymentQuery
             ->when($startDate, fn($q) => $q->whereDate('payment_date', '>=', $startDate))
             ->when($endDate, fn($q) => $q->whereDate('payment_date', '<=', $endDate))
             ->sum('amount');

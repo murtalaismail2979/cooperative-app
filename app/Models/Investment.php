@@ -37,6 +37,11 @@ class Investment extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function getApprovedExpensesAttribute()
     {
         return (float) $this->expenses()->where('status', 'approved')->sum('amount');

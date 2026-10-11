@@ -33,8 +33,14 @@ class DividendController extends Controller
         $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
         $limit = (int) $request->input('limit', 15);
 
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
         $baseQuery = Dividend::query()
             ->with(['distributor', 'investment', 'payouts.user'])
+            ->when($cooperativeId, function ($q) use ($cooperativeId) {
+                $q->whereHas('payouts.user', fn($u) => $u->where('cooperative_id', $cooperativeId));
+            })
             ->when($request->filled('year'), fn($q) => $q->where('year', $request->year))
             ->when($request->filled('investment_id'), fn($q) => $q->where('investment_id', $request->investment_id))
             ->when($request->filled('investment_name'), fn($q) => 
@@ -70,13 +76,21 @@ class DividendController extends Controller
             return DividendResource::collection($dividends);
         }
 
-        $availableInvestments = Investment::orderBy('name')->get();
+        $invQuery = Investment::orderBy('name');
+        if ($cooperativeId) {
+            $invQuery->whereHas('createdBy', fn($u) => $u->where('cooperative_id', $cooperativeId));
+        }
+        $availableInvestments = $invQuery->get();
+
         $availableYears = Dividend::select('year')->distinct()->orderBy('year', 'desc')->pluck('year')->toArray();
 
         $search = $request->input('search') ?? $request->input('member_name');
         $selectedYear = $request->input('year');
 
         $memberQuery = User::where('role', 'member');
+        if ($cooperativeId) {
+            $memberQuery->where('cooperative_id', $cooperativeId);
+        }
 
         if ($search) {
             $memberQuery->where(function ($q) use ($search) {
@@ -111,6 +125,9 @@ class DividendController extends Controller
             ->withQueryString();
 
         $payoutQuery = \App\Models\DividendPayout::whereHas('dividend', $applyDividendFilters);
+        if ($cooperativeId) {
+            $payoutQuery->whereHas('user', fn($u) => $u->where('cooperative_id', $cooperativeId));
+        }
         if ($request->filled('member_name')) {
             $payoutQuery->whereHas('user', function ($q2) use ($request) {
                 $q2->where(function ($sub) use ($request) {

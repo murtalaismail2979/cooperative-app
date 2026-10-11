@@ -22,21 +22,35 @@ class SavingsController extends Controller
 
     public function index(Request $request)
     {
-        $members = $this->savingsService->getMembersWithSlots();
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
+        $members = $this->savingsService->getMembersWithSlots($cooperativeId);
         $selectedYear = (int) ($request->input('year') ?? date('Y'));
 
         $driver = \DB::connection()->getDriverName();
         $monthExpr = $driver === 'sqlite' ? "CAST(strftime('%m', month) AS INTEGER)" : "MONTH(month)";
         $yearExpr = $driver === 'sqlite' ? "strftime('%Y', month)" : "YEAR(month)";
 
-        $savingsData = MonthlySaving::selectRaw("user_id, {$monthExpr} as month_num, SUM(amount) as total_amount")
-            ->whereRaw("{$yearExpr} = ?", [(string) $selectedYear])
+        $savingsQuery = MonthlySaving::selectRaw("user_id, {$monthExpr} as month_num, SUM(amount) as total_amount")
+            ->whereRaw("{$yearExpr} = ?", [(string) $selectedYear]);
+
+        if ($cooperativeId) {
+            $savingsQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
+        $savingsData = $savingsQuery
             ->groupBy('user_id', \DB::raw($monthExpr))
             ->get()
             ->groupBy('user_id');
 
-        $availableYears = MonthlySaving::selectRaw("DISTINCT {$yearExpr} as yr")
-            ->whereNotNull('month')
+        $yearsQuery = MonthlySaving::selectRaw("DISTINCT {$yearExpr} as yr")
+            ->whereNotNull('month');
+        if ($cooperativeId) {
+            $yearsQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
+        $availableYears = $yearsQuery
             ->orderBy('yr', 'desc')
             ->pluck('yr')
             ->map(fn($y) => (int) $y)
@@ -56,7 +70,10 @@ class SavingsController extends Controller
 
     public function create(Request $request)
     {
-        $members = $this->savingsService->getActiveMembersWithSlots();
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
+        $members = $this->savingsService->getActiveMembersWithSlots($cooperativeId);
         $selectedMemberId = $request->query('member_id');
         return view('admin.savings.create', compact('members', 'selectedMemberId'));
     }
@@ -79,7 +96,13 @@ class SavingsController extends Controller
         $month = $request->input('month');
         $year = $request->input('year');
 
+        $user = auth()->user();
+        $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
+
         $baseQuery = MonthlySaving::query();
+        if ($cooperativeId) {
+            $baseQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
 
         if ($search) {
             $baseQuery->whereHas('user', function ($q) use ($search) {

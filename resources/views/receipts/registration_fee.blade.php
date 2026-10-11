@@ -31,7 +31,7 @@
 
         <div class="receipt-header d-flex justify-content-between align-items-start">
             <div>
-                <h2 class="receipt-title mb-1"><i class="bi bi-building me-2"></i>YLDA COOPERATIVE SOCIETY</h2>
+                <h2 class="receipt-title mb-1"><i class="bi bi-building me-2"></i>{{ strtoupper($payment->user->cooperative->name ?? config('app.name', 'MyCoopSuite')) }}</h2>
                 <p class="text-muted mb-0">Official Registration Fee Payment Receipt</p>
             </div>
             <div class="text-end">
@@ -110,7 +110,7 @@
         </div>
 
         <div class="receipt-footer text-center">
-            <p class="mb-0">This is an officially computer-generated receipt issued by YLDA Cooperative Society.</p>
+            <p class="mb-0">This is an officially computer-generated receipt issued by {{ $payment->user->cooperative->name ?? config('app.name', 'MyCoopSuite') }}.</p>
         </div>
     </div>
 </body>

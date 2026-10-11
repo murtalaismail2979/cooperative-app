@@ -117,35 +117,49 @@ class SavingsService
     }
 
     /**
-     * Get total savings across all members for current month.
+     * Get total savings across members for current month.
      */
-    public function getTotalCurrentMonthSavings(): float
+    public function getTotalCurrentMonthSavings(?int $cooperativeId = null): float
     {
-        return MonthlySaving::whereMonth('month', now()->month)
+        $query = MonthlySaving::whereMonth('month', now()->month)
             ->whereYear('month', now()->year)
-            ->where('status', 'paid')
-            ->sum('amount');
+            ->where('status', 'paid');
+
+        if ($cooperativeId) {
+            $query->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
+        return (float) $query->sum('amount');
     }
 
     /**
      * Get members with their slot counts for the savings list view.
      */
-    public function getMembersWithSlots(): Collection
+    public function getMembersWithSlots(?int $cooperativeId = null): Collection
     {
-        return User::where('role', 'member')
-            ->with('savingsSlots')
-            ->get();
+        $cooperativeId = $cooperativeId ?? (auth()->check() && !auth()->user()->isSuperAdmin() ? auth()->user()->cooperative_id : null);
+
+        $query = User::where('role', 'member')->with('savingsSlots');
+        if ($cooperativeId) {
+            $query->where('cooperative_id', $cooperativeId);
+        }
+
+        return $query->get();
     }
 
     /**
      * Get active members with slots.
      */
-    public function getActiveMembersWithSlots(): Collection
+    public function getActiveMembersWithSlots(?int $cooperativeId = null): Collection
     {
-        return User::where('role', 'member')
-            ->where('is_active', true)
-            ->with('savingsSlots')
-            ->get();
+        $cooperativeId = $cooperativeId ?? (auth()->check() && !auth()->user()->isSuperAdmin() ? auth()->user()->cooperative_id : null);
+
+        $query = User::where('role', 'member')->where('is_active', true)->with('savingsSlots');
+        if ($cooperativeId) {
+            $query->where('cooperative_id', $cooperativeId);
+        }
+
+        return $query->get();
     }
 
     /**

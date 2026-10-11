@@ -36,9 +36,15 @@ class InvestmentService
     /**
      * Get investment summary stats.
      */
-    public function getInvestmentStats(): array
+    public function getInvestmentStats(?int $cooperativeId = null): array
     {
-        $activeInvestments = Investment::where('status', 'active')->get();
+        $query = Investment::where('status', 'active');
+        if ($cooperativeId) {
+            $query->whereHas('createdBy', function ($q) use ($cooperativeId) {
+                $q->where('cooperative_id', $cooperativeId);
+            });
+        }
+        $activeInvestments = $query->get();
 
         return [
             'count' => $activeInvestments->count(),

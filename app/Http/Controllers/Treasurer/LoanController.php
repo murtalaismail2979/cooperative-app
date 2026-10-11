@@ -20,9 +20,12 @@ class LoanController extends Controller
 
     public function index(Request $request)
     {
+        $cooperativeId = auth()->user()->cooperative_id;
+
         $search = $request->input('search');
         $memberId = $request->input('member_id');
-        $query = Loan::with('user');
+        $query = Loan::with('user')
+            ->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
 
         if ($search) {
             $query->whereHas('user', function ($q) use ($search) {
@@ -36,18 +39,19 @@ class LoanController extends Controller
         }
 
         $loans = $query->latest()->paginate(15)->withQueryString();
-        $members = User::where('role', 'member')->orderBy('name')->get();
+        $members = User::where('role', 'member')->where('cooperative_id', $cooperativeId)->orderBy('name')->get();
 
         return view('treasurer.loans.index', compact('loans', 'search', 'memberId', 'members'));
     }
 
     public function show(Loan $loan)
     {
+        $cooperativeId = auth()->user()->cooperative_id;
         $loan->load(['user', 'repayments', 'approver']);
 
-        $previousLoan = Loan::where('id', '<', $loan->id)->latest('id')->first();
-        $nextLoan = Loan::where('id', '>', $loan->id)->oldest('id')->first();
-        $allLoans = Loan::with('user')->orderBy('id', 'desc')->get();
+        $previousLoan = Loan::whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId))->where('id', '<', $loan->id)->latest('id')->first();
+        $nextLoan = Loan::whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId))->where('id', '>', $loan->id)->oldest('id')->first();
+        $allLoans = Loan::with('user')->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId))->orderBy('id', 'desc')->get();
 
         return view('treasurer.loans.show', compact('loan', 'previousLoan', 'nextLoan', 'allLoans'));
     }
@@ -61,7 +65,8 @@ class LoanController extends Controller
 
     public function edit(Loan $loan)
     {
-        $members = User::where('role', 'member')->where('is_active', true)->get();
+        $cooperativeId = auth()->user()->cooperative_id;
+        $members = User::where('role', 'member')->where('cooperative_id', $cooperativeId)->where('is_active', true)->get();
         return view('treasurer.loans.edit', compact('loan', 'members'));
     }
 

@@ -58,12 +58,19 @@ class ExpenseService
     /**
      * Get expense summary stats.
      */
-    public function getExpenseStats(): array
+    public function getExpenseStats(?int $cooperativeId = null): array
     {
+        $query = Expense::query();
+        if ($cooperativeId) {
+            $query->whereHas('requestedBy', function ($q) use ($cooperativeId) {
+                $q->where('cooperative_id', $cooperativeId);
+            });
+        }
+
         return [
-            'pending' => Expense::where('status', 'pending')->count(),
-            'totalApproved' => Expense::where('status', 'approved')->sum('amount'),
-            'totalRejected' => Expense::where('status', 'rejected')->sum('amount'),
+            'pending' => (clone $query)->where('status', 'pending')->count(),
+            'totalApproved' => (clone $query)->where('status', 'approved')->sum('amount'),
+            'totalRejected' => (clone $query)->where('status', 'rejected')->sum('amount'),
         ];
     }
 }

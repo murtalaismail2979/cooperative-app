@@ -18,28 +18,37 @@ class RunningChargeController extends Controller
 
     public function index()
     {
-        $members = User::where('role', 'member')->where('is_active', true)->get();
-        $charges = \App\Models\RunningCharge::with('user')->latest()->paginate(15);
+        $cooperativeId = auth()->user()->cooperative_id;
+
+        $members = User::where('role', 'member')->where('cooperative_id', $cooperativeId)->where('is_active', true)->get();
+        $charges = \App\Models\RunningCharge::with('user')
+            ->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId))
+            ->latest()
+            ->paginate(15);
 
         // Calculate monthly summary of paid running charges (recent 6 months)
+        $monthlyQuery = \App\Models\RunningCharge::where('status', 'paid')
+            ->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+
         if (config('database.default') === 'sqlite') {
-            $monthlyCharges = \App\Models\RunningCharge::selectRaw('strftime("%Y", month) as year, strftime("%m", month) as month_num, SUM(amount) as total')
-                ->where('status', 'paid')
+            $monthlyCharges = $monthlyQuery->selectRaw('strftime("%Y", month) as year, strftime("%m", month) as month_num, SUM(amount) as total')
                 ->groupBy('year', 'month_num')
                 ->orderBy('year', 'desc')
                 ->orderBy('month_num', 'desc')
                 ->take(6)
                 ->get();
         } else {
-            $monthlyCharges = \App\Models\RunningCharge::selectRaw('YEAR(month) as year, MONTH(month) as month_num, SUM(amount) as total')
-                ->where('status', 'paid')
+            $monthlyCharges = $monthlyQuery->selectRaw('YEAR(month) as year, MONTH(month) as month_num, SUM(amount) as total')
                 ->groupBy('year', 'month_num')
                 ->orderBy('year', 'desc')
                 ->orderBy('month_num', 'desc')
                 ->take(6)
                 ->get();
         }
-        $overallTotal = (float) \App\Models\RunningCharge::where('status', 'paid')->sum('amount');
+        $overallTotal = (float) \App\Models\RunningCharge::where('status', 'paid')
+            ->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId))
+            ->sum('amount');
+
         $chargeRates = \App\Models\RunningChargeRate::orderBy('start_year')->get();
 
         return view('treasurer.running-charges.index', compact('members', 'charges', 'monthlyCharges', 'overallTotal', 'chargeRates'));
@@ -66,11 +75,14 @@ class RunningChargeController extends Controller
 
     public function history(Request $request)
     {
+        $cooperativeId = auth()->user()->cooperative_id;
+
         $month = $request->input('month');
         $year = $request->input('year');
         $member = $request->input('member');
 
-        $query = \App\Models\RunningCharge::with('user');
+        $query = \App\Models\RunningCharge::with('user')
+            ->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
 
         if ($month) {
             $query->whereMonth('month', $month);
@@ -91,7 +103,8 @@ class RunningChargeController extends Controller
 
         $charges = $query->latest('month')->paginate(20)->withQueryString();
 
-        $years = \App\Models\RunningCharge::pluck('month')
+        $years = \App\Models\RunningCharge::whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId))
+            ->pluck('month')
             ->map(function ($date) {
                 return $date instanceof \Carbon\Carbon ? $date->year : \Carbon\Carbon::parse($date)->year;
             })
@@ -111,7 +124,8 @@ class RunningChargeController extends Controller
         ];
 
         // Calculate monthly and yearly summary of paid running charges with filters
-        $summaryQuery = \App\Models\RunningCharge::where('status', 'paid');
+        $summaryQuery = \App\Models\RunningCharge::where('status', 'paid')
+            ->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
 
         if ($month) {
             $summaryQuery->whereMonth('month', $month);
@@ -171,4 +185,3 @@ class RunningChargeController extends Controller
         return redirect()->back(fallback: route('treasurer.running-charges.history'))->with('success', 'Running charge deleted successfully.');
     }
 }
-

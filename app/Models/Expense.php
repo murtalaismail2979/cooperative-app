@@ -25,6 +25,11 @@ class Expense extends Model
         return $this->belongsTo(User::class, 'requested_by');
     }
 
+    public function requestedBy()
+    {
+        return $this->belongsTo(User::class, 'requested_by');
+    }
+
     public function approver()
     {
         return $this->belongsTo(User::class, 'approved_by');

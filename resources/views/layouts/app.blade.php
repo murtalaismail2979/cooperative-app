@@ -3,8 +3,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'YLDA Cooperative') - {{ config('app.name', 'YLDA Cooperative') }}</title>
+    @php
+        $currentCoop = auth()->check() ? auth()->user()->cooperative : null;
+        $coopTitle = $currentCoop ? ($currentCoop->slug ?: $currentCoop->name) : config('app.name', 'MyCoopSuite');
+    @endphp
+    <title>@yield('title', 'Dashboard') - {{ $coopTitle }}</title>
     <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css" media="print" onload="this.media='all'">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -81,14 +84,17 @@
         <div class="row">
             <!-- Sidebar -->
             <div class="col-md-2 p-0 sidebar">
-                <div class="brand">
-                    <i class="bi bi-building"></i> YLDA Coop
+                <div class="brand text-truncate" title="{{ auth()->user()->cooperative->name ?? config('app.name', 'MyCoopSuite') }}">
+                    <i class="bi bi-building"></i> {{ auth()->user()->cooperative->slug ?? config('app.name', 'MyCoopSuite') }}
                 </div>
                 <nav class="p-3">
                     @auth
                         @if(auth()->user()->isAdmin())
                             <a href="{{ route('admin.dashboard') }}" class="nav-link d-block {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
                                 <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                            <a href="{{ route('admin.cooperatives.index') }}" class="nav-link d-block {{ request()->routeIs('admin.cooperatives.*') ? 'active' : '' }}">
+                                <i class="bi bi-buildings"></i> Cooperatives
                             </a>
                             <a href="{{ route('admin.members.index') }}" class="nav-link d-block {{ request()->routeIs('admin.members.*') ? 'active' : '' }}">
                                 <i class="bi bi-people"></i> Manage Users
@@ -190,6 +196,23 @@
                         @yield('page-title', 'Dashboard')
                     </div>
                     <div class="d-flex align-items-center">
+                        @auth
+                            @if(auth()->user()->isSuperAdmin())
+                                <form method="GET" action="{{ request()->url() }}" class="me-3 d-inline-block">
+                                    @foreach(request()->except('cooperative_id') as $key => $val)
+                                        <input type="hidden" name="{{ $key }}" value="{{ $val }}">
+                                    @endforeach
+                                    <select name="cooperative_id" onchange="this.form.submit()" class="form-select form-select-sm border-primary text-primary fw-bold shadow-sm" style="min-width: 200px;">
+                                        <option value="">🏢 All Cooperatives</option>
+                                        @foreach(\App\Models\Cooperative::all() as $coop)
+                                            <option value="{{ $coop->id }}" {{ request('cooperative_id') == $coop->id ? 'selected' : '' }}>
+                                                {{ $coop->name }} ({{ $coop->slug }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </form>
+                            @endif
+                        @endauth
                         <a href="{{ route('password.recovery') }}" class="btn btn-outline-primary btn-sm me-3 shadow-sm">
                             <i class="bi bi-shield-lock me-1"></i> Retrieve / Reset Password
                         </a>
