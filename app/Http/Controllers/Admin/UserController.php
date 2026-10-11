@@ -529,7 +529,14 @@ class UserController extends Controller
         }
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($member, $currentUser) {
+            $memberCode = $member->member_code;
+            if (empty($memberCode)) {
+                $regYear = $member->registration_year ? (int) $member->registration_year : (int) date('Y');
+                $memberCode = User::generateMemberCode($regYear, (int) $member->cooperative_id);
+            }
+
             $member->update([
+                'member_code' => $memberCode,
                 'membership_status' => 'approved',
                 'is_active' => true,
                 'approved_at' => now(),
@@ -549,7 +556,7 @@ class UserController extends Controller
             }
         });
 
-        return redirect()->back()->with('success', "Membership for {$member->name} has been approved successfully.");
+        return redirect()->back()->with('success', "Membership for {$member->name} has been approved successfully (Member ID: {$member->fresh()->member_code}).");
     }
 
     public function reject(Request $request, User $member)

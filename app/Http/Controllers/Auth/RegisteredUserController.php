@@ -51,8 +51,8 @@ class RegisteredUserController extends Controller
                 'password' => Hash::make($request->password),
                 'phone' => $request->phone,
                 'address' => $request->address,
-                'member_code' => User::generateMemberCode((int) date('Y'), (int) $request->cooperative_id),
-                'registration_year' => date('Y'),
+                'member_code' => null, // Member ID assigned only upon management approval
+                'registration_year' => (int) date('Y'),
                 'registration_month' => (int) date('n'),
                 'role' => 'member',
                 'is_active' => false,

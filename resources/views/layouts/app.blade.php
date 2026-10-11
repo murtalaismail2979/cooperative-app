@@ -162,6 +162,10 @@
                             <a href="{{ route('member.dashboard') }}" class="nav-link d-block {{ request()->routeIs('member.dashboard') ? 'active' : '' }}">
                                 <i class="bi bi-speedometer2"></i> Dashboard
                             </a>
+                            <a href="{{ route('profile.edit') }}" class="nav-link d-block {{ request()->routeIs('profile.edit') ? 'active' : '' }}">
+                                <i class="bi bi-person"></i> My Profile
+                            </a>
+                            @if(auth()->user()->isApprovedMembership())
                             <a href="{{ route('member.registration-fee.index') }}" class="nav-link d-block {{ request()->routeIs('member.registration-fee.*') ? 'active' : '' }}">
                                 <i class="bi bi-card-checklist"></i> Registration Fee
                             </a>
@@ -174,6 +178,7 @@
                             <a href="{{ route('member.dividends') }}" class="nav-link d-block {{ request()->routeIs('member.dividends') ? 'active' : '' }}">
                                 <i class="bi bi-gift"></i> Dividends
                             </a>
+                            @endif
                         @endif
                         <a href="{{ route('password.recovery') }}" class="nav-link d-block {{ request()->routeIs('password.recovery*') ? 'active' : '' }}">
                             <i class="bi bi-shield-lock"></i> Retrieve Password
@@ -221,6 +226,8 @@
                             <span>{{ auth()->user()->name ?? '' }}</span>
                             @if(!empty(auth()->user()->member_code))
                                 <span class="badge bg-primary ms-2">{{ auth()->user()->member_code }}</span>
+                            @elseif(auth()->user()->isPendingMembership())
+                                <span class="badge bg-warning text-dark ms-2"><i class="bi bi-clock"></i> Pending Approval</span>
                             @endif
                         </a>
                     </div>
