@@ -84,6 +84,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::put('/members/{member}', [App\Http\Controllers\Admin\UserController::class, 'update'])->name('members.update');
             Route::patch('/members/{member}', [App\Http\Controllers\Admin\UserController::class, 'update']);
             Route::delete('/members/{member}', [App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('members.destroy');
+            Route::post('/members/{member}/approve', [App\Http\Controllers\Admin\UserController::class, 'approve'])->name('members.approve');
+            Route::post('/members/{member}/reject', [App\Http\Controllers\Admin\UserController::class, 'reject'])->name('members.reject');
             Route::get('/slots', [App\Http\Controllers\Admin\SlotController::class, 'index'])->name('slots.index');
             Route::post('/slots', [App\Http\Controllers\Admin\SlotController::class, 'store'])->name('slots.store');
             Route::put('/slots/{slot}', [App\Http\Controllers\Admin\SlotController::class, 'update'])->name('slots.update');

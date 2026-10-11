@@ -5,6 +5,38 @@
 @endsection
 
 @section('content')
+@if(auth()->user()->isPendingMembership())
+<div class="alert alert-warning border-start border-4 border-warning shadow-sm mb-4" role="alert">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-hourglass-split fs-2 text-warning me-3"></i>
+        <div>
+            <h5 class="alert-heading mb-1 fw-bold">Membership Pending Approval</h5>
+            <p class="mb-0 text-secondary">
+                Thank you for registering with <strong>{{ auth()->user()->cooperative->name ?? 'the cooperative' }}</strong>! 
+                Your membership application is currently awaiting review and approval by the cooperative administrator. Once approved, your savings slots and full membership privileges will be activated.
+            </p>
+        </div>
+    </div>
+</div>
+@elseif(auth()->user()->isRejectedMembership())
+<div class="alert alert-danger border-start border-4 border-danger shadow-sm mb-4" role="alert">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-x-circle fs-2 text-danger me-3"></i>
+        <div>
+            <h5 class="alert-heading mb-1 fw-bold">Membership Application Declined</h5>
+            <p class="mb-0 text-secondary">
+                Your application for membership was declined. 
+                @if(auth()->user()->rejection_reason)
+                    <br><strong>Reason:</strong> {{ auth()->user()->rejection_reason }}
+                @else
+                    <br>Please contact the cooperative administrator for more information.
+                @endif
+            </p>
+        </div>
+    </div>
+</div>
+@endif
+
 <div class="row">
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="card stat-card bg-primary text-white shadow">

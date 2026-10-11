@@ -23,6 +23,10 @@ class User extends Authenticatable
         'address',
         'role',
         'is_active',
+        'membership_status',
+        'approved_at',
+        'approved_by',
+        'rejection_reason',
     ];
 
     protected $hidden = [
@@ -34,6 +38,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'is_active' => 'boolean',
+        'approved_at' => 'datetime',
     ];
 
     // Relationships
@@ -102,15 +107,46 @@ class User extends Authenticatable
         return $this->hasMany(DividendRecoveryPayment::class);
     }
 
+    public function approvedBy()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
     // Scopes
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
     }
 
+    public function scopePending($query)
+    {
+        return $query->where('membership_status', 'pending');
+    }
+
+    public function scopeApproved($query)
+    {
+        return $query->where('membership_status', 'approved');
+    }
+
     public function scopeRole($query, $role)
     {
         return $query->where('role', $role);
+    }
+
+    // Helper methods
+    public function isPendingMembership(): bool
+    {
+        return $this->membership_status === 'pending';
+    }
+
+    public function isApprovedMembership(): bool
+    {
+        return $this->membership_status === 'approved' || (empty($this->membership_status) && $this->is_active);
+    }
+
+    public function isRejectedMembership(): bool
+    {
+        return $this->membership_status === 'rejected';
     }
 
     // Helper methods

@@ -55,13 +55,14 @@ class RegisteredUserController extends Controller
                 'registration_year' => date('Y'),
                 'registration_month' => (int) date('n'),
                 'role' => 'member',
-                'is_active' => true,
+                'is_active' => false,
+                'membership_status' => 'pending',
             ]);
 
-            // Create 1 default savings slot for self-registered member
+            // Create 1 default savings slot for self-registered member (inactive until admin approves)
             $createdUser->savingsSlots()->create([
                 'slot_number' => 1,
-                'is_active' => true,
+                'is_active' => false,
             ]);
 
             // Record initial slot creation history
@@ -69,7 +70,7 @@ class RegisteredUserController extends Controller
                 'previous_slots' => 0,
                 'current_slots' => 1,
                 'changed_by' => null,
-                'reason' => 'Initial registration',
+                'reason' => 'Initial self-registration (pending approval)',
             ]);
 
             // Create Next of Kin

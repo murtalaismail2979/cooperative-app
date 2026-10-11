@@ -4,7 +4,21 @@
     <h4><i class="bi bi-speedometer2"></i> Admin Dashboard</h4>
 @endsection
 
-@section('content')
+@if(!empty($data['pendingMembers']) && $data['pendingMembers'] > 0)
+<div class="alert alert-warning d-flex align-items-center justify-content-between shadow-sm mb-4" role="alert">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-person-exclamation fs-3 me-3 text-warning"></i>
+        <div>
+            <div class="fw-bold text-dark">{{ $data['pendingMembers'] }} Pending Membership {{ Str::plural('Application', $data['pendingMembers']) }}</div>
+            <div class="text-secondary small">New members have joined and are waiting for cooperative admin approval.</div>
+        </div>
+    </div>
+    <a href="{{ route('admin.members.index', ['status' => 'pending']) }}" class="btn btn-warning btn-sm fw-semibold text-dark">
+        <i class="bi bi-check2-circle"></i> Review Applications
+    </a>
+</div>
+@endif
+
 <div class="row">
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="card stat-card bg-primary text-white shadow">
@@ -12,7 +26,7 @@
                 <i class="bi bi-people icon"></i>
                 <div class="stat-label">Total Members</div>
                 <div class="stat-value">{{ $data['totalMembers'] }}</div>
-                <small>{{ $data['activeMembers'] }} Active</small>
+                <small>{{ $data['activeMembers'] }} Active @if(!empty($data['pendingMembers'])) &bull; <span class="badge bg-warning text-dark">{{ $data['pendingMembers'] }} Pending</span>@endif</small>
             </div>
         </div>
     </div>

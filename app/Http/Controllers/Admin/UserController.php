@@ -44,8 +44,18 @@ class UserController extends Controller
             }, '=', $slots);
         }
 
-        if ($status) {
-            $query->where('is_active', $status === 'active');
+        if ($status === 'active') {
+            $query->where('is_active', true)->where(function ($q) {
+                $q->where('membership_status', 'approved')->orWhereNull('membership_status');
+            });
+        } elseif ($status === 'inactive') {
+            $query->where('is_active', false)->where(function ($q) {
+                $q->where('membership_status', '!=', 'pending')->orWhereNull('membership_status');
+            });
+        } elseif ($status === 'pending') {
+            $query->where('membership_status', 'pending');
+        } elseif ($status === 'rejected') {
+            $query->where('membership_status', 'rejected');
         }
 
         if ($roleFilter) {
@@ -53,12 +63,18 @@ class UserController extends Controller
         }
 
         if ($roleFilter === 'member' || !$roleFilter) {
-            $query->orderByRaw('CASE WHEN member_code IS NULL OR member_code = "" THEN 1 ELSE 0 END, member_code ASC, name ASC');
+            $query->orderByRaw('CASE WHEN membership_status = "pending" THEN 0 ELSE 1 END, CASE WHEN member_code IS NULL OR member_code = "" THEN 1 ELSE 0 END, member_code ASC, name ASC');
         } else {
             $query->orderBy('name');
         }
 
         $members = $query->paginate(15)->withQueryString();
+
+        $pendingQuery = User::where('membership_status', 'pending');
+        if ($cooperativeId) {
+            $pendingQuery->where('cooperative_id', $cooperativeId);
+        }
+        $pendingCount = $pendingQuery->count();
 
         $regYearQuery = User::whereNotNull('registration_year');
         if ($cooperativeId) {
@@ -72,7 +88,7 @@ class UserController extends Controller
             ->toArray();
 
         return view('admin.members.index', compact(
-            'members', 'search', 'regYear', 'slots', 'status', 'roleFilter', 'registrationYears'
+            'members', 'search', 'regYear', 'slots', 'status', 'roleFilter', 'registrationYears', 'pendingCount'
         ));
     }
 
@@ -251,6 +267,9 @@ class UserController extends Controller
                 'registration_month' => $validated['role'] === 'member' ? $regMonth : null,
                 'role' => $validated['role'],
                 'is_active' => true,
+                'membership_status' => 'approved',
+                'approved_at' => now(),
+                'approved_by' => auth()->id(),
             ]);
 
             if ($validated['role'] === 'member') {
@@ -496,5 +515,65 @@ class UserController extends Controller
     {
         $member->update(['is_active' => false]);
         return redirect()->route('admin.members.index')->with('success', 'User deactivated successfully.');
+    }
+
+    public function approve(User $member)
+    {
+        $currentUser = auth()->user();
+        if (!$currentUser->isSuperAdmin() && $member->cooperative_id !== $currentUser->cooperative_id) {
+            abort(403, 'Unauthorized to approve members of another cooperative.');
+        }
+
+        if ($member->membership_status === 'approved' && $member->is_active) {
+            return redirect()->back()->with('info', 'Member is already approved.');
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($member, $currentUser) {
+            $member->update([
+                'membership_status' => 'approved',
+                'is_active' => true,
+                'approved_at' => now(),
+                'approved_by' => $currentUser->id,
+                'rejection_reason' => null,
+            ]);
+
+            // Activate member's savings slots
+            $member->savingsSlots()->update(['is_active' => true]);
+
+            // If member has no slots yet, create slot 1
+            if ($member->savingsSlots()->count() === 0) {
+                $member->savingsSlots()->create([
+                    'slot_number' => 1,
+                    'is_active' => true,
+                ]);
+            }
+        });
+
+        return redirect()->back()->with('success', "Membership for {$member->name} has been approved successfully.");
+    }
+
+    public function reject(Request $request, User $member)
+    {
+        $currentUser = auth()->user();
+        if (!$currentUser->isSuperAdmin() && $member->cooperative_id !== $currentUser->cooperative_id) {
+            abort(403, 'Unauthorized to reject members of another cooperative.');
+        }
+
+        $validated = $request->validate([
+            'rejection_reason' => 'nullable|string|max:500',
+        ]);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($member, $validated) {
+            $member->update([
+                'membership_status' => 'rejected',
+                'is_active' => false,
+                'rejection_reason' => $validated['rejection_reason'] ?? null,
+            ]);
+
+            // Deactivate member's savings slots
+            $member->savingsSlots()->update(['is_active' => false]);
+        });
+
+        return redirect()->back()->with('success', "Membership application for {$member->name} has been rejected.");
     }
 }

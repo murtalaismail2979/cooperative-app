@@ -69,6 +69,7 @@ class DashboardController extends Controller
         $data = [
             'totalMembers' => (clone $membersQuery)->count(),
             'activeMembers' => (clone $membersQuery)->where('is_active', true)->count(),
+            'pendingMembers' => (clone $membersQuery)->where('membership_status', 'pending')->count(),
             'activeLoans' => $loanStats['count'],
             'totalOutstanding' => $loanStats['totalOutstanding'],
             'pendingExpenses' => $expenseStats['pending'],
