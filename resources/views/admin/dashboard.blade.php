@@ -4,6 +4,7 @@
     <h4><i class="bi bi-speedometer2"></i> Admin Dashboard</h4>
 @endsection
 
+@section('content')
 @if(!empty($data['pendingMembers']) && $data['pendingMembers'] > 0)
 <div class="alert alert-warning d-flex align-items-center justify-content-between shadow-sm mb-4" role="alert">
     <div class="d-flex align-items-center">
