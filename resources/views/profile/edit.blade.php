@@ -108,6 +108,7 @@
     </div>
 </div>
 
+@if(!auth()->user()->isMember())
 <div class="row mt-4">
     <!-- Delete Account Card -->
     <div class="col-12">
@@ -158,11 +159,12 @@
         </div>
     </div>
 </div>
+@endif
 
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        @if ($errors->userDeletion->isNotEmpty())
+        @if (!auth()->user()->isMember() && $errors->userDeletion->isNotEmpty())
             const modal = new bootstrap.Modal(document.getElementById('confirmUserDeletionModal'));
             modal.show();
         @endif

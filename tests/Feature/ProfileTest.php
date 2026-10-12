@@ -61,12 +61,39 @@ class ProfileTest extends TestCase
         $this->assertNotNull($user->refresh()->email_verified_at);
     }
 
-    public function test_user_can_delete_their_account(): void
+    public function test_delete_account_button_is_not_displayed_for_members(): void
     {
-        $user = User::factory()->create();
+        $member = User::factory()->create(['role' => 'member']);
 
         $response = $this
-            ->actingAs($user)
+            ->actingAs($member)
+            ->get('/profile');
+
+        $response->assertOk();
+        $response->assertDontSee('Delete Account');
+        $response->assertDontSee('Danger Zone: Delete Account');
+    }
+
+    public function test_member_cannot_delete_their_account(): void
+    {
+        $member = User::factory()->create(['role' => 'member']);
+
+        $response = $this
+            ->actingAs($member)
+            ->delete('/profile', [
+                'password' => 'password',
+            ]);
+
+        $response->assertForbidden();
+        $this->assertNotNull($member->fresh());
+    }
+
+    public function test_admin_can_delete_their_account(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this
+            ->actingAs($admin)
             ->delete('/profile', [
                 'password' => 'password',
             ]);
@@ -76,15 +103,15 @@ class ProfileTest extends TestCase
             ->assertRedirect('/');
 
         $this->assertGuest();
-        $this->assertNull($user->fresh());
+        $this->assertNull($admin->fresh());
     }
 
     public function test_correct_password_must_be_provided_to_delete_account(): void
     {
-        $user = User::factory()->create();
+        $admin = User::factory()->create(['role' => 'admin']);
 
         $response = $this
-            ->actingAs($user)
+            ->actingAs($admin)
             ->from('/profile')
             ->delete('/profile', [
                 'password' => 'wrong-password',
@@ -94,6 +121,6 @@ class ProfileTest extends TestCase
             ->assertSessionHasErrorsIn('userDeletion', 'password')
             ->assertRedirect('/profile');
 
-        $this->assertNotNull($user->fresh());
+        $this->assertNotNull($admin->fresh());
     }
 }
