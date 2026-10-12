@@ -9,6 +9,16 @@ use Illuminate\Support\Str;
 
 class CooperativeController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            if (!auth()->check() || !auth()->user()->isSuperAdmin()) {
+                abort(403, 'Unauthorized access. Only super administrators are permitted to manage cooperatives.');
+            }
+            return $next($request);
+        });
+    }
+
     public function index()
     {
         $cooperatives = Cooperative::withCount('users')->get();

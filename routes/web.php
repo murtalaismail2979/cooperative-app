@@ -90,13 +90,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/slots', [App\Http\Controllers\Admin\SlotController::class, 'store'])->name('slots.store');
             Route::put('/slots/{slot}', [App\Http\Controllers\Admin\SlotController::class, 'update'])->name('slots.update');
 
-            // Cooperative Management
-            Route::get('/cooperatives', [App\Http\Controllers\Admin\CooperativeController::class, 'index'])->name('cooperatives.index');
-            Route::get('/cooperatives/create', [App\Http\Controllers\Admin\CooperativeController::class, 'create'])->name('cooperatives.create');
-            Route::post('/cooperatives', [App\Http\Controllers\Admin\CooperativeController::class, 'store'])->name('cooperatives.store');
-            Route::get('/cooperatives/{cooperative}/edit', [App\Http\Controllers\Admin\CooperativeController::class, 'edit'])->name('cooperatives.edit');
-            Route::put('/cooperatives/{cooperative}', [App\Http\Controllers\Admin\CooperativeController::class, 'update'])->name('cooperatives.update');
-            Route::post('/cooperatives/{cooperative}/toggle', [App\Http\Controllers\Admin\CooperativeController::class, 'toggleStatus'])->name('cooperatives.toggle');
+            // Cooperative Management (Restricted to Super Admin only)
+            Route::middleware(['role:super_admin'])->group(function () {
+                Route::get('/cooperatives', [App\Http\Controllers\Admin\CooperativeController::class, 'index'])->name('cooperatives.index');
+                Route::get('/cooperatives/create', [App\Http\Controllers\Admin\CooperativeController::class, 'create'])->name('cooperatives.create');
+                Route::post('/cooperatives', [App\Http\Controllers\Admin\CooperativeController::class, 'store'])->name('cooperatives.store');
+                Route::get('/cooperatives/{cooperative}/edit', [App\Http\Controllers\Admin\CooperativeController::class, 'edit'])->name('cooperatives.edit');
+                Route::put('/cooperatives/{cooperative}', [App\Http\Controllers\Admin\CooperativeController::class, 'update'])->name('cooperatives.update');
+                Route::post('/cooperatives/{cooperative}/toggle', [App\Http\Controllers\Admin\CooperativeController::class, 'toggleStatus'])->name('cooperatives.toggle');
+            });
 
             // Investment Type Management
             Route::get('/investment-types', [App\Http\Controllers\Admin\InvestmentTypeController::class, 'index'])->name('investment-types.index');

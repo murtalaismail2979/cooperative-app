@@ -107,9 +107,11 @@
                             <a href="{{ route('admin.dashboard') }}" class="nav-link d-block {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
                                 <i class="bi bi-speedometer2"></i> Dashboard
                             </a>
-                            <a href="{{ route('admin.cooperatives.index') }}" class="nav-link d-block {{ request()->routeIs('admin.cooperatives.*') ? 'active' : '' }}">
-                                <i class="bi bi-buildings"></i> Cooperatives
-                            </a>
+                            @if(auth()->user()->isSuperAdmin())
+                                <a href="{{ route('admin.cooperatives.index') }}" class="nav-link d-block {{ request()->routeIs('admin.cooperatives.*') ? 'active' : '' }}">
+                                    <i class="bi bi-buildings"></i> Cooperatives
+                                </a>
+                            @endif
                             <a href="{{ route('admin.members.index') }}" class="nav-link d-block {{ request()->routeIs('admin.members.*') ? 'active' : '' }}">
                                 <i class="bi bi-people"></i> Manage Users
                             </a>
@@ -235,15 +237,17 @@
                         <a href="{{ route('password.recovery') }}" class="btn btn-outline-primary btn-sm me-3 mr-3 shadow-sm" style="margin-right: 16px;">
                             <i class="bi bi-shield-lock me-1 mr-1" style="margin-right: 4px;"></i> Retrieve / Reset Password
                         </a>
+                        @auth
                         <a href="{{ route('profile.edit') }}" class="text-decoration-none text-muted profile-link d-inline-flex align-items-center" style="gap: 8px;">
                             <i class="bi bi-person-circle me-1 mr-1" style="font-size: 1.15rem; margin-right: 6px;"></i> 
                             <span class="fw-semibold text-dark">{{ auth()->user()->name ?? '' }}</span>
                             @if(!empty(auth()->user()->member_code))
                                 <span class="badge bg-primary ms-3 ml-3 shadow-sm" style="margin-left: 12px; padding: 6px 12px; font-size: 0.82rem; letter-spacing: 0.5px;">{{ auth()->user()->member_code }}</span>
-                            @elseif(auth()->user()->isPendingMembership())
+                            @elseif(auth()->user()?->isPendingMembership())
                                 <span class="badge bg-warning text-dark ms-3 ml-3 shadow-sm" style="margin-left: 12px; padding: 6px 10px;"><i class="bi bi-clock me-1"></i> Pending Approval</span>
                             @endif
                         </a>
+                        @endauth
                     </div>
                 </div>
 
