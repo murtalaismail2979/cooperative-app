@@ -105,7 +105,10 @@ class DashboardController extends Controller
         $quickViewStatus = [];
         $quickViewPaidCount = 0;
         $quickViewTotalAmount = 0.0;
+        $quickViewPossibleMonths = (int) $quickViewYear === 2021 ? 3 : 12;
+
         for ($m = 1; $m <= 12; $m++) {
+            $isBeforeInception = ((int) $quickViewYear === 2021 && $m < 10);
             $rec = $yearSavings->get($m);
             $isPaid = $rec && (float) $rec->total_amount > 0;
             if ($isPaid) {
@@ -114,6 +117,7 @@ class DashboardController extends Controller
             }
             $quickViewStatus[$m] = [
                 'is_paid' => $isPaid,
+                'is_before_inception' => $isBeforeInception,
                 'amount' => $rec ? (float) $rec->total_amount : 0.0,
                 'payment_date' => $rec && $rec->max_payment_date ? \Carbon\Carbon::parse($rec->max_payment_date)->format('d/m/Y') : null,
             ];
@@ -130,8 +134,10 @@ class DashboardController extends Controller
             $yrRecords = $allYearsSavings->where('yr', (string) $yr);
             $paidCount = 0;
             $yrTotal = 0.0;
+            $possibleMonths = (int) $yr === 2021 ? 3 : 12;
             $monthsStatus = [];
             for ($m = 1; $m <= 12; $m++) {
+                $isBeforeInception = ((int) $yr === 2021 && $m < 10);
                 $rec = $yrRecords->firstWhere('month_num', $m);
                 $isPaid = $rec && (float) $rec->total_amount > 0;
                 if ($isPaid) {
@@ -140,12 +146,14 @@ class DashboardController extends Controller
                 }
                 $monthsStatus[$m] = [
                     'is_paid' => $isPaid,
+                    'is_before_inception' => $isBeforeInception,
                     'amount' => $rec ? (float) $rec->total_amount : 0.0,
                 ];
             }
             $yearlyOverview[$yr] = [
                 'year' => $yr,
                 'paid_count' => $paidCount,
+                'possible_months' => $possibleMonths,
                 'total_amount' => $yrTotal,
                 'months' => $monthsStatus,
             ];
@@ -153,7 +161,7 @@ class DashboardController extends Controller
 
         return view('member.savings', compact(
             'savings', 'totalSavings', 'years', 'selectedYear',
-            'quickViewYear', 'quickViewStatus', 'quickViewPaidCount', 'quickViewTotalAmount', 'yearlyOverview'
+            'quickViewYear', 'quickViewStatus', 'quickViewPaidCount', 'quickViewPossibleMonths', 'quickViewTotalAmount', 'yearlyOverview'
         ));
     }
 
@@ -171,6 +179,12 @@ class DashboardController extends Controller
 
         $start = !empty($dates) ? collect($dates)->min() : now()->startOfYear();
         $end = now()->startOfMonth();
+
+        // YLDA started savings in October 2021 - do not generate savings history prior to October 2021
+        $coopSavingsStart = \Carbon\Carbon::create(2021, 10, 1)->startOfMonth();
+        if ($start->lt($coopSavingsStart)) {
+            $start = $coopSavingsStart->copy();
+        }
 
         if ($start->gt($end)) {
             $start = $end->copy();

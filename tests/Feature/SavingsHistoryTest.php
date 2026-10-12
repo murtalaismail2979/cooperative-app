@@ -348,4 +348,48 @@ class SavingsHistoryTest extends TestCase
         $response->assertSee('₦15,000.00');
         $response->assertSee('3');
     }
+
+    public function test_savings_history_and_quick_view_respects_october_2021_inception_and_has_no_records_for_jan_to_sep_2021(): void
+    {
+        $member = User::factory()->create([
+            'role' => 'member',
+            'registration_year' => 2021,
+            'created_at' => '2021-01-01 00:00:00',
+        ]);
+        $slot = SavingsSlot::create(['user_id' => $member->id, 'slot_number' => 1, 'is_active' => true]);
+
+        // Add savings only for Oct and Nov 2021
+        MonthlySaving::create([
+            'user_id' => $member->id,
+            'savings_slot_id' => $slot->id,
+            'amount' => 2000,
+            'month' => '2021-10-01',
+            'status' => 'paid',
+            'payment_date' => '2021-10-05',
+        ]);
+        MonthlySaving::create([
+            'user_id' => $member->id,
+            'savings_slot_id' => $slot->id,
+            'amount' => 2000,
+            'month' => '2021-11-01',
+            'status' => 'paid',
+            'payment_date' => '2021-11-05',
+        ]);
+
+        $response = $this->actingAs($member)->get(route('member.savings', ['year' => 2021]));
+        $response->assertOk();
+
+        // 2021 possible months should be 3 (Oct, Nov, Dec), not 12
+        $response->assertSee('/ 3');
+        // Check Before Inception badge text exists for Jan-Sep
+        $response->assertSee('Before Inception (Pre-Oct 2021)');
+
+        // In detailed transaction history table, no months prior to October 2021 should appear
+        $response->assertDontSee('January 2021');
+        $response->assertDontSee('February 2021');
+        $response->assertDontSee('March 2021');
+        $response->assertDontSee('September 2021');
+        $response->assertSee('October 2021');
+        $response->assertSee('November 2021');
+    }
 }

@@ -53,6 +53,12 @@
                                           title="{{ $mName }} {{ $quickViewYear }}: Paid ₦{{ number_format($mStatus['amount'], 2) }}{{ $mStatus['payment_date'] ? ' on ' . $mStatus['payment_date'] : '' }}">
                                         <i class="bi bi-check-circle-fill"></i> {{ $mName }}
                                     </span>
+                                @elseif(!empty($mStatus['is_before_inception']))
+                                    <span class="badge bg-secondary d-inline-flex align-items-center gap-1 py-2 px-2 shadow-sm opacity-50" 
+                                          style="min-width: 54px; justify-content: center; font-size: 0.8rem; border-radius: 6px;"
+                                          title="{{ $mName }} 2021: Before Savings Inception (Started Oct 2021)">
+                                        <i class="bi bi-dash-circle"></i> {{ $mName }}
+                                    </span>
                                 @else
                                     <span class="badge bg-danger d-inline-flex align-items-center gap-1 py-2 px-2 shadow-sm" 
                                           style="min-width: 54px; justify-content: center; font-size: 0.8rem; border-radius: 6px;"
@@ -63,9 +69,12 @@
                             @endforeach
                         </div>
                     @endforeach
-                    <div class="d-flex gap-3 mt-3 pt-2 border-top small text-muted">
+                    <div class="d-flex gap-3 mt-3 pt-2 border-top small text-muted flex-wrap">
                         <span><i class="bi bi-check-circle-fill text-success"></i> Paid</span>
                         <span><i class="bi bi-x-circle-fill text-danger"></i> Not Paid / Pending</span>
+                        @if((int)$quickViewYear === 2021)
+                            <span><i class="bi bi-dash-circle text-secondary"></i> Before Inception (Pre-Oct 2021)</span>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -76,8 +85,8 @@
                     <div class="col-sm-6">
                         <div class="p-3 border rounded-3 h-100 bg-white shadow-sm">
                             <div class="text-muted small fw-semibold text-uppercase">Months Paid in {{ $quickViewYear }}</div>
-                            <div class="fs-4 fw-bold text-dark mt-1">{{ $quickViewPaidCount }} <span class="text-muted fs-6">/ 12</span></div>
-                            @php $pct = round(($quickViewPaidCount / 12) * 100); @endphp
+                            <div class="fs-4 fw-bold text-dark mt-1">{{ $quickViewPaidCount }} <span class="text-muted fs-6">/ {{ $quickViewPossibleMonths ?? 12 }}</span></div>
+                            @php $pct = round(($quickViewPaidCount / max(1, $quickViewPossibleMonths ?? 12)) * 100); @endphp
                             <div class="progress mt-2" style="height: 6px;">
                                 <div class="progress-bar bg-success" style="width: {{ $pct }}%"></div>
                             </div>
@@ -115,6 +124,7 @@
                     </thead>
                     <tbody>
                         @foreach($yearlyOverview as $yrData)
+                        @php $possibleYrMonths = $yrData['possible_months'] ?? 12; @endphp
                         <tr class="{{ (int)$yrData['year'] === (int)$quickViewYear ? 'table-primary bg-opacity-10' : '' }}">
                             <td>
                                 <strong>{{ $yrData['year'] }}</strong>
@@ -123,8 +133,8 @@
                                 @endif
                             </td>
                             <td>
-                                <span class="badge bg-{{ $yrData['paid_count'] === 12 ? 'success' : ($yrData['paid_count'] > 0 ? 'info' : 'secondary') }}">
-                                    {{ $yrData['paid_count'] }} / 12
+                                <span class="badge bg-{{ $yrData['paid_count'] === $possibleYrMonths ? 'success' : ($yrData['paid_count'] > 0 ? 'info' : 'secondary') }}">
+                                    {{ $yrData['paid_count'] }} / {{ $possibleYrMonths }}
                                 </span>
                             </td>
                             <td class="fw-semibold">₦{{ number_format($yrData['total_amount'], 2) }}</td>
@@ -142,6 +152,12 @@
                                                           style="min-width: 46px; justify-content: center; font-size: 0.72rem; border-radius: 4px;" 
                                                           title="{{ $mName }} {{ $yrData['year'] }}: Paid (₦{{ number_format($mStatus['amount'], 2) }})">
                                                         <i class="bi bi-check-circle-fill"></i> {{ $mName }}
+                                                    </span>
+                                                @elseif(!empty($mStatus['is_before_inception']))
+                                                    <span class="badge bg-secondary d-inline-flex align-items-center gap-1 py-1 px-1 opacity-50" 
+                                                          style="min-width: 46px; justify-content: center; font-size: 0.72rem; border-radius: 4px;" 
+                                                          title="{{ $mName }} 2021: Before Savings Inception (Started Oct 2021)">
+                                                        <i class="bi bi-dash-circle"></i> {{ $mName }}
                                                     </span>
                                                 @else
                                                     <span class="badge bg-danger d-inline-flex align-items-center gap-1 py-1 px-1" 

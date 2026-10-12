@@ -75,12 +75,17 @@
                                     <div class="d-flex gap-1 align-items-center {{ $rowIndex === 0 ? 'mb-2' : '' }}">
                                         @foreach($row as $mNum => $mName)
                                             @php
+                                                $isBeforeInception = ((int)$selectedYear === 2021 && $mNum < 10);
                                                 $rec = $memberSavings ? $memberSavings->firstWhere('month_num', $mNum) : null;
                                                 $isPaid = $rec && (float)$rec->total_amount > 0;
                                             @endphp
                                             @if($isPaid)
                                                 <span class="badge bg-success d-inline-flex align-items-center gap-1 py-1 px-1" style="min-width: 48px; justify-content: center; font-size: 0.72rem;" title="{{ $mName }} {{ $selectedYear }}: Paid (₦{{ number_format($rec->total_amount, 2) }})">
                                                     <i class="bi bi-check-circle-fill"></i> {{ $mName }}
+                                                </span>
+                                            @elseif($isBeforeInception)
+                                                <span class="badge bg-secondary d-inline-flex align-items-center gap-1 py-1 px-1 opacity-50" style="min-width: 48px; justify-content: center; font-size: 0.72rem;" title="{{ $mName }} 2021: Before Inception (Started Oct 2021)">
+                                                    <i class="bi bi-dash-circle"></i> {{ $mName }}
                                                 </span>
                                             @else
                                                 <span class="badge bg-danger d-inline-flex align-items-center gap-1 py-1 px-1" style="min-width: 48px; justify-content: center; font-size: 0.72rem;" title="{{ $mName }} {{ $selectedYear }}: Not Paid">
