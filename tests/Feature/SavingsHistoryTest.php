@@ -316,4 +316,36 @@ class SavingsHistoryTest extends TestCase
             'month' => '2026-06-01'
         ]);
     }
+
+    public function test_member_savings_page_displays_jan_dec_savings_status_quick_view(): void
+    {
+        $member = User::factory()->create([
+            'role' => 'member',
+            'registration_year' => 2026,
+        ]);
+        $slot = SavingsSlot::create(['user_id' => $member->id, 'slot_number' => 1, 'is_active' => true]);
+
+        // Create savings for Jan, Feb, Mar 2026
+        foreach ([1 => '2026-01-05', 2 => '2026-02-05', 3 => '2026-03-05'] as $m => $date) {
+            MonthlySaving::create([
+                'user_id' => $member->id,
+                'savings_slot_id' => $slot->id,
+                'amount' => 5000,
+                'month' => sprintf('2026-%02d-01', $m),
+                'status' => 'paid',
+                'payment_date' => $date,
+            ]);
+        }
+
+        $response = $this->actingAs($member)->get(route('member.savings', ['year' => 2026]));
+
+        $response->assertOk();
+        $response->assertSee('JAN - DEC SAVINGS STATUS (2026)');
+        $response->assertSee('bi-check-circle-fill');
+        $response->assertSee('bi-x-circle-fill');
+        $response->assertSee('Months Paid in 2026');
+        $response->assertSee('Total Saved in 2026');
+        $response->assertSee('₦15,000.00');
+        $response->assertSee('3');
+    }
 }

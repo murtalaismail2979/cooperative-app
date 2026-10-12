@@ -91,7 +91,70 @@ class DashboardController extends Controller
         rsort($years);
         $years = array_values($years);
 
-        return view('member.savings', compact('savings', 'totalSavings', 'years', 'selectedYear'));
+        $quickViewYear = $selectedYear ? (int) $selectedYear : $currentYear;
+        $monthExpr = $driver === 'sqlite' ? "CAST(strftime('%m', month) AS INTEGER)" : "MONTH(month)";
+
+        // Monthly savings status for quickViewYear
+        $yearSavings = MonthlySaving::where('user_id', $user->id)
+            ->whereRaw("{$yearExpr} = ?", [(string) $quickViewYear])
+            ->selectRaw("{$monthExpr} as month_num, SUM(amount) as total_amount, MAX(payment_date) as max_payment_date")
+            ->groupBy(\DB::raw($monthExpr))
+            ->get()
+            ->keyBy('month_num');
+
+        $quickViewStatus = [];
+        $quickViewPaidCount = 0;
+        $quickViewTotalAmount = 0.0;
+        for ($m = 1; $m <= 12; $m++) {
+            $rec = $yearSavings->get($m);
+            $isPaid = $rec && (float) $rec->total_amount > 0;
+            if ($isPaid) {
+                $quickViewPaidCount++;
+                $quickViewTotalAmount += (float) $rec->total_amount;
+            }
+            $quickViewStatus[$m] = [
+                'is_paid' => $isPaid,
+                'amount' => $rec ? (float) $rec->total_amount : 0.0,
+                'payment_date' => $rec && $rec->max_payment_date ? \Carbon\Carbon::parse($rec->max_payment_date)->format('d/m/Y') : null,
+            ];
+        }
+
+        // All years overview for multi-year quick view
+        $allYearsSavings = MonthlySaving::where('user_id', $user->id)
+            ->selectRaw("{$yearExpr} as yr, {$monthExpr} as month_num, SUM(amount) as total_amount")
+            ->groupBy(\DB::raw("{$yearExpr}"), \DB::raw($monthExpr))
+            ->get();
+
+        $yearlyOverview = [];
+        foreach ($years as $yr) {
+            $yrRecords = $allYearsSavings->where('yr', (string) $yr);
+            $paidCount = 0;
+            $yrTotal = 0.0;
+            $monthsStatus = [];
+            for ($m = 1; $m <= 12; $m++) {
+                $rec = $yrRecords->firstWhere('month_num', $m);
+                $isPaid = $rec && (float) $rec->total_amount > 0;
+                if ($isPaid) {
+                    $paidCount++;
+                    $yrTotal += (float) $rec->total_amount;
+                }
+                $monthsStatus[$m] = [
+                    'is_paid' => $isPaid,
+                    'amount' => $rec ? (float) $rec->total_amount : 0.0,
+                ];
+            }
+            $yearlyOverview[$yr] = [
+                'year' => $yr,
+                'paid_count' => $paidCount,
+                'total_amount' => $yrTotal,
+                'months' => $monthsStatus,
+            ];
+        }
+
+        return view('member.savings', compact(
+            'savings', 'totalSavings', 'years', 'selectedYear',
+            'quickViewYear', 'quickViewStatus', 'quickViewPaidCount', 'quickViewTotalAmount', 'yearlyOverview'
+        ));
     }
 
     private function getSavingsHistory($user)
