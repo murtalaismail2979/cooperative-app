@@ -53,10 +53,13 @@
                                           title="{{ $mName }} {{ $quickViewYear }}: Paid ₦{{ number_format($mStatus['amount'], 2) }}{{ $mStatus['payment_date'] ? ' on ' . $mStatus['payment_date'] : '' }}">
                                         <i class="bi bi-check-circle-fill"></i> {{ $mName }}
                                     </span>
-                                @elseif(!empty($mStatus['is_before_inception']))
+                                @elseif(!empty($mStatus['is_not_applicable']))
+                                    @php
+                                        $reason = (int)$quickViewYear === 2021 ? 'Before Savings Inception (Started Oct 2021)' : 'Not Applicable (Savings held Jan–Apr only in 2022)';
+                                    @endphp
                                     <span class="badge bg-secondary d-inline-flex align-items-center gap-1 py-2 px-2 shadow-sm opacity-50" 
                                           style="min-width: 54px; justify-content: center; font-size: 0.8rem; border-radius: 6px;"
-                                          title="{{ $mName }} 2021: Before Savings Inception (Started Oct 2021)">
+                                          title="{{ $mName }} {{ $quickViewYear }}: {{ $reason }}">
                                         <i class="bi bi-dash-circle"></i> {{ $mName }}
                                     </span>
                                 @else
@@ -74,6 +77,8 @@
                         <span><i class="bi bi-x-circle-fill text-danger"></i> Not Paid / Pending</span>
                         @if((int)$quickViewYear === 2021)
                             <span><i class="bi bi-dash-circle text-secondary"></i> Before Inception (Pre-Oct 2021)</span>
+                        @elseif((int)$quickViewYear === 2022)
+                            <span><i class="bi bi-dash-circle text-secondary"></i> Not Applicable (May–Dec 2022)</span>
                         @endif
                     </div>
                 </div>
@@ -153,10 +158,13 @@
                                                           title="{{ $mName }} {{ $yrData['year'] }}: Paid (₦{{ number_format($mStatus['amount'], 2) }})">
                                                         <i class="bi bi-check-circle-fill"></i> {{ $mName }}
                                                     </span>
-                                                @elseif(!empty($mStatus['is_before_inception']))
+                                                @elseif(!empty($mStatus['is_not_applicable']))
+                                                    @php
+                                                        $yrReason = (int)$yrData['year'] === 2021 ? 'Before Savings Inception (Started Oct 2021)' : 'Not Applicable (Savings Jan–Apr only)';
+                                                    @endphp
                                                     <span class="badge bg-secondary d-inline-flex align-items-center gap-1 py-1 px-1 opacity-50" 
                                                           style="min-width: 46px; justify-content: center; font-size: 0.72rem; border-radius: 4px;" 
-                                                          title="{{ $mName }} 2021: Before Savings Inception (Started Oct 2021)">
+                                                          title="{{ $mName }} {{ $yrData['year'] }}: {{ $yrReason }}">
                                                         <i class="bi bi-dash-circle"></i> {{ $mName }}
                                                     </span>
                                                 @else

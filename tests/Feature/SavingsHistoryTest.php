@@ -392,4 +392,51 @@ class SavingsHistoryTest extends TestCase
         $response->assertSee('October 2021');
         $response->assertSee('November 2021');
     }
+
+    public function test_savings_history_and_quick_view_for_2022_only_includes_jan_to_apr_and_excludes_may_to_dec(): void
+    {
+        $member = User::factory()->create([
+            'role' => 'member',
+            'registration_year' => 2022,
+            'created_at' => '2022-01-01 00:00:00',
+        ]);
+        $slot = SavingsSlot::create(['user_id' => $member->id, 'slot_number' => 1, 'is_active' => true]);
+
+        // Add savings for Jan, Feb, Mar, Apr 2022
+        foreach ([1, 2, 3, 4] as $m) {
+            MonthlySaving::create([
+                'user_id' => $member->id,
+                'savings_slot_id' => $slot->id,
+                'amount' => 2000,
+                'month' => sprintf('2022-%02d-01', $m),
+                'status' => 'paid',
+                'payment_date' => sprintf('2022-%02d-05', $m),
+            ]);
+        }
+
+        $response = $this->actingAs($member)->get(route('member.savings', ['year' => 2022]));
+        $response->assertOk();
+
+        // 2022 possible months should be 4 (Jan to Apr), not 12
+        $response->assertSee('/ 4');
+        $response->assertSee('4');
+        $response->assertSee('100% completed');
+
+        // Check Not Applicable text exists for May-Dec
+        $response->assertSee('Not Applicable (May–Dec 2022)');
+
+        // In detailed transaction history table, May to Dec 2022 should not appear
+        $response->assertSee('<td>January 2022</td>', false);
+        $response->assertSee('<td>February 2022</td>', false);
+        $response->assertSee('<td>March 2022</td>', false);
+        $response->assertSee('<td>April 2022</td>', false);
+        $response->assertDontSee('<td>May 2022</td>', false);
+        $response->assertDontSee('<td>June 2022</td>', false);
+        $response->assertDontSee('<td>July 2022</td>', false);
+        $response->assertDontSee('<td>August 2022</td>', false);
+        $response->assertDontSee('<td>September 2022</td>', false);
+        $response->assertDontSee('<td>October 2022</td>', false);
+        $response->assertDontSee('<td>November 2022</td>', false);
+        $response->assertDontSee('<td>December 2022</td>', false);
+    }
 }

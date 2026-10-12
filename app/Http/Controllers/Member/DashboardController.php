@@ -105,10 +105,13 @@ class DashboardController extends Controller
         $quickViewStatus = [];
         $quickViewPaidCount = 0;
         $quickViewTotalAmount = 0.0;
-        $quickViewPossibleMonths = (int) $quickViewYear === 2021 ? 3 : 12;
+        $isYear2021 = (int) $quickViewYear === 2021;
+        $isYear2022 = (int) $quickViewYear === 2022;
+        $quickViewPossibleMonths = $isYear2021 ? 3 : ($isYear2022 ? 4 : 12);
 
         for ($m = 1; $m <= 12; $m++) {
-            $isBeforeInception = ((int) $quickViewYear === 2021 && $m < 10);
+            $isBeforeInception = ($isYear2021 && $m < 10);
+            $isNotApplicable = $isBeforeInception || ($isYear2022 && $m > 4);
             $rec = $yearSavings->get($m);
             $isPaid = $rec && (float) $rec->total_amount > 0;
             if ($isPaid) {
@@ -118,6 +121,7 @@ class DashboardController extends Controller
             $quickViewStatus[$m] = [
                 'is_paid' => $isPaid,
                 'is_before_inception' => $isBeforeInception,
+                'is_not_applicable' => $isNotApplicable,
                 'amount' => $rec ? (float) $rec->total_amount : 0.0,
                 'payment_date' => $rec && $rec->max_payment_date ? \Carbon\Carbon::parse($rec->max_payment_date)->format('d/m/Y') : null,
             ];
@@ -134,10 +138,11 @@ class DashboardController extends Controller
             $yrRecords = $allYearsSavings->where('yr', (string) $yr);
             $paidCount = 0;
             $yrTotal = 0.0;
-            $possibleMonths = (int) $yr === 2021 ? 3 : 12;
+            $possibleMonths = (int) $yr === 2021 ? 3 : ((int) $yr === 2022 ? 4 : 12);
             $monthsStatus = [];
             for ($m = 1; $m <= 12; $m++) {
                 $isBeforeInception = ((int) $yr === 2021 && $m < 10);
+                $isNotApplicable = $isBeforeInception || ((int) $yr === 2022 && $m > 4);
                 $rec = $yrRecords->firstWhere('month_num', $m);
                 $isPaid = $rec && (float) $rec->total_amount > 0;
                 if ($isPaid) {
@@ -147,6 +152,7 @@ class DashboardController extends Controller
                 $monthsStatus[$m] = [
                     'is_paid' => $isPaid,
                     'is_before_inception' => $isBeforeInception,
+                    'is_not_applicable' => $isNotApplicable,
                     'amount' => $rec ? (float) $rec->total_amount : 0.0,
                 ];
             }
@@ -193,7 +199,13 @@ class DashboardController extends Controller
         $months = [];
         $current = $start->copy();
         while ($current->lte($end)) {
-            $months[] = $current->format('Y-m-d');
+            $year = (int) $current->format('Y');
+            $month = (int) $current->format('n');
+            // Skip Jan-Sep 2021 (started Oct 2021) and May-Dec 2022 (savings held Jan-Apr 2022 only)
+            $isNotApplicable = ($year === 2021 && $month < 10) || ($year === 2022 && $month > 4);
+            if (!$isNotApplicable) {
+                $months[] = $current->format('Y-m-d');
+            }
             $current->addMonth();
         }
 
