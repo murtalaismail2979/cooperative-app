@@ -30,6 +30,10 @@ class CheckRole
         }
 
         if (!in_array($user->role, $roles, true)) {
+            // If an administrative/super_admin user tries to access member-only routes, redirect to admin dashboard
+            if ($user->isManagementRole() && in_array('member', $roles, true)) {
+                return redirect()->route('admin.dashboard');
+            }
             abort(403, 'Unauthorized access.');
         }
 

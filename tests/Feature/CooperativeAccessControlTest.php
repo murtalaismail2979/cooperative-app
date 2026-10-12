@@ -124,4 +124,26 @@ class CooperativeAccessControlTest extends TestCase
         // Can access savings
         $this->actingAs($admin)->get(route('admin.savings.index'))->assertOk();
     }
+
+    public function test_dashboard_redirects_correctly_for_all_roles(): void
+    {
+        $superAdmin = User::factory()->create(['role' => 'super_admin']);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $member = User::factory()->create(['role' => 'member']);
+
+        // Super Admin gets redirected to admin dashboard
+        $this->actingAs($superAdmin)->get('/dashboard')->assertRedirect(route('admin.dashboard'));
+
+        // Super Admin visiting member dashboard gets redirected to admin dashboard instead of 403
+        $this->actingAs($superAdmin)->get(route('member.dashboard'))->assertRedirect(route('admin.dashboard'));
+
+        // Regular admin gets redirected to admin dashboard
+        $this->actingAs($admin)->get('/dashboard')->assertRedirect(route('admin.dashboard'));
+
+        // Regular admin visiting member dashboard gets redirected to admin dashboard instead of 403
+        $this->actingAs($admin)->get(route('member.dashboard'))->assertRedirect(route('admin.dashboard'));
+
+        // Member gets redirected to member dashboard
+        $this->actingAs($member)->get('/dashboard')->assertRedirect(route('member.dashboard'));
+    }
 }

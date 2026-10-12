@@ -18,7 +18,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard redirect based on role
     Route::get('/dashboard', function () {
         $user = auth()->user();
-        if (in_array($user->role, ['admin', 'chairman', 'secretary', 'treasurer'])) {
+        if ($user->isManagementRole()) {
             return redirect()->route('admin.dashboard');
         }
         return redirect()->route('member.dashboard');
