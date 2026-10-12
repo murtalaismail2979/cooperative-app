@@ -75,6 +75,20 @@
             color: #ffffff !important;
             font-weight: 600;
         }
+
+        /* Spacing utilities compatibility (me-*, ms-*, gap-*) */
+        .me-1 { margin-right: 0.25rem !important; }
+        .me-2 { margin-right: 0.5rem !important; }
+        .me-3 { margin-right: 1rem !important; }
+        .me-4 { margin-right: 1.5rem !important; }
+        .ms-1 { margin-left: 0.25rem !important; }
+        .ms-2 { margin-left: 0.5rem !important; }
+        .ms-3 { margin-left: 1rem !important; }
+        .ms-4 { margin-left: 1.5rem !important; }
+        .gap-1 { gap: 0.25rem !important; }
+        .gap-2 { gap: 0.5rem !important; }
+        .gap-3 { gap: 1rem !important; }
+        .gap-4 { gap: 1.5rem !important; }
     </style>
 </head>
 <body>
@@ -200,10 +214,10 @@
                     <div>
                         @yield('page-title', 'Dashboard')
                     </div>
-                    <div class="d-flex align-items-center">
+                    <div class="d-flex align-items-center flex-wrap" style="gap: 16px;">
                         @auth
                             @if(auth()->user()->isSuperAdmin())
-                                <form method="GET" action="{{ request()->url() }}" class="me-3 d-inline-block">
+                                <form method="GET" action="{{ request()->url() }}" class="me-3 mr-3 d-inline-block" style="margin-right: 14px;">
                                     @foreach(request()->except('cooperative_id') as $key => $val)
                                         <input type="hidden" name="{{ $key }}" value="{{ $val }}">
                                     @endforeach
@@ -218,16 +232,16 @@
                                 </form>
                             @endif
                         @endauth
-                        <a href="{{ route('password.recovery') }}" class="btn btn-outline-primary btn-sm me-3 shadow-sm">
-                            <i class="bi bi-shield-lock me-1"></i> Retrieve / Reset Password
+                        <a href="{{ route('password.recovery') }}" class="btn btn-outline-primary btn-sm me-3 mr-3 shadow-sm" style="margin-right: 16px;">
+                            <i class="bi bi-shield-lock me-1 mr-1" style="margin-right: 4px;"></i> Retrieve / Reset Password
                         </a>
-                        <a href="{{ route('profile.edit') }}" class="text-decoration-none text-muted profile-link d-inline-flex align-items-center">
-                            <i class="bi bi-person-circle me-1"></i> 
-                            <span>{{ auth()->user()->name ?? '' }}</span>
+                        <a href="{{ route('profile.edit') }}" class="text-decoration-none text-muted profile-link d-inline-flex align-items-center" style="gap: 8px;">
+                            <i class="bi bi-person-circle me-1 mr-1" style="font-size: 1.15rem; margin-right: 6px;"></i> 
+                            <span class="fw-semibold text-dark">{{ auth()->user()->name ?? '' }}</span>
                             @if(!empty(auth()->user()->member_code))
-                                <span class="badge bg-primary ms-2">{{ auth()->user()->member_code }}</span>
+                                <span class="badge bg-primary ms-3 ml-3 shadow-sm" style="margin-left: 12px; padding: 6px 12px; font-size: 0.82rem; letter-spacing: 0.5px;">{{ auth()->user()->member_code }}</span>
                             @elseif(auth()->user()->isPendingMembership())
-                                <span class="badge bg-warning text-dark ms-2"><i class="bi bi-clock"></i> Pending Approval</span>
+                                <span class="badge bg-warning text-dark ms-3 ml-3 shadow-sm" style="margin-left: 12px; padding: 6px 10px;"><i class="bi bi-clock me-1"></i> Pending Approval</span>
                             @endif
                         </a>
                     </div>
