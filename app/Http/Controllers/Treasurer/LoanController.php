@@ -24,6 +24,9 @@ class LoanController extends Controller
 
         $search = $request->input('search');
         $memberId = $request->input('member_id');
+        $year = $request->input('year');
+        $month = $request->input('month');
+
         $query = Loan::with('user')
             ->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
 
@@ -38,10 +41,39 @@ class LoanController extends Controller
             $query->where('user_id', $memberId);
         }
 
-        $loans = $query->latest()->paginate(15)->withQueryString();
+        if (!empty($year)) {
+            $query->whereYear('date_granted', $year);
+        }
+
+        if (!empty($month)) {
+            $query->whereMonth('date_granted', $month);
+        }
+
+        $loans = $query->latest('date_granted')->latest('id')->paginate(15)->withQueryString();
         $members = User::where('role', 'member')->where('cooperative_id', $cooperativeId)->orderBy('name')->get();
 
-        return view('treasurer.loans.index', compact('loans', 'search', 'memberId', 'members'));
+        $years = Loan::whereNotNull('date_granted')
+            ->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId))
+            ->pluck('date_granted')
+            ->map(function ($date) {
+                return $date instanceof \Carbon\Carbon ? $date->year : \Carbon\Carbon::parse($date)->year;
+            })
+            ->unique()
+            ->sortDesc()
+            ->values()
+            ->toArray();
+
+        if (empty($years)) {
+            $years = [(int) date('Y')];
+        }
+
+        $months = [
+            1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+            5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+            9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+        ];
+
+        return view('treasurer.loans.index', compact('loans', 'search', 'memberId', 'members', 'year', 'month', 'years', 'months'));
     }
 
     public function show(Loan $loan)

@@ -148,11 +148,46 @@ class DashboardController extends Controller
         return $history->sortByDesc('month')->values();
     }
 
-    public function loans()
+    public function loans(Request $request)
     {
         $user = auth()->user();
-        $loans = $user->loans()->with('repayments')->latest()->get();
-        return view('member.loans', compact('loans'));
+        $year = $request->input('year');
+        $month = $request->input('month');
+
+        $query = $user->loans()->with('repayments');
+
+        if (!empty($year)) {
+            $query->whereYear('date_granted', $year);
+        }
+
+        if (!empty($month)) {
+            $query->whereMonth('date_granted', $month);
+        }
+
+        $loans = $query->latest('date_granted')->latest('id')->get();
+
+        $years = $user->loans()
+            ->whereNotNull('date_granted')
+            ->pluck('date_granted')
+            ->map(function ($date) {
+                return $date instanceof \Carbon\Carbon ? $date->year : \Carbon\Carbon::parse($date)->year;
+            })
+            ->unique()
+            ->sortDesc()
+            ->values()
+            ->toArray();
+
+        if (empty($years)) {
+            $years = [(int) date('Y')];
+        }
+
+        $months = [
+            1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+            5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+            9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+        ];
+
+        return view('member.loans', compact('loans', 'year', 'month', 'years', 'months'));
     }
 
     public function dividends(Request $request)

@@ -19,13 +19,13 @@
     </div>
     <div class="card-body">
         <form method="GET" action="{{ route('admin.loans.index') }}" class="row g-3 align-items-center mb-4">
-            <div class="col-md-4 col-lg-3">
+            <div class="col-md-3">
                 <div class="input-group">
                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
                     <input type="text" name="search" id="adminLoansSearch" class="form-control border-start-0 auto-search" placeholder="Search member name or code..." value="{{ $search ?? '' }}">
                 </div>
             </div>
-            <div class="col-md-4 col-lg-3">
+            <div class="col-md-3">
                 <select name="member_id" class="form-select" onchange="this.form.submit()">
                     <option value="">-- All Members --</option>
                     @foreach($members ?? [] as $m)
@@ -35,10 +35,26 @@
                     @endforeach
                 </select>
             </div>
+            <div class="col-md-2">
+                <select name="year" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- All Years --</option>
+                    @foreach($years ?? [] as $y)
+                        <option value="{{ $y }}" {{ ($year ?? '') == $y ? 'selected' : '' }}>{{ $y }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="month" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- All Months --</option>
+                    @foreach($months ?? [] as $mNum => $mName)
+                        <option value="{{ $mNum }}" {{ ($month ?? '') == $mNum ? 'selected' : '' }}>{{ $mName }}</option>
+                    @endforeach
+                </select>
+            </div>
             <div class="col-auto">
                 <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Filter</button>
             </div>
-            @if(!empty($search) || !empty($memberId))
+            @if(!empty($search) || !empty($memberId) || !empty($year) || !empty($month))
             <div class="col-auto">
                 <a href="{{ route('admin.loans.index') }}" class="btn btn-outline-danger"><i class="bi bi-x-circle"></i> Clear Filter</a>
             </div>
@@ -50,6 +66,7 @@
                 <thead>
                     <tr>
                         <th>#</th>
+                        <th>Date Granted</th>
                         <th>Member</th>
                         <th>Principal</th>
                         <th>Total</th>
@@ -64,6 +81,15 @@
                     @forelse($loans as $loan)
                     <tr>
                         <td>{{ $loan->id }}</td>
+                        <td>
+                            @if($loan->date_granted)
+                                <span class="badge bg-light text-dark border">
+                                    <i class="bi bi-calendar3 me-1"></i>{{ $loan->date_granted->format('M d, Y') }}
+                                </span>
+                            @else
+                                <span class="text-muted">N/A</span>
+                            @endif
+                        </td>
                         <td>{{ $loan->user->name ?? 'N/A' }}</td>
                         <td>₦{{ number_format($loan->principal_amount, 2) }}</td>
                         <td>₦{{ number_format($loan->total_amount, 2) }}</td>
@@ -97,7 +123,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="9" class="text-center">No financing records found</td></tr>
+                    <tr><td colspan="10" class="text-center">No financing records found</td></tr>
                     @endforelse
                 </tbody>
             </table>

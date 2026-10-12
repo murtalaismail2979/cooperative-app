@@ -5,6 +5,37 @@
 @endsection
 
 @section('content')
+<div class="card shadow mb-4">
+    <div class="card-body py-3">
+        <form method="GET" action="{{ route('member.loans') }}" class="row g-3 align-items-center">
+            <div class="col-md-4 col-sm-6">
+                <select name="year" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- All Years --</option>
+                    @foreach($years ?? [] as $y)
+                        <option value="{{ $y }}" {{ ($year ?? '') == $y ? 'selected' : '' }}>{{ $y }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-4 col-sm-6">
+                <select name="month" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- All Months --</option>
+                    @foreach($months ?? [] as $mNum => $mName)
+                        <option value="{{ $mNum }}" {{ ($month ?? '') == $mNum ? 'selected' : '' }}>{{ $mName }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Filter</button>
+            </div>
+            @if(!empty($year) || !empty($month))
+            <div class="col-auto">
+                <a href="{{ route('member.loans') }}" class="btn btn-outline-danger"><i class="bi bi-x-circle"></i> Clear Filter</a>
+            </div>
+            @endif
+        </form>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-12">
         @forelse($loans as $loan)

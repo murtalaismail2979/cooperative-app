@@ -128,4 +128,116 @@ class FinancingSearchTest extends TestCase
         $response->assertSee('Bob Smith');
         $response->assertDontSee('<td>Alice Cooper</td>', false);
     }
+
+    public function test_admin_can_filter_loans_by_year_and_month(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'cooperative_id' => 1]);
+        $member = User::factory()->create(['role' => 'member', 'name' => 'Michael Scott', 'cooperative_id' => 1]);
+
+        // Loan in March 2025
+        Loan::create([
+            'user_id' => $member->id,
+            'principal_amount' => 50000,
+            'total_amount' => 55000,
+            'monthly_payment' => 5500,
+            'duration_months' => 10,
+            'remaining_months' => 10,
+            'status' => 'active',
+            'date_granted' => '2025-03-15',
+        ]);
+
+        // Loan in August 2026
+        Loan::create([
+            'user_id' => $member->id,
+            'principal_amount' => 90000,
+            'total_amount' => 99000,
+            'monthly_payment' => 9900,
+            'duration_months' => 10,
+            'remaining_months' => 10,
+            'status' => 'active',
+            'date_granted' => '2026-08-20',
+        ]);
+
+        // Filter by year 2025
+        $response2025 = $this->actingAs($admin)->get(route('admin.loans.index', ['year' => 2025]));
+        $response2025->assertOk();
+        $response2025->assertSee('₦50,000.00');
+        $response2025->assertDontSee('₦90,000.00');
+
+        // Filter by year 2026 and month 8 (August)
+        $response2026Aug = $this->actingAs($admin)->get(route('admin.loans.index', ['year' => 2026, 'month' => 8]));
+        $response2026Aug->assertOk();
+        $response2026Aug->assertSee('₦90,000.00');
+        $response2026Aug->assertDontSee('₦50,000.00');
+
+        // Filter by month 3 (March) in 2026 (should find none)
+        $responseNone = $this->actingAs($admin)->get(route('admin.loans.index', ['year' => 2026, 'month' => 3]));
+        $responseNone->assertOk();
+        $responseNone->assertSee('No financing records found');
+    }
+
+    public function test_treasurer_can_filter_loans_by_year_and_month(): void
+    {
+        $treasurer = User::factory()->create(['role' => 'treasurer', 'cooperative_id' => 1]);
+        $member = User::factory()->create(['role' => 'member', 'name' => 'Jim Halpert', 'cooperative_id' => 1]);
+
+        Loan::create([
+            'user_id' => $member->id,
+            'principal_amount' => 30000,
+            'total_amount' => 33000,
+            'monthly_payment' => 3300,
+            'duration_months' => 10,
+            'remaining_months' => 10,
+            'status' => 'active',
+            'date_granted' => '2025-05-10',
+        ]);
+
+        Loan::create([
+            'user_id' => $member->id,
+            'principal_amount' => 70000,
+            'total_amount' => 77000,
+            'monthly_payment' => 7700,
+            'duration_months' => 10,
+            'remaining_months' => 10,
+            'status' => 'active',
+            'date_granted' => '2026-11-05',
+        ]);
+
+        $response = $this->actingAs($treasurer)->get(route('treasurer.loans.index', ['year' => 2026, 'month' => 11]));
+        $response->assertOk();
+        $response->assertSee('₦70,000.00');
+        $response->assertDontSee('₦30,000.00');
+    }
+
+    public function test_member_can_filter_loans_by_year_and_month(): void
+    {
+        $member = User::factory()->create(['role' => 'member', 'cooperative_id' => 1]);
+
+        Loan::create([
+            'user_id' => $member->id,
+            'principal_amount' => 25000,
+            'total_amount' => 27500,
+            'monthly_payment' => 2750,
+            'duration_months' => 10,
+            'remaining_months' => 10,
+            'status' => 'active',
+            'date_granted' => '2024-04-12',
+        ]);
+
+        Loan::create([
+            'user_id' => $member->id,
+            'principal_amount' => 60000,
+            'total_amount' => 66000,
+            'monthly_payment' => 6600,
+            'duration_months' => 10,
+            'remaining_months' => 10,
+            'status' => 'active',
+            'date_granted' => '2026-07-15',
+        ]);
+
+        $response = $this->actingAs($member)->get(route('member.loans', ['year' => 2026, 'month' => 7]));
+        $response->assertOk();
+        $response->assertSee('₦60,000.00');
+        $response->assertDontSee('₦25,000.00');
+    }
 }
