@@ -44,7 +44,7 @@
                                     </div>
                                 </div>
                             </td>
-                            <td><span class="badge bg-dark font-monospace fs-6">{{ $coop->slug }}</span></td>
+                            <td><span class="badge bg-primary text-white font-monospace fs-6 px-3 py-1 shadow-sm" style="letter-spacing: 0.5px;">{{ $coop->slug }}</span></td>
                             <td><span class="badge bg-info text-dark rounded-pill px-3">{{ $coop->users_count }} Members</span></td>
                             <td class="fw-semibold text-primary">₦{{ number_format($coop->base_slot_amount, 2) }}</td>
                             <td>
