@@ -98,6 +98,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::get('/cooperatives/{cooperative}/edit', [App\Http\Controllers\Admin\CooperativeController::class, 'edit'])->name('cooperatives.edit');
                 Route::put('/cooperatives/{cooperative}', [App\Http\Controllers\Admin\CooperativeController::class, 'update'])->name('cooperatives.update');
                 Route::post('/cooperatives/{cooperative}/toggle', [App\Http\Controllers\Admin\CooperativeController::class, 'toggleStatus'])->name('cooperatives.toggle');
+
+                // Platform Charges & Cooperative Billing (Super Admin only)
+                Route::get('/platform-charges', [App\Http\Controllers\Admin\PlatformChargeController::class, 'index'])->name('platform-charges.index');
+                Route::post('/platform-charges/{cooperative}', [App\Http\Controllers\Admin\PlatformChargeController::class, 'update'])->name('platform-charges.update');
+                Route::post('/platform-charges-batch', [App\Http\Controllers\Admin\PlatformChargeController::class, 'updateBatch'])->name('platform-charges.batch');
             });
 
             // Investment Type Management

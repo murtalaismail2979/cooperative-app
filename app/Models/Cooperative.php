@@ -22,6 +22,8 @@ class Cooperative extends Model
         'enable_shares',
         'enable_savings',
         'base_slot_amount',
+        'monthly_charge_per_member',
+        'billing_notes',
         'share_unit_price',
         'min_share_units',
         'dividend_allocation_basis',
@@ -33,6 +35,7 @@ class Cooperative extends Model
         'enable_shares' => 'boolean',
         'enable_savings' => 'boolean',
         'base_slot_amount' => 'decimal:2',
+        'monthly_charge_per_member' => 'decimal:2',
         'share_unit_price' => 'decimal:2',
         'hybrid_shares_percentage' => 'decimal:2',
     ];
@@ -40,6 +43,28 @@ class Cooperative extends Model
     public function users()
     {
         return $this->hasMany(User::class);
+    }
+
+    public function members()
+    {
+        return $this->hasMany(User::class)->where('role', 'member');
+    }
+
+    public function getRegisteredMembersCountAttribute(): int
+    {
+        return $this->users()->where('role', 'member')->count();
+    }
+
+    public function getTotalMonthlyChargeAttribute(): float
+    {
+        $membersCount = $this->registered_members_count;
+        $chargePerMember = (float) ($this->monthly_charge_per_member ?? 0);
+        return (float) ($membersCount * $chargePerMember);
+    }
+
+    public function getTotalAnnualChargeAttribute(): float
+    {
+        return (float) ($this->total_monthly_charge * 12);
     }
 
     public function scopeActive($query)

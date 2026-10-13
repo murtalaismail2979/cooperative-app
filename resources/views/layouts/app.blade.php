@@ -117,6 +117,9 @@
                                 <a href="{{ route('admin.cooperatives.index') }}" class="nav-link d-block {{ request()->routeIs('admin.cooperatives.*') ? 'active' : '' }}">
                                     <i class="bi bi-buildings"></i> Cooperatives
                                 </a>
+                                <a href="{{ route('admin.platform-charges.index') }}" class="nav-link d-block {{ request()->routeIs('admin.platform-charges.*') ? 'active' : '' }}">
+                                    <i class="bi bi-cash-stack"></i> Platform Charges
+                                </a>
                             @endif
                             <a href="{{ route('admin.members.index') }}" class="nav-link d-block {{ request()->routeIs('admin.members.*') ? 'active' : '' }}">
                                 <i class="bi bi-people"></i> Manage Users
