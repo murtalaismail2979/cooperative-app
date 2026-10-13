@@ -69,4 +69,23 @@ class SlotManagementTest extends TestCase
             ->get(route('admin.slots.index'))
             ->assertForbidden();
     }
+
+    public function test_super_admin_cannot_see_slot_settings_link_in_sidebar(): void
+    {
+        $superAdmin = User::factory()->create(['role' => 'super_admin']);
+
+        $response = $this->actingAs($superAdmin)->get(route('admin.dashboard'));
+        $response->assertOk();
+        $response->assertDontSee(route('admin.slots.index'));
+        $response->assertDontSee('Slot Settings');
+    }
+
+    public function test_super_admin_is_redirected_away_from_slot_settings(): void
+    {
+        $superAdmin = User::factory()->create(['role' => 'super_admin']);
+
+        $response = $this->actingAs($superAdmin)->get(route('admin.slots.index'));
+        $response->assertRedirect(route('admin.dashboard'));
+        $response->assertSessionHas('info');
+    }
 }

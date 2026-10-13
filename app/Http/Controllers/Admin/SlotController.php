@@ -8,6 +8,17 @@ use Illuminate\Http\Request;
 
 class SlotController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            if (auth()->check() && auth()->user()->isSuperAdmin()) {
+                return redirect()->route('admin.dashboard')
+                    ->with('info', 'Slot settings are managed at the individual cooperative level by cooperative admins.');
+            }
+            return $next($request);
+        });
+    }
+
     public function index()
     {
         $slots = Slot::orderBy('slot_number')->get();

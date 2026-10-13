@@ -121,9 +121,11 @@
                             <a href="{{ route('admin.members.index') }}" class="nav-link d-block {{ request()->routeIs('admin.members.*') ? 'active' : '' }}">
                                 <i class="bi bi-people"></i> Manage Users
                             </a>
-                            <a href="{{ route('admin.slots.index') }}" class="nav-link d-block {{ request()->routeIs('admin.slots.*') ? 'active' : '' }}">
-                                <i class="bi bi-grid-3x3-gap"></i> Slot Settings
-                            </a>
+                            @if(!auth()->user()->isSuperAdmin())
+                                <a href="{{ route('admin.slots.index') }}" class="nav-link d-block {{ request()->routeIs('admin.slots.*') ? 'active' : '' }}">
+                                    <i class="bi bi-grid-3x3-gap"></i> Slot Settings
+                                </a>
+                            @endif
                             <a href="{{ route('admin.registration-fees.index') }}" class="nav-link d-block {{ request()->routeIs('admin.registration-fees.*') ? 'active' : '' }}">
                                 <i class="bi bi-card-checklist"></i> Registration Fees
                             </a>
@@ -260,6 +262,20 @@
                 @if(session('success'))
                     <div class="alert alert-success alert-dismissible fade show">
                         {{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                @endif
+
+                @if(session('info'))
+                    <div class="alert alert-info alert-dismissible fade show">
+                        {{ session('info') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                @endif
+
+                @if(session('error'))
+                    <div class="alert alert-danger alert-dismissible fade show">
+                        {{ session('error') }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                 @endif
