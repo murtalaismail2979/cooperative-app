@@ -626,9 +626,8 @@
     <!-- Header Navigation -->
     <header>
         <div class="container nav-container">
-            <a href="/" class="logo">
-                <i class="bi bi-stack"></i>
-                {{ config('app.name', 'MyCoopSuite') }}
+            <a href="/" class="logo" style="text-decoration: none;">
+                <img src="{{ asset('images/mycoopsuite-logo.png') }}" alt="{{ config('app.name', 'MyCoopSuite') }}" style="height: 42px; object-fit: contain;">
             </a>
             <ul class="nav-links">
                 <li><a href="#features">Features</a></li>
@@ -787,9 +786,8 @@
         <div class="container">
             <div class="footer-grid">
                 <div class="footer-logo-col">
-                    <a href="/" class="logo">
-                        <i class="bi bi-stack"></i>
-                        {{ config('app.name', 'MyCoopSuite') }}
+                    <a href="/" class="logo" style="text-decoration: none;">
+                        <img src="{{ asset('images/mycoopsuite-logo.png') }}" alt="{{ config('app.name', 'MyCoopSuite') }}" style="height: 38px; object-fit: contain;">
                     </a>
                     <p class="footer-desc">
                         Providing flexible, secure, and modern financial Association services for personal and collective growth.

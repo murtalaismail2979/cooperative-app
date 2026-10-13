@@ -98,8 +98,14 @@
         <div class="row">
             <!-- Sidebar -->
             <div class="col-md-2 p-0 sidebar">
-                <div class="brand text-truncate" title="{{ auth()->user()->cooperative->name ?? config('app.name', 'MyCoopSuite') }}">
-                    <i class="bi bi-building"></i> {{ auth()->user()->cooperative->slug ?? config('app.name', 'MyCoopSuite') }}
+                <div class="brand text-truncate d-flex align-items-center" title="{{ auth()->user()->cooperative->name ?? config('app.name', 'MyCoopSuite') }}">
+                    @if(auth()->user()->isSuperAdmin() || !auth()->user()->cooperative)
+                        <a href="{{ route('admin.dashboard') }}" class="d-inline-flex align-items-center text-decoration-none">
+                            <img src="{{ asset('images/mycoopsuite-logo.png') }}" alt="{{ config('app.name', 'MyCoopSuite') }}" style="height: 38px; max-width: 100%; object-fit: contain;">
+                        </a>
+                    @else
+                        <span class="d-inline-flex align-items-center"><i class="bi bi-building me-2"></i> {{ auth()->user()->cooperative->slug ?? config('app.name', 'MyCoopSuite') }}</span>
+                    @endif
                 </div>
                 <nav class="p-3">
                     @auth

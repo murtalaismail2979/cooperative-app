@@ -378,8 +378,12 @@
 
         <div class="auth-container">
             <a href="/" class="logo">
-                <i class="bi bi-stack"></i>
-                {{ $guestName }}
+                @if(!$guestCoop)
+                    <img src="{{ asset('images/mycoopsuite-logo.png') }}" alt="{{ $guestName }}" style="height: 50px; max-width: 100%; object-fit: contain;">
+                @else
+                    <i class="bi bi-building"></i>
+                    {{ $guestName }}
+                @endif
             </a>
             <p class="tagline">{{ $guestTagline }}</p>
 
