@@ -105,7 +105,7 @@
             <h5 class="fw-bold text-dark border-bottom pb-1 mb-2" style="font-size: 1rem;">3. Platform Charges & Automated Calculation</h5>
             <p class="mb-2"><strong>3.1. Dynamic Billing Formula:</strong> The Tenant agrees to pay a monthly usage charge calculated automatically by the Platform based upon the total number of registered members:</p>
             <div class="bg-light p-3 rounded text-center border font-monospace mb-2">
-                <strong>Total Monthly Platform Charge = Total Registered Members × Agreed Rate Per Member</strong>
+                <strong>Total Monthly Platform Charge (₦) = Total Registered Members × Agreed Rate Per Member (₦)</strong>
             </div>
             <p class="mb-1"><strong>3.2. Rate Schedule:</strong> The agreed rate for the Tenant is <strong>₦{{ number_format($rate, 2) }}</strong> per member per month, yielding a current monthly bill of <strong>₦{{ number_format($monthlyTotal, 2) }}</strong> based on <strong>{{ number_format($membersCount) }}</strong> registered members, as formalized in <strong>Schedule A</strong>.</p>
             <p class="mb-1"><strong>3.3. Invoicing & Due Date:</strong> Invoices are generated electronically on the first business day following each calendar month and are payable within fourteen (14) calendar days.</p>

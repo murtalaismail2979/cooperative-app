@@ -98,7 +98,7 @@
                 <i class="bi bi-table me-2 text-primary"></i> Cooperative Charges & Calculated Totals
             </h5>
             <span class="text-muted small">
-                Calculation: <code>Total Monthly = Registered Members × Charge Rate Per Member</code>
+                Calculation: <code>Total Monthly (₦) = Registered Members × Charge Rate Per Member (₦)</code>
             </span>
         </div>
         <div class="card-body p-0">
