@@ -44,7 +44,7 @@
                         <x-input-label for="base_slot_amount" :value="__('Base Monthly Slot Fee (₦) *')" />
                         <x-text-input id="base_slot_amount" 
                                       class="block mt-1 w-full font-bold" 
-                                      style="background-color: #ffffff !important; color: #0f5132 !important; font-weight: 700 !important;" 
+                                      style="background-color: #ffffff !important; color: #000000 !important; font-weight: 700 !important;" 
                                       type="number" 
                                       step="0.01" 
                                       name="base_slot_amount" 

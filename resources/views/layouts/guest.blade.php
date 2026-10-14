@@ -186,13 +186,13 @@
                 outline: none !important;
             }
 
-            /* White Input / Number Field (Base Slot Amount) with Dark Green Text */
+            /* White Input / Number Field (Base Slot Amount) with Black Text */
             .auth-card input[type="number"],
             .auth-card input#base_slot_amount {
                 background-color: #ffffff !important;
-                color: #0f5132 !important; /* Dark Green */
+                color: #000000 !important; /* High-contrast Black */
                 font-weight: 700 !important;
-                border: 1.5px solid #22c55e !important;
+                border: 1.5px solid #cbd5e1 !important;
                 border-radius: 12px !important;
                 padding: 0.75rem 1rem !important;
                 font-size: 0.95rem !important;
@@ -202,10 +202,10 @@
 
             .auth-card input[type="number"]:focus,
             .auth-card input#base_slot_amount:focus {
-                border-color: #0f5132 !important;
-                box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25) !important;
+                border-color: #6366f1 !important;
+                box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
                 outline: none !important;
-                color: #0f5132 !important;
+                color: #000000 !important;
             }
 
             /* Input placeholder overrides */
