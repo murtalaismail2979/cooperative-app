@@ -37,7 +37,7 @@
 
                 <div class="col-md-6">
                     <label for="phone" class="form-label">Phone Number</label>
-                    <input type="text" class="form-control @error('phone') is-invalid @enderror" id="phone" name="phone" value="{{ old('phone', $cooperative->phone) }}">
+                    <input type="tel" inputmode="tel" pattern="[\+]?[0-9\s\-\(\)]{7,20}" maxlength="20" class="form-control @error('phone') is-invalid @enderror" id="phone" name="phone" value="{{ old('phone', $cooperative->phone) }}" placeholder="e.g. +234 800 000 0000 or 08012345678">
                     @error('phone') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 

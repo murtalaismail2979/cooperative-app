@@ -27,7 +27,7 @@ class CooperativeRegistrationController extends Controller
             'cooperative_name' => ['required', 'string', 'max:255'],
             'cooperative_slug' => ['nullable', 'string', 'max:50', 'unique:cooperatives,slug'],
             'cooperative_email' => ['nullable', 'email', 'max:255'],
-            'cooperative_phone' => ['nullable', 'string', 'max:50'],
+            'cooperative_phone' => ['nullable', 'string', 'max:20', new \App\Rules\PhoneNumber],
             'cooperative_address' => ['nullable', 'string', 'max:500'],
             'address' => ['nullable', 'string', 'max:500'],
             'state' => ['nullable', 'string', 'max:100'],
@@ -39,7 +39,7 @@ class CooperativeRegistrationController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'phone' => ['nullable', 'string', 'max:20'],
+            'phone' => ['nullable', 'string', 'max:20', new \App\Rules\PhoneNumber],
         ]);
 
         $slugInput = $request->cooperative_slug ? $request->cooperative_slug : $request->cooperative_name;

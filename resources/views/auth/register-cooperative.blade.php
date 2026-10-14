@@ -37,7 +37,7 @@
                     </div>
                     <div>
                         <x-input-label for="cooperative_phone" :value="__('Phone Number')" />
-                        <x-text-input id="cooperative_phone" class="block mt-1 w-full" type="text" name="cooperative_phone" :value="old('cooperative_phone')" placeholder="+234 800 000 0000" />
+                        <x-text-input id="cooperative_phone" class="block mt-1 w-full" type="tel" inputmode="tel" pattern="[\+]?[0-9\s\-\(\)]{7,20}" maxlength="20" name="cooperative_phone" :value="old('cooperative_phone')" placeholder="+234 800 000 0000 or 08012345678" />
                         <x-input-error :messages="$errors->get('cooperative_phone')" class="mt-2" />
                     </div>
                 </div>
@@ -125,7 +125,7 @@
                 <!-- Admin Phone -->
                 <div>
                     <x-input-label for="phone" :value="__('Administrator Phone Number')" />
-                    <x-text-input id="phone" class="block mt-1 w-full" type="text" name="phone" :value="old('phone')" placeholder="+234 800 000 0000" />
+                    <x-text-input id="phone" class="block mt-1 w-full" type="tel" inputmode="tel" pattern="[\+]?[0-9\s\-\(\)]{7,20}" maxlength="20" name="phone" :value="old('phone')" placeholder="+234 800 000 0000 or 08012345678" />
                     <x-input-error :messages="$errors->get('phone')" class="mt-2" />
                 </div>
 

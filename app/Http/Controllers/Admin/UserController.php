@@ -234,7 +234,7 @@ class UserController extends Controller
             'cooperative_id' => 'nullable|exists:cooperatives,id',
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
-            'phone' => 'nullable|string|max:20',
+            'phone' => ['nullable', 'string', 'max:20', new \App\Rules\PhoneNumber],
             'address' => 'nullable|string|max:500',
             'password' => 'required|string|min:8',
             'role' => 'required|string|in:member,chairman,secretary,treasurer,admin',
@@ -245,7 +245,7 @@ class UserController extends Controller
             'payment_method' => 'nullable|string|in:Pending,Cash,Bank Transfer,Cheque,Online,Other',
             'reference_number' => 'nullable|string|max:255',
             'nok_name' => 'required_if:role,member|nullable|string|max:255',
-            'nok_phone' => 'required_if:role,member|nullable|string|max:20',
+            'nok_phone' => ['required_if:role,member', 'nullable', 'string', 'max:20', new \App\Rules\PhoneNumber],
             'nok_relationship' => 'required_if:role,member|nullable|string|max:255',
             'nok_address' => 'nullable|string|max:500',
         ]);
@@ -400,7 +400,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $member->id,
-            'phone' => 'nullable|string|max:20',
+            'phone' => ['nullable', 'string', 'max:20', new \App\Rules\PhoneNumber],
             'address' => 'nullable|string|max:500',
             'role' => 'required|string|in:member,chairman,secretary,treasurer,admin',
             'registration_year' => 'nullable|integer|min:2000|max:2100',
@@ -409,7 +409,7 @@ class UserController extends Controller
             'slots' => 'required_if:role,member|nullable|integer|min:1|max:10',
             'slot_change_date' => 'nullable|date',
             'nok_name' => 'required_if:role,member|nullable|string|max:255',
-            'nok_phone' => 'required_if:role,member|nullable|string|max:20',
+            'nok_phone' => ['required_if:role,member', 'nullable', 'string', 'max:20', new \App\Rules\PhoneNumber],
             'nok_relationship' => 'required_if:role,member|nullable|string|max:255',
             'nok_address' => 'nullable|string|max:500',
         ]);

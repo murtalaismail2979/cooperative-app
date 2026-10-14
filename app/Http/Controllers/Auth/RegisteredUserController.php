@@ -35,10 +35,10 @@ class RegisteredUserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'phone' => ['nullable', 'string', 'max:20'],
+            'phone' => ['nullable', 'string', 'max:20', new \App\Rules\PhoneNumber],
             'address' => ['nullable', 'string', 'max:500'],
             'nok_name' => ['required', 'string', 'max:255'],
-            'nok_phone' => ['required', 'string', 'max:20'],
+            'nok_phone' => ['required', 'string', 'max:20', new \App\Rules\PhoneNumber],
             'nok_relationship' => ['required', 'string', 'max:255'],
             'nok_address' => ['nullable', 'string', 'max:500'],
         ]);

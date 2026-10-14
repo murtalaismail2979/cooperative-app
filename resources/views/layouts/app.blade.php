@@ -450,6 +450,19 @@
             }
 
             initAutoSearch();
+
+            // Real-time phone input filtering to prevent typing/pasting invalid characters
+            document.querySelectorAll('input[type="tel"], input[name="phone"], input[name="nok_phone"], input[name="cooperative_phone"]').forEach(function (input) {
+                input.addEventListener('input', function () {
+                    var cleaned = this.value.replace(/[^0-9+\s\-()]/g, '');
+                    if (cleaned.indexOf('+') > 0) {
+                        cleaned = cleaned.charAt(0) + cleaned.slice(1).replace(/\+/g, '');
+                    }
+                    if (this.value !== cleaned) {
+                        this.value = cleaned;
+                    }
+                });
+            });
         });
     </script>
     @stack('scripts')

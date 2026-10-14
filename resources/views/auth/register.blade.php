@@ -52,7 +52,7 @@
                 <!-- Phone (User) -->
                 <div>
                     <x-input-label for="phone" :value="__('Phone Number')" />
-                    <x-text-input id="phone" class="block mt-1 w-full" type="text" name="phone" :value="old('phone')" />
+                    <x-text-input id="phone" class="block mt-1 w-full" type="tel" inputmode="tel" pattern="[\+]?[0-9\s\-\(\)]{7,20}" maxlength="20" name="phone" :value="old('phone')" placeholder="e.g. 08012345678 or +234 800 000 0000" />
                     <x-input-error :messages="$errors->get('phone')" class="mt-2" />
                 </div>
 
@@ -90,7 +90,7 @@
                 <!-- Next of Kin Phone -->
                 <div>
                     <x-input-label for="nok_phone" :value="__('Next of Kin Phone Number *')" />
-                    <x-text-input id="nok_phone" class="block mt-1 w-full" type="text" name="nok_phone" :value="old('nok_phone')" required />
+                    <x-text-input id="nok_phone" class="block mt-1 w-full" type="tel" inputmode="tel" pattern="[\+]?[0-9\s\-\(\)]{7,20}" maxlength="20" name="nok_phone" :value="old('nok_phone')" required placeholder="e.g. 08012345678 or +234 800 000 0000" />
                     <x-input-error :messages="$errors->get('nok_phone')" class="mt-2" />
                 </div>
 
