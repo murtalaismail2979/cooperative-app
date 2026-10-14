@@ -1,0 +1,301 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset='utf-8'>
+<title>MyCoopSuite Master SaaS Agreement</title>
+<!--[if gte mso 9]>
+<xml>
+<w:WordDocument>
+<w:View>Print</w:View>
+<w:Zoom>100</w:Zoom>
+<w:DoNotOptimizeForBrowser/>
+</w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+@page {
+    size: 21.0cm 29.7cm; /* A4 */
+    margin: 2.5cm 2.0cm 2.5cm 2.0cm;
+    mso-header-margin: 1.25cm;
+    mso-footer-margin: 1.25cm;
+    mso-paper-source: 0;
+}
+body {
+    font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 1.45;
+    color: #1a202c;
+    background-color: #ffffff;
+}
+h1 {
+    font-size: 18pt;
+    font-weight: bold;
+    color: #0f172a;
+    text-align: center;
+    text-transform: uppercase;
+    margin-bottom: 4pt;
+    border-bottom: 2pt solid #2563eb;
+    padding-bottom: 6pt;
+}
+h2 {
+    font-size: 13pt;
+    font-weight: bold;
+    color: #1e3a8a;
+    text-transform: uppercase;
+    margin-top: 14pt;
+    margin-bottom: 4pt;
+    border-bottom: 1pt solid #cbd5e1;
+    padding-bottom: 2pt;
+}
+p {
+    margin-top: 0;
+    margin-bottom: 6pt;
+    text-align: justify;
+}
+.ref-box {
+    text-align: right;
+    font-size: 9.5pt;
+    color: #475569;
+    font-family: 'Courier New', monospace;
+    margin-bottom: 12pt;
+}
+.parties-box {
+    background-color: #f8fafc;
+    border: 1pt solid #e2e8f0;
+    padding: 10pt;
+    margin-top: 8pt;
+    margin-bottom: 12pt;
+}
+.formula-box {
+    background-color: #eff6ff;
+    border: 1pt solid #bfdbfe;
+    padding: 8pt;
+    text-align: center;
+    font-family: 'Consolas', monospace;
+    font-weight: bold;
+    margin: 8pt 0;
+}
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 10pt 0;
+}
+th, td {
+    border: 1pt solid #94a3b8;
+    padding: 6pt 8pt;
+    font-size: 10pt;
+    vertical-align: top;
+}
+th {
+    background-color: #f1f5f9;
+    font-weight: bold;
+    color: #0f172a;
+}
+.signature-table td {
+    border: 1pt solid #cbd5e1;
+    background-color: #f8fafc;
+    padding: 10pt;
+    width: 50%;
+}
+.sig-line {
+    border-bottom: 1.5pt dashed #64748b;
+    height: 35pt;
+    margin-bottom: 6pt;
+}
+</style>
+</head>
+<body>
+
+<div class="ref-box">
+    <strong>DOCUMENT REFERENCE:</strong> MCS-MSA-2026-V1<br>
+    <strong>GOVERNING CURRENCY:</strong> NIGERIAN NAIRA (₦ / NGN)
+</div>
+
+<h1>MASTER SOFTWARE-AS-A-SERVICE (SaaS) AGREEMENT</h1>
+<p style="text-align: center; color: #475569; font-size: 9.5pt; margin-top: -2pt; margin-bottom: 14pt;">
+    STANDARD ENTERPRISE TENANT LICENSING, DATA SEGREGATION & SERVICE LEVEL AGREEMENT
+</p>
+
+<div class="parties-box">
+    <p><strong>EFFECTIVE DATE:</strong> [Date of Agreement Execution]</p>
+    <p>This Master Software-as-a-Service Agreement (the <strong>"Agreement"</strong>) is made and entered into by and between:</p>
+    <p>
+        <strong>1. MYCOOPSUITE TECHNOLOGIES</strong> (hereinafter referred to as the <strong>"Provider"</strong>, <strong>"Software Owner"</strong>, or <strong>"Licensor"</strong>), the lawful developer, owner, and overarching administrator of the <strong>MyCoopSuite</strong> multi-tenant cooperative financial operating cloud platform; and
+    </p>
+    <p>
+        <strong>2. [NAME OF REGISTERED COOPERATIVE SOCIETY]</strong>, a cooperative society duly registered under the relevant Cooperative Societies Laws, having its principal registered office at [Cooperative Physical Address] (hereinafter referred to as the <strong>"Tenant"</strong>, <strong>"Customer"</strong>, or <strong>"Cooperative"</strong>).
+    </p>
+    <p style="margin-bottom: 0;">The Provider and Tenant are individually referred to as a <strong>"Party"</strong> and collectively as the <strong>"Parties"</strong>.</p>
+</div>
+
+<h2>RECITALS</h2>
+<p><strong>WHEREAS:</strong></p>
+<p><strong>A.</strong> The Provider owns, hosts, operates, and maintains a proprietary multi-tenant cloud software application known as <strong>MyCoopSuite</strong> (the <strong>"Platform"</strong>), engineered to automate member registers, savings slots, loans, business investments, dividends, and running charges for cooperative societies.</p>
+<p><strong>B.</strong> The Tenant desires to license and access the Platform for the operational administration of its cooperative society, executive workflows, and member financial ledgers.</p>
+<p><strong>C.</strong> The Provider agrees to grant the Tenant access on a per-member subscription tariff model, subject to strict multi-tenant data segregation, privacy regulations, and the Service Level commitments set forth herein.</p>
+<p><strong>NOW, THEREFORE</strong>, in consideration of the mutual covenants herein contained, the Parties hereby agree as follows:</p>
+
+<h2>1. DEFINITIONS AND INTERPRETATION</h2>
+<p><strong>1.1. "Active / Registered Member"</strong> means any natural person or corporate member registered within the Tenant's partition on the Platform under the role of "Member" during any portion of a billing cycle.</p>
+<p><strong>1.2. "Billing Cycle"</strong> means a recurring calendar monthly period commencing on the 1st day of each month and terminating on the final day of the same month.</p>
+<p><strong>1.3. "Per-Member Monthly Charge"</strong> means the agreed rate in Nigerian Naira (₦) charged by the Provider to the Tenant for each active registered member per calendar month, configured within the Super Admin portal and stipulated in Schedule A.</p>
+<p><strong>1.4. "Super Admin"</strong> means the platform owner administration authority holding overarching rights across the multi-tenant SaaS infrastructure.</p>
+<p><strong>1.5. "Tenant Data"</strong> means all financial records, member profiles, savings histories, running charges, and documents uploaded, processed, or generated by the Tenant on the Platform.</p>
+<p><strong>1.6. "Tenant Partition"</strong> means the logically segregated, access-controlled cloud database partition allocated exclusively to the Tenant.</p>
+
+<h2>2. SCOPE OF SERVICE & LICENSE GRANT</h2>
+<p><strong>2.1. License Grant:</strong> Subject to timely payment of platform charges, the Provider grants the Tenant a non-exclusive, non-transferable, revocable license to access and utilize MyCoopSuite throughout the duration of this Agreement.</p>
+<p><strong>2.2. Multi-Tenant Architectural Segregation:</strong> The Provider guarantees that the Tenant Partition is logically isolated. Cross-tenant queries or data visibility between different cooperatives are strictly blocked at the database and application layers.</p>
+<p><strong>2.3. Platform Scope:</strong> The subscription entitles the Tenant to utilize member onboarding, savings slot tracking, loans, business investments, dividend distribution, receipts, and role-based administrative portals (Chairman, Secretary, Treasurer, and Members portals).</p>
+
+<h2>3. BILLING, CALCULATION & PAYMENT TERMS</h2>
+<p><strong>3.1. Dynamic Billing Calculation:</strong> Billing is automatically computed by the Platform at the close of each Billing Cycle based upon the actual number of registered members:</p>
+
+<div class="formula-box">
+    Total Monthly Platform Charge (₦) = Total Registered Members × Agreed Rate Per Member (₦)<br>
+    Projected Annual Charge (₦) = Total Monthly Platform Charge (₦) × 12
+</div>
+
+<p><strong>3.2. Tariff Schedule:</strong> The agreed rate is set forth in <strong>Schedule A</strong>. The Provider reserves the right to review the tariff annually with at least thirty (30) days' prior written notice.</p>
+<p><strong>3.3. Invoicing & Due Date:</strong> Electronic invoices are generated on the 1st business day following each month and are payable within fourteen (14) calendar days.</p>
+<p><strong>3.4. Grace Period:</strong> If an invoice remains unpaid for more than thirty (30) days, the Provider may restrict administrative posting while preserving read-only historical transparency for members.</p>
+
+<h2>4. DATA OWNERSHIP, PRIVACY & SECURITY</h2>
+<p><strong>4.1. 100% Tenant Ownership:</strong> The Tenant retains sole, exclusive, and unencumbered ownership of all Tenant Data. The Provider acquires zero proprietary rights over member records or funds.</p>
+<p><strong>4.2. Data Protection:</strong> The Provider complies with the Nigeria Data Protection Act (NDPA) and international standards. Personal member data will never be leased, sold, or shared with third parties.</p>
+<p><strong>4.3. Encryption & Backups:</strong> Platform communication is secured via TLS 1.3 encryption, and data at rest is protected with AES-256 standard encryption. Automated geo-redundant backups occur daily.</p>
+
+<h2>5. SERVICE LEVEL AGREEMENT (SLA) & UPTIME</h2>
+<p><strong>5.1. Uptime Commitment:</strong> The Provider guarantees a monthly Service Uptime of not less than <strong>99.5%</strong>, excluding scheduled off-peak maintenance.</p>
+<p><strong>5.2. Incident Response Severity Matrix:</strong></p>
+
+<table>
+    <thead>
+        <tr>
+            <th style="width: 22%;">Severity Level</th>
+            <th>Operational Impact</th>
+            <th style="width: 22%;">First Response</th>
+            <th style="width: 22%;">Target Resolution</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Critical (P1)</strong></td>
+            <td>Platform completely inaccessible to all users</td>
+            <td>≤ 1 hour</td>
+            <td>≤ 6 hours</td>
+        </tr>
+        <tr>
+            <td><strong>Major (P2)</strong></td>
+            <td>Core module disabled (e.g., savings or member registration down)</td>
+            <td>≤ 4 hours</td>
+            <td>≤ 24 hours</td>
+        </tr>
+        <tr>
+            <td><strong>Minor (P3)</strong></td>
+            <td>Non-blocking interface bug or reporting display anomaly</td>
+            <td>≤ 12 hours</td>
+            <td>≤ 48 hours</td>
+        </tr>
+        <tr>
+            <td><strong>Inquiry (P4)</strong></td>
+            <td>Feature suggestion, general guidance, or tariff adjustment</td>
+            <td>≤ 24 hours</td>
+            <td>Next update</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>6. TERM, OFFBOARDING & 30-DAY DATA PORTABILITY</h2>
+<p><strong>6.1. Term:</strong> This Agreement begins on the Effective Date for an initial term of one (1) year, automatically renewing annually unless terminated with thirty (30) days' written notice.</p>
+<p><strong>6.2. 30-Day Export Guarantee:</strong> Upon contract termination, the Tenant is guaranteed a <strong>thirty (30) calendar day grace window</strong> to download a complete, uncorrupted export of all member ledgers and transactions in standard SQL or CSV format.</p>
+
+<h2>7. LIMITATION OF LIABILITY & GOVERNING LAW</h2>
+<p><strong>7.1. Aggregate Liability Cap:</strong> The maximum monetary liability of the Provider arising out of this Agreement shall not exceed the total fees actually paid by the Tenant in the twelve (12) months preceding the incident.</p>
+<p><strong>7.2. Governing Law:</strong> This Agreement is governed by the laws of the Federal Republic of Nigeria. Unresolved disputes shall be submitted to binding arbitration.</p>
+
+<h2>SCHEDULE A: SERVICE ORDER & TARIFF SCHEDULE</h2>
+
+<table>
+    <tbody>
+        <tr>
+            <th style="width: 38%;">Platform Name</th>
+            <td>MyCoopSuite (Multi-Tenant Cooperative Cloud Infrastructure)</td>
+        </tr>
+        <tr>
+            <th>Software Owner / Provider</th>
+            <td>MyCoopSuite Technologies</td>
+        </tr>
+        <tr>
+            <th>Tenant Cooperative Name</th>
+            <td><strong>[Insert Full Legal Name of Cooperative Society]</strong></td>
+        </tr>
+        <tr>
+            <th>Tenant Code / Slug</th>
+            <td><strong>[e.g., AHMC / YLDA]</strong></td>
+        </tr>
+        <tr>
+            <th>Official Contact Details</th>
+            <td>Email: [cooperative@email.com] | Phone: [+234...] | Address: [Physical Address]</td>
+        </tr>
+        <tr>
+            <th>Agreed Monthly Charge Per Member</th>
+            <td><strong>₦ [e.g., 150.00]</strong> per registered member per month</td>
+        </tr>
+        <tr>
+            <th>Current Active Member Base</th>
+            <td><strong>[Number of Registered Members]</strong></td>
+        </tr>
+        <tr>
+            <th>Base Monthly SaaS Fee</th>
+            <td><strong>₦ [Calculated: Members × Rate]</strong></td>
+        </tr>
+        <tr>
+            <th>Projected 12-Month Annual Charge</th>
+            <td><strong>₦ [Calculated: Monthly × 12]</strong></td>
+        </tr>
+        <tr>
+            <th>Billing Terms</th>
+            <td>Monthly in arrears (Net 14 Calendar Days from invoice date)</td>
+        </tr>
+        <tr>
+            <th>Contract Notes</th>
+            <td>Standard automated per-member usage billing agreement.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>EXECUTION AND ATTESTATION BLOCK</h2>
+<p><strong>IN WITNESS WHEREOF</strong>, the authorized representatives of the Parties have executed this Master SaaS Agreement as of the Effective Date.</p>
+
+<table class="signature-table">
+    <tr>
+        <td>
+            <strong style="color: #1e3a8a;">FOR AND ON BEHALF OF THE PROVIDER:</strong><br>
+            <em>(MyCoopSuite Technologies)</em>
+            <div class="sig-line"></div>
+            <strong>Authorized Executive Signature</strong><br><br>
+            Name: __________________________________________<br><br>
+            Title: Platform Administrator / Managing Director<br><br>
+            Date: __________________________________________
+        </td>
+        <td>
+            <strong style="color: #1e3a8a;">FOR AND ON BEHALF OF THE TENANT:</strong><br>
+            <em>([Legal Name of Cooperative Society])</em>
+            <div class="sig-line"></div>
+            <strong>President / Chairman Signature</strong><br><br>
+            Name: __________________________________________<br><br>
+            Date: __________________________________________<br>
+            <div class="sig-line"></div>
+            <strong>General Secretary / Treasurer Attestation</strong><br><br>
+            Name: __________________________________________<br><br>
+            Date: __________________________________________
+        </td>
+    </tr>
+</table>
+
+<p style="text-align: center; color: #64748b; font-size: 8.5pt; margin-top: 18pt;">
+    MyCoopSuite Multi-Tenant Cloud Operating System &bull; Ref: MCS-MSA-2026-V1 &bull; Document valid upon execution.
+</p>
+
+</body>
+</html>

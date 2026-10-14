@@ -452,9 +452,12 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer bg-light border-top">
+            <div class="modal-footer bg-light border-top d-flex justify-content-between">
+                <a href="{{ asset('downloads/MyCoopSuite_Master_SaaS_Agreement.doc') }}" download class="btn btn-outline-primary fw-semibold">
+                    <i class="bi bi-file-earmark-word me-1"></i> Download Word Document (.doc)
+                </a>
                 <button type="button" class="btn btn-primary fw-semibold" data-bs-dismiss="modal">
-                    <i class="bi bi-check-lg me-1"></i> Understood
+                    <i class="bi bi-check-lg me-1"></i> Close
                 </button>
             </div>
         </div>

@@ -18,6 +18,9 @@
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
+                    <button type="button" onclick="exportToWord()" class="btn btn-outline-light btn-sm fw-semibold shadow-sm">
+                        <i class="bi bi-file-earmark-word me-1 text-info"></i> Download Word (.doc)
+                    </button>
                     <button type="button" onclick="window.print()" class="btn btn-primary btn-sm fw-semibold shadow-sm">
                         <i class="bi bi-printer me-1"></i> Print / Save as PDF
                     </button>
@@ -353,4 +356,42 @@
     }
 }
 </style>
+
+<script>
+function exportToWord() {
+    const content = document.querySelector('.saas-agreement-container').cloneNode(true);
+    
+    // Remove buttons or interactive elements if any inside container
+    content.querySelectorAll('.d-print-none, button').forEach(el => el.remove());
+
+    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' "+
+        "xmlns:w='urn:schemas-microsoft-com:office:word' "+
+        "xmlns='http://www.w3.org/TR/REC-html40'>"+
+        "<head><meta charset='utf-8'><title>Master SaaS Agreement - {{ $cooperative->name }}</title>"+
+        "<style>"+
+        "body { font-family: 'Calibri', Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #1e293b; margin: 20px; } "+
+        "h2, h3, h4, h5 { color: #0f172a; font-family: 'Calibri', Arial, sans-serif; } "+
+        "table { border-collapse: collapse; width: 100%; margin: 16px 0; } "+
+        "th, td { border: 1px solid #94a3b8; padding: 7px 10px; text-align: left; vertical-align: middle; } "+
+        "th { background-color: #f1f5f9; font-weight: bold; } "+
+        ".signature-line { border-bottom: 1.5px dashed #64748b; height: 35px; margin: 15px 0; } "+
+        ".badge { display: inline-block; padding: 3px 7px; border: 1px solid #cbd5e1; font-weight: bold; } "+
+        "</style></head><body>";
+    const footer = "</body></html>";
+    const sourceHTML = header + content.innerHTML + footer;
+    
+    const blob = new Blob(['\ufeff', sourceHTML], {
+        type: 'application/msword;charset=utf-8'
+    });
+    
+    const url = URL.createObjectURL(blob);
+    const downloadLink = document.createElement("a");
+    document.body.appendChild(downloadLink);
+    downloadLink.href = url;
+    downloadLink.download = "MyCoopSuite_SaaS_Agreement_{{ $cooperative->slug }}.doc";
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    URL.revokeObjectURL(url);
+}
+</script>
 @endsection
