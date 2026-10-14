@@ -195,4 +195,76 @@ class PlatformChargeTest extends TestCase
         $response = $this->actingAs($member)->get(route('admin.platform-charges.index'));
         $response->assertForbidden();
     }
+
+    public function test_super_admin_can_view_cooperative_saas_agreement_with_dynamic_data(): void
+    {
+        $superAdmin = User::factory()->create(['role' => 'super_admin']);
+
+        $coop = Cooperative::create([
+            'name' => 'Apex Horizon Multipurpose Cooperative',
+            'slug' => 'AHMC',
+            'base_slot_amount' => 2000,
+            'monthly_charge_per_member' => 150.00,
+            'email' => 'contact@ahmc.coop',
+            'phone' => '+2348012345678',
+            'address' => 'Plot 42 Commercial Avenue, Lagos',
+            'is_active' => true,
+        ]);
+
+        User::factory()->count(12)->create([
+            'role' => 'member',
+            'cooperative_id' => $coop->id,
+        ]);
+
+        $response = $this->actingAs($superAdmin)->get(route('admin.platform-charges.agreement', $coop));
+        $response->assertOk();
+        $response->assertSee('Master Software-as-a-Service (SaaS) Agreement');
+        $response->assertSee('MCS-MSA-2026-AHMC');
+        $response->assertSee('Apex Horizon Multipurpose Cooperative');
+        $response->assertSee('12 Registered Members');
+        $response->assertSee('150.00');
+        $response->assertSee('1,800.00');
+        $response->assertSee('21,600.00');
+        $response->assertSee('contact@ahmc.coop');
+        $response->assertSee('Schedule A: Service Order');
+        $response->assertSee('Master Software-as-a-Service (SaaS) Agreement');
+    }
+
+    public function test_regular_admin_cannot_access_cooperative_saas_agreement(): void
+    {
+        $coop = Cooperative::create([
+            'name' => 'Apex Horizon Multipurpose Cooperative',
+            'slug' => 'AHMC',
+            'base_slot_amount' => 2000,
+            'monthly_charge_per_member' => 150.00,
+            'is_active' => true,
+        ]);
+
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'cooperative_id' => $coop->id,
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('admin.platform-charges.agreement', $coop));
+        $response->assertForbidden();
+    }
+
+    public function test_member_cannot_access_cooperative_saas_agreement(): void
+    {
+        $coop = Cooperative::create([
+            'name' => 'Apex Horizon Multipurpose Cooperative',
+            'slug' => 'AHMC',
+            'base_slot_amount' => 2000,
+            'monthly_charge_per_member' => 150.00,
+            'is_active' => true,
+        ]);
+
+        $member = User::factory()->create([
+            'role' => 'member',
+            'cooperative_id' => $coop->id,
+        ]);
+
+        $response = $this->actingAs($member)->get(route('admin.platform-charges.agreement', $coop));
+        $response->assertForbidden();
+    }
 }

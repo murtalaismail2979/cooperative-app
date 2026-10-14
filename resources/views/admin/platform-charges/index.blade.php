@@ -19,7 +19,10 @@
                         Configure the agreed monthly software usage charges per registered member for each cooperative. The system automatically computes the total monthly and projected annual bill based on each cooperative's member count.
                     </p>
                 </div>
-                <div>
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-outline-light fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#agreementInfoModal">
+                        <i class="bi bi-file-earmark-check me-1"></i> Agreement Standard
+                    </button>
                     <button type="button" class="btn btn-primary fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#batchRateModal">
                         <i class="bi bi-sliders me-1"></i> Apply Uniform Rate
                     </button>
@@ -177,13 +180,21 @@
                                     @endif
                                 </td>
                                 <td class="text-end pe-4">
-                                    <button type="button" 
-                                            class="btn btn-outline-primary btn-sm shadow-sm"
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#setChargeModal{{ $coop->id }}"
-                                            title="Set or Adjust Monthly Charge">
-                                        <i class="bi bi-pencil-square me-1"></i> Set Charge
-                                    </button>
+                                    <div class="d-flex justify-content-end gap-1">
+                                        <a href="{{ route('admin.platform-charges.agreement', $coop) }}" 
+                                           class="btn btn-outline-secondary btn-sm shadow-sm"
+                                           target="_blank"
+                                           title="View & Print Master SaaS Agreement for {{ $coop->name }}">
+                                            <i class="bi bi-file-earmark-text me-1"></i> Agreement
+                                        </a>
+                                        <button type="button" 
+                                                class="btn btn-outline-primary btn-sm shadow-sm"
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#setChargeModal{{ $coop->id }}"
+                                                title="Set or Adjust Monthly Charge">
+                                            <i class="bi bi-pencil-square me-1"></i> Set Charge
+                                        </button>
+                                    </div>
 
                                     <!-- Edit Charge Modal for this Cooperative -->
                                     <div class="modal fade" id="setChargeModal{{ $coop->id }}" tabindex="-1" aria-labelledby="modalLabel{{ $coop->id }}" aria-hidden="true">
@@ -376,6 +387,76 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Agreement Standard Information Modal -->
+<div class="modal fade" id="agreementInfoModal" tabindex="-1" aria-labelledby="agreementInfoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold" id="agreementInfoModalLabel">
+                    <i class="bi bi-shield-check text-primary me-2"></i> World-Standard Master SaaS Agreement Framework
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted">
+                    MyCoopSuite implements an industry-standard B2B SaaS agreement framework between the software owner (Provider) and tenant cooperatives. The terms protect both parties and provide automated, transparent billing based on active registered members.
+                </p>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded h-100 bg-light">
+                            <h6 class="fw-bold text-primary mb-1"><i class="bi bi-database-lock me-1"></i> 1. Multi-Tenant Isolation</h6>
+                            <p class="small text-muted mb-0">Each cooperative operates in a strictly segregated data partition, preventing unauthorized access or data leakage between cooperatives.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded h-100 bg-light">
+                            <h6 class="fw-bold text-success mb-1"><i class="bi bi-calculator me-1"></i> 2. Automated Per-Member Billing</h6>
+                            <p class="small text-muted mb-0">Usage charges equal registered members multiplied by the agreed rate. No hidden server fees; billing scales directly with cooperative growth.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded h-100 bg-light">
+                            <h6 class="fw-bold text-info mb-1"><i class="bi bi-file-earmark-lock2 me-1"></i> 3. 100% Tenant Data Ownership</h6>
+                            <p class="small text-muted mb-0">The cooperative retains absolute ownership over member records, savings balances, and loans. Provider acts solely as a secure data processor.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded h-100 bg-light">
+                            <h6 class="fw-bold text-warning mb-1"><i class="bi bi-clock-history me-1"></i> 4. 99.5% Service Level Agreement</h6>
+                            <p class="small text-muted mb-0">Committed uptime with an SLA response matrix: Critical P1 issues addressed in &le; 1 hour; Major P2 issues addressed in &le; 4 hours.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded h-100 bg-light">
+                            <h6 class="fw-bold text-danger mb-1"><i class="bi bi-shield-slash me-1"></i> 5. Liability Protection</h6>
+                            <p class="small text-muted mb-0">Liability is capped at 12 months' platform fees paid by the tenant, shielding the platform owner from consequential or indirect third-party claims.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded h-100 bg-light">
+                            <h6 class="fw-bold text-secondary mb-1"><i class="bi bi-box-arrow-down me-1"></i> 6. 30-Day Data Export Guarantee</h6>
+                            <p class="small text-muted mb-0">Upon offboarding or contract conclusion, cooperatives have a guaranteed 30-day export window to download all historical records in SQL / CSV format.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-primary d-flex align-items-center mt-3 mb-0" role="alert">
+                    <i class="bi bi-info-circle-fill fs-4 me-3 text-primary"></i>
+                    <div class="small">
+                        <strong>Generating Cooperative-Specific Agreements:</strong> Click the <span class="badge bg-secondary"><i class="bi bi-file-earmark-text"></i> Agreement</span> button in any cooperative's row to view and print a customized contract pre-filled with their member count, tariff rate, and dual signature execution block.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-top">
+                <button type="button" class="btn btn-primary fw-semibold" data-bs-dismiss="modal">
+                    <i class="bi bi-check-lg me-1"></i> Understood
+                </button>
+            </div>
         </div>
     </div>
 </div>

@@ -47,6 +47,22 @@ class PlatformChargeController extends Controller
         ));
     }
 
+    public function agreement(Cooperative $cooperative)
+    {
+        $membersCount = $cooperative->members()->count();
+        $rate = (float) ($cooperative->monthly_charge_per_member ?? 0);
+        $monthlyTotal = $membersCount * $rate;
+        $annualTotal = $monthlyTotal * 12;
+
+        return view('admin.platform-charges.agreement', compact(
+            'cooperative',
+            'membersCount',
+            'rate',
+            'monthlyTotal',
+            'annualTotal'
+        ));
+    }
+
     public function update(Request $request, Cooperative $cooperative)
     {
         $validated = $request->validate([
