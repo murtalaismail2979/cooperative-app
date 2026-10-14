@@ -48,6 +48,8 @@ class RegistrationTest extends TestCase
         $response->assertSee('Registered Office Address');
         $response->assertSee('State');
         $response->assertSee('LGA (Local Govt Area)');
+        $response->assertSee('id="lga"', false);
+        $response->assertSee('nigeria-states-lgas.js');
         $response->assertDontSee('YLDA Association');
     }
 

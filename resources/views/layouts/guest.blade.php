@@ -28,14 +28,14 @@
         <style>
             :root {
                 --bg-color: #0b0d19;
-                --card-bg: rgba(17, 24, 39, 0.6);
-                --border-color: rgba(99, 102, 241, 0.2);
-                --text-primary: #f8fafc;
-                --text-secondary: #94a3b8;
+                --card-bg: #111827;
+                --border-color: #334155;
+                --text-primary: #ffffff;
+                --text-secondary: #cbd5e1;
                 --accent-indigo: #6366f1;
                 --accent-violet: #a855f7;
                 --accent-cyan: #06b6d4;
-                --input-bg: rgba(15, 23, 42, 0.65);
+                --input-bg: #1e293b;
             }
 
             * {
@@ -134,46 +134,46 @@
             }
 
             .tagline {
-                color: var(--text-secondary);
-                font-size: 0.95rem;
-                font-weight: 400;
+                color: #cbd5e1;
+                font-size: 1rem;
+                font-weight: 500;
                 margin-bottom: 2rem;
                 text-align: center;
             }
 
-            /* Glassmorphism Card */
+            /* High-Contrast Card */
             .auth-card {
-                background: var(--card-bg);
-                backdrop-filter: blur(16px);
-                -webkit-backdrop-filter: blur(16px);
-                border: 1px solid var(--border-color);
+                background: #111827 !important;
+                border: 1px solid #334155 !important;
                 width: 100%;
                 max-width: 460px;
-                border-radius: 24px;
+                border-radius: 20px;
                 padding: 2.5rem;
-                box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(99, 102, 241, 0.25) !important;
                 transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             }
 
             body.route-register .auth-card {
-                max-width: 860px;
+                max-width: 1040px;
+                padding: 2.25rem 2.75rem;
             }
 
-            /* Input Element Styles */
+            /* Input Element Styles - High Contrast */
             .auth-card input[type="text"],
             .auth-card input[type="email"],
             .auth-card input[type="password"],
             .auth-card select,
             .auth-card textarea {
-                background-color: var(--input-bg) !important;
-                border: 1px solid var(--border-color) !important;
-                color: var(--text-primary) !important;
-                border-radius: 12px !important;
+                background-color: #1e293b !important;
+                border: 1.5px solid #475569 !important;
+                color: #ffffff !important;
+                border-radius: 10px !important;
                 padding: 0.75rem 1rem !important;
                 font-size: 0.95rem !important;
+                font-weight: 500 !important;
                 width: 100% !important;
-                transition: all 0.3s ease !important;
-                box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+                transition: all 0.2s ease !important;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15) !important;
             }
 
             .auth-card input[type="text"]:focus,
@@ -181,9 +181,11 @@
             .auth-card input[type="password"]:focus,
             .auth-card select:focus,
             .auth-card textarea:focus {
-                border-color: var(--accent-indigo) !important;
-                box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25), inset 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+                border-color: #818cf8 !important;
+                background-color: #0f172a !important;
+                box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.35) !important;
                 outline: none !important;
+                color: #ffffff !important;
             }
 
             /* White Input / Number Field (Base Slot Amount) with Black Text */
@@ -191,34 +193,35 @@
             .auth-card input#base_slot_amount {
                 background-color: #ffffff !important;
                 color: #000000 !important; /* High-contrast Black */
-                font-weight: 700 !important;
-                border: 1.5px solid #cbd5e1 !important;
-                border-radius: 12px !important;
+                font-weight: 800 !important;
+                border: 2px solid #cbd5e1 !important;
+                border-radius: 10px !important;
                 padding: 0.75rem 1rem !important;
-                font-size: 0.95rem !important;
+                font-size: 1rem !important;
                 width: 100% !important;
-                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
             }
 
             .auth-card input[type="number"]:focus,
             .auth-card input#base_slot_amount:focus {
                 border-color: #6366f1 !important;
-                box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
+                box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.35) !important;
                 outline: none !important;
                 color: #000000 !important;
             }
 
             /* Input placeholder overrides */
             .auth-card ::placeholder {
-                color: rgba(148, 163, 184, 0.5) !important;
+                color: #94a3b8 !important;
+                opacity: 0.9 !important;
             }
 
             /* Select arrow styling in dark mode */
             .auth-card select {
-                background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+                background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23cbd5e1' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
                 background-position: right 0.75rem center !important;
                 background-repeat: no-repeat !important;
-                background-size: 1.5em 1.5em !important;
+                background-size: 1.4em 1.4em !important;
                 padding-right: 2.5rem !important;
                 -webkit-appearance: none !important;
                 -moz-appearance: none !important;
@@ -226,28 +229,38 @@
             }
 
             .auth-card select option {
-                background-color: #111827 !important;
-                color: var(--text-primary) !important;
+                background-color: #0f172a !important;
+                color: #ffffff !important;
             }
 
-            /* Form Label Styles */
+            .auth-card select:disabled {
+                background-color: #0f172a !important;
+                border-color: #334155 !important;
+                color: #64748b !important;
+                cursor: not-allowed !important;
+            }
+
+            /* High-Visibility Form Label Styles */
             .auth-card label, 
             .auth-card .form-label-custom {
-                color: var(--text-secondary) !important;
-                font-size: 0.85rem !important;
+                color: #f8fafc !important;
+                font-size: 0.88rem !important;
                 font-weight: 600 !important;
-                margin-bottom: 0.5rem !important;
-                text-transform: uppercase !important;
-                letter-spacing: 0.05em !important;
-                display: inline-block !important;
+                margin-bottom: 0.4rem !important;
+                text-transform: none !important;
+                letter-spacing: 0.01em !important;
+                display: block !important;
+                width: 100% !important;
             }
 
             /* Form Header Styles inside Card */
             .auth-card h3 {
-                color: var(--text-primary) !important;
-                font-size: 1.15rem !important;
+                color: #c7d2fe !important;
+                font-size: 1.1rem !important;
                 font-weight: 700 !important;
                 letter-spacing: -0.01em !important;
+                border-bottom: 2px solid #334155 !important;
+                padding-bottom: 0.5rem !important;
             }
 
             /* Buttons Styles */
@@ -298,17 +311,18 @@
 
             /* Validation Errors overrides */
             .auth-card ul.text-red-600 {
-                background: rgba(239, 68, 68, 0.1) !important;
-                border: 1px solid rgba(239, 68, 68, 0.25) !important;
-                padding: 0.75rem 1rem !important;
-                border-radius: 12px !important;
-                color: #f87171 !important;
+                background: rgba(239, 68, 68, 0.12) !important;
+                border: 1px solid rgba(239, 68, 68, 0.3) !important;
+                padding: 0.4rem 0.75rem !important;
+                border-radius: 8px !important;
+                color: #fca5a5 !important;
                 list-style-type: none !important;
-                margin-bottom: 1.5rem !important;
+                margin-top: 0.35rem !important;
+                margin-bottom: 0.5rem !important;
             }
 
             .auth-card ul.text-red-600 li {
-                font-size: 0.85rem !important;
+                font-size: 0.82rem !important;
                 font-weight: 500 !important;
             }
 
@@ -328,13 +342,14 @@
             .register-grid {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
-                gap: 1.75rem 2rem;
+                gap: 2rem 2.5rem;
             }
 
             .register-col {
                 display: flex;
                 flex-direction: column;
-                gap: 1.25rem;
+                gap: 1.15rem;
+                min-width: 0;
             }
 
             .register-footer {

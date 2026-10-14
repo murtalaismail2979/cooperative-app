@@ -66,7 +66,9 @@
 
                 <div class="col-md-6">
                     <label for="lga" class="form-label">LGA (Local Government Area)</label>
-                    <input type="text" class="form-control @error('lga') is-invalid @enderror" id="lga" name="lga" value="{{ old('lga') }}" placeholder="e.g. Ikeja / Kano Municipal">
+                    <select class="form-select @error('lga') is-invalid @enderror" id="lga" name="lga">
+                        <option value="">-- Select State First --</option>
+                    </select>
                     @error('lga') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
@@ -109,3 +111,12 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script src="{{ asset('js/nigeria-states-lgas.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        initNigeriaStateLga('state', 'lga', @json(old('lga', '')));
+    });
+</script>
+@endpush
