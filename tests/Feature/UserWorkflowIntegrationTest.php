@@ -41,11 +41,9 @@ class UserWorkflowIntegrationTest extends TestCase
         ]);
 
         $changePasswordResponse->assertSessionHasNoErrors();
-        $this->assertTrue(Hash::check('NewSecurePassword456!', $user->fresh()->password));
-
-        // 5. User logs out
-        $this->post('/logout')->assertRedirect('/');
+        $changePasswordResponse->assertRedirect('/login');
         $this->assertGuest();
+        $this->assertTrue(Hash::check('NewSecurePassword456!', $user->fresh()->password));
 
         // 6. User attempts login with OLD password (fails)
         $this->post('/login', [

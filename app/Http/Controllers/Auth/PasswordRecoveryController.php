@@ -7,6 +7,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
@@ -106,14 +107,17 @@ class PasswordRecoveryController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        $email = $user->email;
         session()->forget(['recovery_user_id', 'recovery_verified_at']);
 
         if (auth()->check()) {
-            return redirect()->route('dashboard')
-                ->with('success', 'Your password has been successfully retrieved and updated!');
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
         }
 
         return redirect()->route('login')
-            ->with('success', 'Your password has been successfully retrieved and updated! Please log in with your new password.');
+            ->withInput(['email' => $email])
+            ->with('status', 'Your password has been successfully retrieved and updated! Please log in with your new password.');
     }
 }

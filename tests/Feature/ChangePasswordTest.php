@@ -37,8 +37,9 @@ class ChangePasswordTest extends TestCase
         ]);
 
         $response->assertSessionHasNoErrors();
-        $response->assertRedirect();
-        $response->assertSessionHas('status', 'password-updated');
+        $response->assertRedirect('/login');
+        $this->assertGuest();
+        $response->assertSessionHas('status');
 
         $this->assertTrue(Hash::check('new-password-123', $user->fresh()->password));
     }
@@ -105,14 +106,14 @@ class ChangePasswordTest extends TestCase
         ]);
 
         // Change password
-        $this->actingAs($user)->put('/password', [
+        $response = $this->actingAs($user)->put('/password', [
             'current_password' => 'old-password-123',
             'password' => 'brand-new-password-456',
             'password_confirmation' => 'brand-new-password-456',
         ]);
 
-        // Logout
-        $this->post('/logout');
+        // User is automatically logged out for security
+        $response->assertRedirect('/login');
         $this->assertGuest();
 
         // Attempt login with old password (must fail)

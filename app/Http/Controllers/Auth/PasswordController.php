@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 
@@ -23,12 +24,20 @@ class PasswordController extends Controller
             'current_password.current_password' => 'The provided current password is incorrect.',
         ]);
 
-        $request->user()->update([
+        $user = $request->user();
+        $email = $user->email;
+
+        $user->update([
             'password' => Hash::make($validated['password']),
         ]);
 
-        return back()
-            ->with('status', 'password-updated')
-            ->with('success', 'Password changed successfully.');
+        // Security best practice: invalidate current session and force re-authentication
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('login')
+            ->withInput(['email' => $email])
+            ->with('status', 'Your password has been changed successfully. Please log in with your new password.');
     }
 }
