@@ -186,6 +186,28 @@
                 outline: none !important;
             }
 
+            /* White Input / Number Field (Base Slot Amount) with Dark Green Text */
+            .auth-card input[type="number"],
+            .auth-card input#base_slot_amount {
+                background-color: #ffffff !important;
+                color: #0f5132 !important; /* Dark Green */
+                font-weight: 700 !important;
+                border: 1.5px solid #22c55e !important;
+                border-radius: 12px !important;
+                padding: 0.75rem 1rem !important;
+                font-size: 0.95rem !important;
+                width: 100% !important;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+            }
+
+            .auth-card input[type="number"]:focus,
+            .auth-card input#base_slot_amount:focus {
+                border-color: #0f5132 !important;
+                box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25) !important;
+                outline: none !important;
+                color: #0f5132 !important;
+            }
+
             /* Input placeholder overrides */
             .auth-card ::placeholder {
                 color: rgba(148, 163, 184, 0.5) !important;
@@ -370,7 +392,7 @@
             }
         </style>
     </head>
-    <body class="antialiased {{ request()->routeIs('register') ? 'route-register' : '' }}">
+    <body class="antialiased {{ request()->routeIs('register*') ? 'route-register' : '' }}">
         <!-- Gradient Background Orbs -->
         <div class="orb orb-1"></div>
         <div class="orb orb-2"></div>

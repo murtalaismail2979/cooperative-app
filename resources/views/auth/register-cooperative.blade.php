@@ -27,7 +27,7 @@
                 </div>
 
                 <!-- Cooperative Email & Phone -->
-                <div class="mt-3 grid grid-cols-2 gap-2">
+                <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <x-input-label for="cooperative_email" :value="__('Cooperative Email')" />
                         <x-text-input id="cooperative_email" class="block mt-1 w-full" type="email" name="cooperative_email" :value="old('cooperative_email')" placeholder="info@coop.org" />
@@ -39,10 +39,17 @@
                 </div>
 
                 <!-- Base Slot Amount & Dividend Allocation -->
-                <div class="mt-3 grid grid-cols-2 gap-2">
+                <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <x-input-label for="base_slot_amount" :value="__('Base Monthly Slot Fee (₦) *')" />
-                        <x-text-input id="base_slot_amount" class="block mt-1 w-full" type="number" step="0.01" name="base_slot_amount" :value="old('base_slot_amount', '2000.00')" required />
+                        <x-text-input id="base_slot_amount" 
+                                      class="block mt-1 w-full font-bold" 
+                                      style="background-color: #ffffff !important; color: #0f5132 !important; font-weight: 700 !important;" 
+                                      type="number" 
+                                      step="0.01" 
+                                      name="base_slot_amount" 
+                                      :value="old('base_slot_amount', '2000.00')" 
+                                      required />
                     </div>
                     <div>
                         <x-input-label for="dividend_allocation_basis" :value="__('Dividend Allocation *')" />
