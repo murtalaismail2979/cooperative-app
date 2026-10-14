@@ -60,6 +60,9 @@
                     @csrf
                     @method('put')
 
+                    {{-- Username field for browser password managers to identify the account and prevent "Select which login to update" dialog --}}
+                    <input type="text" name="username" value="{{ auth()->user()->email }}" autocomplete="username" readonly style="display: none;" aria-hidden="true" tabindex="-1">
+
                     <div class="mb-3">
                         <label for="current_password" class="form-label text-muted small fw-bold text-uppercase">Current Password</label>
                         <div class="input-group">

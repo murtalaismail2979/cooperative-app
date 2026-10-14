@@ -6,6 +6,8 @@
     <form method="POST" action="{{ route('password.confirm') }}">
         @csrf
 
+        <input type="text" name="username" value="{{ auth()->user()->email }}" autocomplete="username" readonly style="display: none;" aria-hidden="true" tabindex="-1">
+
         <!-- Password -->
         <div>
             <x-input-label for="password" :value="__('Password')" />

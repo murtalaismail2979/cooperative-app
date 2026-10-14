@@ -23,6 +23,8 @@
                     <form method="POST" action="{{ route('password.recovery.update') }}">
                         @csrf
 
+                        <input type="text" name="username" value="{{ isset($user) ? $user->email : (auth()->check() ? auth()->user()->email : '') }}" autocomplete="username" readonly style="display: none;" aria-hidden="true" tabindex="-1">
+
                         <!-- New Password -->
                         <div class="mb-3">
                             <label for="password" class="form-label text-muted small fw-bold text-uppercase">New Password</label>
@@ -115,6 +117,8 @@
 
     <form method="POST" action="{{ route('password.recovery.update') }}">
         @csrf
+
+        <input type="text" name="username" value="{{ isset($user) ? $user->email : (auth()->check() ? auth()->user()->email : '') }}" autocomplete="username" readonly style="display: none;" aria-hidden="true" tabindex="-1">
 
         <!-- New Password -->
         <div class="mb-4">

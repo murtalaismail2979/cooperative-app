@@ -83,7 +83,9 @@ class PasswordRecoveryController extends Controller
                 ->withErrors(['secret_verification' => 'Please verify your secret details before setting a new password.']);
         }
 
-        return view('auth.reset-retrieved-password');
+        $user = User::find(session('recovery_user_id'));
+
+        return view('auth.reset-retrieved-password', ['user' => $user]);
     }
 
     /**
