@@ -356,4 +356,91 @@ class MonthlyDividendTest extends TestCase
         $this->assertEquals(2, $payout->units); // 4000 / 2000 = 2 units
         $this->assertEquals(-63750.00, $payout->amount); // 2 units * (-63750/2)
     }
+
+    public function test_member_dividend_year_filter_excludes_dividends_from_other_financial_years(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $member = User::factory()->create(['role' => 'member', 'is_active' => true]);
+
+        // 2025 Business and Dividend (distributed in 2026)
+        $inv2025 = Investment::create([
+            'name' => '2025 Business Venture',
+            'type' => 'buying_selling_goods',
+            'capital_amount' => 50000.00,
+            'total_returns' => 20000.00,
+            'status' => 'completed',
+            'start_date' => '2025-05-10',
+            'created_by' => $admin->id
+        ]);
+        $div2025 = Dividend::create([
+            'year' => 2025,
+            'investment_id' => $inv2025->id,
+            'total_dividend_amount' => 10000.00,
+            'original_sharable_profit' => 10000.00,
+            'cooperative_amount' => 500.00,
+            'management_amount' => 500.00,
+            'member_distribution_pool' => 9000.00,
+            'total_units' => 10,
+            'unit_value' => 900.00,
+            'distributed_at' => '2026-09-22 10:00:00', // Recorded in 2026
+            'distributed_by' => $admin->id
+        ]);
+        DividendPayout::create([
+            'dividend_id' => $div2025->id,
+            'user_id' => $member->id,
+            'units' => 10,
+            'amount' => 9000.00,
+            'paid' => false,
+        ]);
+
+        // 2026 Business and Dividend (distributed in 2026)
+        $inv2026 = Investment::create([
+            'name' => '2026 Business Venture',
+            'type' => 'agriculture',
+            'capital_amount' => 30000.00,
+            'total_returns' => 15000.00,
+            'status' => 'completed',
+            'start_date' => '2026-03-15',
+            'created_by' => $admin->id
+        ]);
+        $div2026 = Dividend::create([
+            'year' => 2026,
+            'investment_id' => $inv2026->id,
+            'total_dividend_amount' => 5000.00,
+            'original_sharable_profit' => 5000.00,
+            'cooperative_amount' => 250.00,
+            'management_amount' => 250.00,
+            'member_distribution_pool' => 4500.00,
+            'total_units' => 10,
+            'unit_value' => 450.00,
+            'distributed_at' => '2026-10-01 10:00:00',
+            'distributed_by' => $admin->id
+        ]);
+        DividendPayout::create([
+            'dividend_id' => $div2026->id,
+            'user_id' => $member->id,
+            'units' => 10,
+            'amount' => 4500.00,
+            'paid' => false,
+        ]);
+
+        // When viewing Year 2026, only the 2026 business and ₦4,500.00 should be present
+        $response2026 = $this->actingAs($member)
+            ->get(route('member.dividends', ['year' => 2026]));
+        $response2026->assertOk();
+        $response2026->assertSee('2026 Business Venture');
+        $response2026->assertDontSee('2025 Business Venture');
+        $response2026->assertSee('₦4,500.00');
+        $response2026->assertDontSee('₦9,000.00');
+        $response2026->assertDontSee('₦13,500.00'); // Sum of both should NOT appear
+
+        // When viewing Year 2025, only the 2025 business and ₦9,000.00 should be present
+        $response2025 = $this->actingAs($member)
+            ->get(route('member.dividends', ['year' => 2025]));
+        $response2025->assertOk();
+        $response2025->assertSee('2025 Business Venture');
+        $response2025->assertDontSee('2026 Business Venture');
+        $response2025->assertSee('₦9,000.00');
+        $response2025->assertDontSee('₦4,500.00');
+    }
 }

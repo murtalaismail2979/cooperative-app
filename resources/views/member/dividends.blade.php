@@ -13,8 +13,11 @@
             <span class="text-muted small">Showing total dividend earnings and entitlement for selected filter</span>
         </div>
         <div class="text-end">
-            <small class="text-muted d-block text-uppercase fw-bold">Total Selected Dividend</small>
-            <span class="fs-4 fw-bold text-success">₦{{ number_format($filteredTotalDividend, 2) }}</span>
+            <small class="text-muted d-block text-uppercase fw-bold">{{ $selectedYearLoss > 0 ? 'Net Dividend Entitlement' : 'Total Selected Dividend' }}</small>
+            <span class="fs-4 fw-bold text-success">₦{{ number_format($selectedYearFinal, 2) }}</span>
+            @if($selectedYearLoss > 0)
+                <small class="text-muted d-block">(Original: ₦{{ number_format($filteredTotalDividend, 2) }} | Loss: -₦{{ number_format($selectedYearLoss, 2) }})</small>
+            @endif
         </div>
     </div>
 </div>

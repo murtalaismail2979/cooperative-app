@@ -289,15 +289,14 @@ class DashboardController extends Controller
         $baseQuery = $user->dividendPayouts()->with('dividend.investment');
 
         if ($year) {
-            $baseQuery->where(function ($q) use ($year) {
-                $q->whereHas('dividend.investment', function ($q2) use ($year) {
-                    $q2->whereYear('start_date', $year);
-                })
-                ->orWhereHas('dividend', function ($q2) use ($year) {
-                    $q2->where('year', $year)
-                       ->orWhereYear('distributed_at', $year);
-                })
-                ->orWhereYear('paid_date', $year);
+            $baseQuery->whereHas('dividend', function ($q) use ($year) {
+                $q->where('year', $year)
+                  ->orWhere(function ($q2) use ($year) {
+                      $q2->whereNull('year')
+                         ->whereHas('investment', function ($q3) use ($year) {
+                             $q3->whereYear('start_date', $year);
+                         });
+                  });
             });
         }
 
@@ -307,18 +306,22 @@ class DashboardController extends Controller
                     $q2->whereMonth('start_date', $month);
                 })
                 ->orWhereHas('dividend', function ($q2) use ($month) {
-                    $q2->whereMonth('distributed_at', $month)
-                       ->orWhereMonth('created_at', $month);
-                })
-                ->orWhereMonth('paid_date', $month)
-                ->orWhereMonth('created_at', $month);
+                    $q2->whereMonth('distributed_at', $month);
+                });
             });
         }
 
         $payouts = (clone $baseQuery)->latest()->paginate(15)->withQueryString();
 
         $summary = $this->dividendService->getMemberDividendSummary($user);
-        $adjustments = \App\Models\DividendAdjustment::where('user_id', $user->id)->with('reconciliation')->latest()->get();
+
+        $adjustmentsQuery = \App\Models\DividendAdjustment::where('user_id', $user->id)
+            ->with('reconciliation');
+        if ($year) {
+            $adjustmentsQuery->where('year', $year);
+        }
+        $adjustments = $adjustmentsQuery->latest()->get();
+
         $totalDividends = $summary['final_entitlement'];
 
         // Filtered calculations
@@ -326,13 +329,12 @@ class DashboardController extends Controller
         $businessLosses = abs((float) (clone $baseQuery)->where('amount', '<', 0)->sum('amount'));
 
         if ($year) {
-            $selectedYearAdjustment = \App\Models\DividendAdjustment::where('user_id', $user->id)
+            $annualLossAdjustment = (float) \App\Models\DividendAdjustment::where('user_id', $user->id)
                 ->where('year', $year)
                 ->whereHas('reconciliation', function ($q) {
                     $q->where('total_recognized_loss', '>', 0);
                 })
-                ->first();
-            $annualLossAdjustment = $selectedYearAdjustment ? (float) $selectedYearAdjustment->loss_adjustment_amount : 0.00;
+                ->sum('loss_adjustment_amount');
         } else {
             $annualLossAdjustment = (float) \App\Models\DividendAdjustment::where('user_id', $user->id)
                 ->whereHas('reconciliation', function ($q) {
@@ -347,7 +349,11 @@ class DashboardController extends Controller
         $filteredTotalPaid = (float) (clone $baseQuery)->where('paid', true)->where('amount', '>', 0)->sum('amount');
 
         // Get available years for filtering
-        $years = \App\Models\Dividend::selectRaw('year as yr')
+        $yearsQuery = \App\Models\Dividend::query();
+        if ($user->cooperative_id) {
+            $yearsQuery->whereHas('payouts.user', fn($u) => $u->where('cooperative_id', $user->cooperative_id));
+        }
+        $years = $yearsQuery->selectRaw('year as yr')
             ->whereNotNull('year')
             ->distinct()
             ->pluck('yr')
