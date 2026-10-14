@@ -47,6 +47,29 @@
                     @error('address') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
+                <div class="col-md-6">
+                    <label for="state" class="form-label">State</label>
+                    <select class="form-select @error('state') is-invalid @enderror" id="state" name="state">
+                        <option value="">-- Select State --</option>
+                        @foreach([
+                            'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
+                            'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT - Abuja', 'Gombe',
+                            'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos',
+                            'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto',
+                            'Taraba', 'Yobe', 'Zamfara'
+                        ] as $stateOption)
+                            <option value="{{ $stateOption }}" {{ old('state') == $stateOption ? 'selected' : '' }}>{{ $stateOption }}</option>
+                        @endforeach
+                    </select>
+                    @error('state') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+
+                <div class="col-md-6">
+                    <label for="lga" class="form-label">LGA (Local Government Area)</label>
+                    <input type="text" class="form-control @error('lga') is-invalid @enderror" id="lga" name="lga" value="{{ old('lga') }}" placeholder="e.g. Ikeja / Kano Municipal">
+                    @error('lga') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+
                 <hr class="my-4">
 
                 <h6 class="fw-bold text-primary mb-3"><i class="bi bi-sliders me-1"></i> Financial & Slot Settings</h6>

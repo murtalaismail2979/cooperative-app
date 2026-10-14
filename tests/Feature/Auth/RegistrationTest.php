@@ -45,6 +45,9 @@ class RegistrationTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee('MyCoopSuite');
+        $response->assertSee('Registered Office Address');
+        $response->assertSee('State');
+        $response->assertSee('LGA (Local Govt Area)');
         $response->assertDontSee('YLDA Association');
     }
 
@@ -53,6 +56,9 @@ class RegistrationTest extends TestCase
         $response = $this->post('/register-cooperative', [
             'cooperative_name' => 'Test Mutual Cooperative',
             'cooperative_slug' => 'TEST-MUTUAL',
+            'cooperative_address' => 'Plot 45 Broad Street',
+            'state' => 'Lagos',
+            'lga' => 'Lagos Island',
             'base_slot_amount' => 3000,
             'dividend_allocation_basis' => 'savings_only',
             'name' => 'Admin User',
@@ -62,7 +68,12 @@ class RegistrationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $this->assertDatabaseHas('cooperatives', ['slug' => 'TEST-MUTUAL']);
+        $this->assertDatabaseHas('cooperatives', [
+            'slug' => 'TEST-MUTUAL',
+            'address' => 'Plot 45 Broad Street',
+            'state' => 'Lagos',
+            'lga' => 'Lagos Island',
+        ]);
         $response->assertRedirect(route('admin.dashboard'));
     }
 }

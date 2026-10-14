@@ -38,6 +38,38 @@
                     </div>
                 </div>
 
+                <!-- Cooperative Address -->
+                <div class="mt-3">
+                    <x-input-label for="cooperative_address" :value="__('Registered Office Address')" />
+                    <x-text-input id="cooperative_address" class="block mt-1 w-full" type="text" name="cooperative_address" :value="old('cooperative_address')" placeholder="e.g. Plot 12, Commercial District, Off Marina Road" />
+                    <x-input-error :messages="$errors->get('cooperative_address')" class="mt-2" />
+                </div>
+
+                <!-- State & LGA -->
+                <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <x-input-label for="state" :value="__('State')" />
+                        <select id="state" name="state" class="block mt-1 w-full border-gray-700 bg-gray-900 text-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
+                            <option value="">-- Select State --</option>
+                            @foreach([
+                                'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
+                                'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT - Abuja', 'Gombe',
+                                'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos',
+                                'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto',
+                                'Taraba', 'Yobe', 'Zamfara'
+                            ] as $stateOption)
+                                <option value="{{ $stateOption }}" {{ old('state') == $stateOption ? 'selected' : '' }}>{{ $stateOption }}</option>
+                            @endforeach
+                        </select>
+                        <x-input-error :messages="$errors->get('state')" class="mt-2" />
+                    </div>
+                    <div>
+                        <x-input-label for="lga" :value="__('LGA (Local Govt Area)')" />
+                        <x-text-input id="lga" class="block mt-1 w-full" type="text" name="lga" :value="old('lga')" placeholder="e.g. Ikeja / Kano Municipal" />
+                        <x-input-error :messages="$errors->get('lga')" class="mt-2" />
+                    </div>
+                </div>
+
                 <!-- Base Slot Amount & Dividend Allocation -->
                 <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>

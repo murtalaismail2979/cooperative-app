@@ -18,6 +18,8 @@ class Cooperative extends Model
         'email',
         'phone',
         'address',
+        'state',
+        'lga',
         'is_active',
         'enable_shares',
         'enable_savings',
