@@ -56,7 +56,7 @@
                     </div>
                 @endif
 
-                <form method="post" action="{{ route('password.update') }}">
+                <form method="post" action="{{ route('password.update') }}" autocomplete="off">
                     @csrf
                     @method('put')
 
@@ -66,7 +66,16 @@
                     <div class="mb-3">
                         <label for="current_password" class="form-label text-muted small fw-bold text-uppercase">Current Password</label>
                         <div class="input-group">
-                            <input type="password" name="current_password" id="current_password" class="form-control @error('current_password', 'updatePassword') is-invalid @enderror" required autocomplete="current-password">
+                            <input type="password" 
+                                   name="current_password" 
+                                   id="current_password" 
+                                   class="form-control @error('current_password', 'updatePassword') is-invalid @enderror" 
+                                   required 
+                                   autocomplete="off" 
+                                   readonly 
+                                   onfocus="this.removeAttribute('readonly');" 
+                                   onclick="this.removeAttribute('readonly');" 
+                                   placeholder="Enter your current password">
                             <button type="button" class="btn btn-outline-secondary toggle-password" data-target="current_password" aria-label="Toggle password visibility">
                                 <i class="bi bi-eye"></i>
                             </button>
@@ -172,11 +181,29 @@
             modal.show();
         @endif
 
+        // Ensure current password field starts completely blank and is never pre-filled by browser
+        const currentPasswordInput = document.getElementById('current_password');
+        if (currentPasswordInput) {
+            currentPasswordInput.value = '';
+            setTimeout(() => { if (document.activeElement !== currentPasswordInput) currentPasswordInput.value = ''; }, 100);
+            setTimeout(() => { if (document.activeElement !== currentPasswordInput) currentPasswordInput.value = ''; }, 300);
+        }
+
+        window.addEventListener('pageshow', function () {
+            if (currentPasswordInput && document.activeElement !== currentPasswordInput) {
+                currentPasswordInput.value = '';
+            }
+        });
+
         document.querySelectorAll('.toggle-password').forEach(button => {
             button.addEventListener('click', function () {
                 const targetId = this.getAttribute('data-target');
                 const input = document.getElementById(targetId);
                 const icon = this.querySelector('i');
+
+                if (input.hasAttribute('readonly')) {
+                    input.removeAttribute('readonly');
+                }
 
                 if (input.type === 'password') {
                     input.type = 'text';
