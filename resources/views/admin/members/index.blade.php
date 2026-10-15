@@ -201,7 +201,7 @@
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                 @else
-                                    @if(!$member->is_active && $member->isMember() && !$member->isPendingMembership() && !$member->isRejectedMembership())
+                                    @if(!auth()->user()->isSuperAdmin() && auth()->user()->role === 'admin' && !$member->is_active && $member->isMember() && !$member->isPendingMembership() && !$member->isRejectedMembership())
                                         <button type="button" class="btn btn-sm btn-success text-white" title="Re-admit Member" data-bs-toggle="modal" data-bs-target="#readmitModal{{ $member->id }}">
                                             <i class="bi bi-person-check"></i> Re-admit
                                         </button>
@@ -260,7 +260,7 @@
     </div>
     @endif
 
-    @if(!$member->is_active && $member->isMember() && !$member->isPendingMembership() && !$member->isRejectedMembership())
+    @if(!auth()->user()->isSuperAdmin() && auth()->user()->role === 'admin' && !$member->is_active && $member->isMember() && !$member->isPendingMembership() && !$member->isRejectedMembership())
     <div class="modal fade" id="readmitModal{{ $member->id }}" tabindex="-1" aria-labelledby="readmitModalLabel{{ $member->id }}" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">

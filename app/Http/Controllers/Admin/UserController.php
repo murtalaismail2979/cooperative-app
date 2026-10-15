@@ -619,7 +619,11 @@ class UserController extends Controller
     public function readmit(Request $request, User $member)
     {
         $currentUser = auth()->user();
-        if (!$currentUser->isSuperAdmin() && $member->cooperative_id !== $currentUser->cooperative_id) {
+        if ($currentUser->isSuperAdmin()) {
+            abort(403, 'Super Admin cannot perform member re-admission. This action is reserved for cooperative administrators.');
+        }
+
+        if ($member->cooperative_id !== $currentUser->cooperative_id) {
             abort(403, 'Unauthorized access to member of another cooperative.');
         }
 

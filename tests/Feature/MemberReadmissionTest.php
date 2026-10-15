@@ -246,7 +246,7 @@ class MemberReadmissionTest extends TestCase
         $this->assertFalse((bool) $memberB->is_active);
     }
 
-    public function test_super_admin_can_readmit_member_across_cooperatives(): void
+    public function test_super_admin_cannot_readmit_member(): void
     {
         $coop = Cooperative::factory()->create(['is_active' => true, 'slug' => 'SACOOP']);
         $superAdmin = User::factory()->create([
@@ -270,9 +270,9 @@ class MemberReadmissionTest extends TestCase
             'code_action' => 'keep',
         ]);
 
-        $response->assertSessionHas('success');
+        $response->assertStatus(403);
         $member->refresh();
-        $this->assertTrue((bool) $member->is_active);
+        $this->assertFalse((bool) $member->is_active);
     }
 
     public function test_cannot_readmit_already_active_member(): void

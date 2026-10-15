@@ -17,7 +17,7 @@
 @endsection
 
 @section('content')
-@if(!$member->is_active && $member->isMember())
+@if(!auth()->user()->isSuperAdmin() && auth()->user()->role === 'admin' && !$member->is_active && $member->isMember())
 <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between p-3 mb-4 rounded-3 shadow-sm border border-warning">
     <div class="d-flex align-items-center mb-2 mb-md-0">
         <i class="bi bi-person-exclamation fs-2 text-warning me-3"></i>
@@ -237,7 +237,7 @@
     </div>
 </div>
 
-@if(!$member->is_active && $member->isMember())
+@if(!auth()->user()->isSuperAdmin() && auth()->user()->role === 'admin' && !$member->is_active && $member->isMember())
 <div class="modal fade" id="readmitModal{{ $member->id }}" tabindex="-1" aria-labelledby="readmitModalLabel{{ $member->id }}" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
