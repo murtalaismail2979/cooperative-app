@@ -252,7 +252,8 @@ class UserController extends Controller
 
         $regYear = $validated['registration_year'] ?? (int) date('Y');
         $regMonth = isset($validated['registration_month']) && $validated['registration_month'] !== null ? (int) $validated['registration_month'] : (int) date('n');
-        $coopId = $validated['cooperative_id'] ?? auth()->user()->cooperative_id ?? 1;
+        $currentUser = auth()->user();
+        $coopId = $currentUser->isSuperAdmin() ? ($validated['cooperative_id'] ?? $currentUser->cooperative_id ?? 1) : $currentUser->cooperative_id;
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $regYear, $regMonth, $coopId) {
             $user = User::create([
@@ -326,12 +327,22 @@ class UserController extends Controller
 
     public function edit(User $member)
     {
+        $currentUser = auth()->user();
+        if (!$currentUser->isSuperAdmin() && $member->cooperative_id !== $currentUser->cooperative_id) {
+            abort(403, 'Unauthorized access to member of another cooperative.');
+        }
+
         $member->load(['nextOfKin', 'slotHistories.changedBy']);
         return view('admin.members.edit', compact('member'));
     }
 
     public function slots(User $member)
     {
+        $currentUser = auth()->user();
+        if (!$currentUser->isSuperAdmin() && $member->cooperative_id !== $currentUser->cooperative_id) {
+            abort(403, 'Unauthorized access to member of another cooperative.');
+        }
+
         abort_unless($member->isMember(), 404, 'Only member accounts have savings slots.');
 
         $member->load(['savingsSlots', 'slotHistories.changedBy']);
@@ -340,6 +351,11 @@ class UserController extends Controller
 
     public function updateSlots(Request $request, User $member)
     {
+        $currentUser = auth()->user();
+        if (!$currentUser->isSuperAdmin() && $member->cooperative_id !== $currentUser->cooperative_id) {
+            abort(403, 'Unauthorized to update slots for member of another cooperative.');
+        }
+
         abort_unless($member->isMember(), 404, 'Only member accounts have savings slots.');
 
         $validated = $request->validate([
@@ -395,6 +411,11 @@ class UserController extends Controller
 
     public function update(Request $request, User $member)
     {
+        $currentUser = auth()->user();
+        if (!$currentUser->isSuperAdmin() && $member->cooperative_id !== $currentUser->cooperative_id) {
+            abort(403, 'Unauthorized to update member of another cooperative.');
+        }
+
         $request->merge(['role' => $request->input('role', $member->role)]);
 
         $validated = $request->validate([
@@ -513,6 +534,11 @@ class UserController extends Controller
 
     public function destroy(User $member)
     {
+        $currentUser = auth()->user();
+        if (!$currentUser->isSuperAdmin() && $member->cooperative_id !== $currentUser->cooperative_id) {
+            abort(403, 'Unauthorized to deactivate member of another cooperative.');
+        }
+
         $member->update(['is_active' => false]);
         return redirect()->route('admin.members.index')->with('success', 'User deactivated successfully.');
     }

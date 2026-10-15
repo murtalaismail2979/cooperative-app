@@ -102,6 +102,11 @@ class RegistrationFeeController extends Controller
         ]);
 
         $member = User::findOrFail($validated['user_id']);
+        $user = auth()->user();
+        if (!$user->isSuperAdmin() && $member->cooperative_id !== $user->cooperative_id) {
+            abort(403, 'Unauthorized access to member of another cooperative.');
+        }
+
         $fee = $member->registrationFee ?: $this->registrationFeeService->createObligationForMember($member);
 
         $payment = $this->registrationFeeService->recordPayment(
@@ -118,6 +123,11 @@ class RegistrationFeeController extends Controller
 
     public function cancelPayment(Request $request, RegistrationFeePayment $payment)
     {
+        $user = auth()->user();
+        if (!$user->isSuperAdmin() && $payment->user && $payment->user->cooperative_id !== $user->cooperative_id) {
+            abort(403, 'Unauthorized access to payment of another cooperative.');
+        }
+
         $validated = $request->validate([
             'cancellation_reason' => 'required|string|max:255',
         ]);
@@ -129,6 +139,11 @@ class RegistrationFeeController extends Controller
 
     public function reconcile(Request $request, User $member)
     {
+        $user = auth()->user();
+        if (!$user->isSuperAdmin() && $member->cooperative_id !== $user->cooperative_id) {
+            abort(403, 'Unauthorized access to member of another cooperative.');
+        }
+
         $validated = $request->validate([
             'status' => 'required|in:unpaid,partially_paid,fully_paid,requires_verification,cancelled',
             'fee_amount' => 'nullable|numeric|min:0',
@@ -149,6 +164,11 @@ class RegistrationFeeController extends Controller
 
     public function receipt(RegistrationFeePayment $payment)
     {
+        $user = auth()->user();
+        if (!$user->isSuperAdmin() && $payment->user && $payment->user->cooperative_id !== $user->cooperative_id) {
+            abort(403, 'Unauthorized access to receipt of another cooperative.');
+        }
+
         $payment->load(['user', 'registrationFee', 'recorder']);
         
         // Calculate previous payment total prior to this payment

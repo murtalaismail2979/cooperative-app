@@ -81,6 +81,11 @@ class SavingsController extends Controller
     public function store(StoreSavingsRequest $request)
     {
         $member = User::findOrFail($request->member_id);
+        $user = auth()->user();
+        if (!$user->isSuperAdmin() && $member->cooperative_id !== $user->cooperative_id) {
+            abort(403, 'Unauthorized access to member of another cooperative.');
+        }
+
         if (!$member->is_active) {
             return redirect()->back()->withErrors(['member_id' => 'Cannot record savings for an inactive member.'])->withInput();
         }
@@ -156,6 +161,11 @@ class SavingsController extends Controller
     public function edit(Request $request)
     {
         $member = User::findOrFail($request->user_id);
+        $user = auth()->user();
+        if (!$user->isSuperAdmin() && $member->cooperative_id !== $user->cooperative_id) {
+            abort(403, 'Unauthorized access to member of another cooperative.');
+        }
+
         $month = $request->month;
 
         $paidSlotIds = MonthlySaving::where('user_id', $member->id)
@@ -187,6 +197,11 @@ class SavingsController extends Controller
         ]);
 
         $member = User::findOrFail($request->member_id);
+        $user = auth()->user();
+        if (!$user->isSuperAdmin() && $member->cooperative_id !== $user->cooperative_id) {
+            abort(403, 'Unauthorized access to member of another cooperative.');
+        }
+
         $amounts = $request->input('amounts', []);
 
         // Strong validation: amounts must match expected slot amount corresponding to slot_number (or 0 for zero savings)
@@ -243,6 +258,11 @@ class SavingsController extends Controller
         ]);
 
         $member = User::findOrFail($request->user_id);
+        $user = auth()->user();
+        if (!$user->isSuperAdmin() && $member->cooperative_id !== $user->cooperative_id) {
+            abort(403, 'Unauthorized access to member of another cooperative.');
+        }
+
         $this->savingsService->deleteSavings($member, $request->month);
 
         return redirect()->route('admin.savings.history')->with('success', 'Savings record deleted successfully.');

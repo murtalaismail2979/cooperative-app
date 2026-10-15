@@ -106,6 +106,11 @@ class LoanController extends Controller
     public function store(StoreLoanRequest $request)
     {
         $member = User::findOrFail($request->user_id);
+        $user = auth()->user();
+        if (!$user->isSuperAdmin() && $member->cooperative_id !== $user->cooperative_id) {
+            abort(403, 'Unauthorized to grant loan to member of another cooperative.');
+        }
+
         $this->loanService->createLoan(
             $member,
             $request->principal_amount,
@@ -119,17 +124,38 @@ class LoanController extends Controller
 
     public function show(Loan $loan)
     {
+        $user = auth()->user();
+        if (!$user->isSuperAdmin() && $loan->user && $loan->user->cooperative_id !== $user->cooperative_id) {
+            abort(403, 'Unauthorized access to loan of another cooperative.');
+        }
+
+        $cooperativeId = $user->isSuperAdmin() ? null : $user->cooperative_id;
         $loan->load(['user', 'repayments', 'approver']);
 
-        $previousLoan = Loan::where('id', '<', $loan->id)->latest('id')->first();
-        $nextLoan = Loan::where('id', '>', $loan->id)->oldest('id')->first();
-        $allLoans = Loan::with('user')->orderBy('id', 'desc')->get();
+        $prevQuery = Loan::where('id', '<', $loan->id);
+        $nextQuery = Loan::where('id', '>', $loan->id);
+        $allQuery = Loan::with('user');
+
+        if ($cooperativeId) {
+            $prevQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            $nextQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            $allQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+        }
+
+        $previousLoan = $prevQuery->latest('id')->first();
+        $nextLoan = $nextQuery->oldest('id')->first();
+        $allLoans = $allQuery->orderBy('id', 'desc')->get();
 
         return view('admin.loans.show', compact('loan', 'previousLoan', 'nextLoan', 'allLoans'));
     }
 
     public function addRepayment(StoreRepaymentRequest $request, Loan $loan)
     {
+        $user = auth()->user();
+        if (!$user->isSuperAdmin() && $loan->user && $loan->user->cooperative_id !== $user->cooperative_id) {
+            abort(403, 'Unauthorized access to loan of another cooperative.');
+        }
+
         $this->loanService->recordRepayment($loan, $request->amount, $request->payment_date);
 
         return redirect()->route('admin.loans.show', $loan)->with('success', 'Repayment recorded.');
@@ -137,12 +163,28 @@ class LoanController extends Controller
 
     public function edit(Loan $loan)
     {
-        $members = User::where('role', 'member')->where('is_active', true)->get();
+        $user = auth()->user();
+        if (!$user->isSuperAdmin() && $loan->user && $loan->user->cooperative_id !== $user->cooperative_id) {
+            abort(403, 'Unauthorized access to loan of another cooperative.');
+        }
+
+        $cooperativeId = $user->isSuperAdmin() ? null : $user->cooperative_id;
+        $memberQuery = User::where('role', 'member')->where('is_active', true);
+        if ($cooperativeId) {
+            $memberQuery->where('cooperative_id', $cooperativeId);
+        }
+        $members = $memberQuery->get();
+
         return view('admin.loans.edit', compact('loan', 'members'));
     }
 
     public function update(Request $request, Loan $loan)
     {
+        $user = auth()->user();
+        if (!$user->isSuperAdmin() && $loan->user && $loan->user->cooperative_id !== $user->cooperative_id) {
+            abort(403, 'Unauthorized access to loan of another cooperative.');
+        }
+
         $validated = $request->validate([
             'principal_amount' => 'required|numeric|min:1',
             'profit_rate' => 'nullable|numeric|min:0',
@@ -158,17 +200,32 @@ class LoanController extends Controller
 
     public function destroy(Loan $loan)
     {
+        $user = auth()->user();
+        if (!$user->isSuperAdmin() && $loan->user && $loan->user->cooperative_id !== $user->cooperative_id) {
+            abort(403, 'Unauthorized access to loan of another cooperative.');
+        }
+
         $this->loanService->deleteLoan($loan);
         return redirect()->route('admin.loans.index')->with('success', 'Loan and associated repayments deleted successfully.');
     }
 
     public function editRepayment(Loan $loan, \App\Models\LoanRepayment $repayment)
     {
+        $user = auth()->user();
+        if (!$user->isSuperAdmin() && $loan->user && $loan->user->cooperative_id !== $user->cooperative_id) {
+            abort(403, 'Unauthorized access to loan of another cooperative.');
+        }
+
         return view('admin.loans.repayments.edit', compact('loan', 'repayment'));
     }
 
     public function updateRepayment(Request $request, Loan $loan, \App\Models\LoanRepayment $repayment)
     {
+        $user = auth()->user();
+        if (!$user->isSuperAdmin() && $loan->user && $loan->user->cooperative_id !== $user->cooperative_id) {
+            abort(403, 'Unauthorized access to loan of another cooperative.');
+        }
+
         $validated = $request->validate([
             'amount' => 'required|numeric|min:1',
             'payment_date' => 'required|date',
@@ -181,6 +238,11 @@ class LoanController extends Controller
 
     public function destroyRepayment(Loan $loan, \App\Models\LoanRepayment $repayment)
     {
+        $user = auth()->user();
+        if (!$user->isSuperAdmin() && $loan->user && $loan->user->cooperative_id !== $user->cooperative_id) {
+            abort(403, 'Unauthorized access to loan of another cooperative.');
+        }
+
         $this->loanService->deleteRepayment($repayment);
         return redirect()->route('admin.loans.show', $loan)->with('success', 'Repayment deleted successfully.');
     }

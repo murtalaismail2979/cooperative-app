@@ -119,12 +119,20 @@ class InvestmentController extends Controller
 
     public function show(Investment $investment)
     {
+        if ($investment->createdBy && $investment->createdBy->cooperative_id !== auth()->user()->cooperative_id) {
+            abort(403, 'Unauthorized access to investment of another cooperative.');
+        }
+
         $investment->load(['returns.recorder', 'creator', 'expenses.requester']);
         return view('treasurer.investments.show', compact('investment'));
     }
 
     public function addReturn(Request $request, Investment $investment)
     {
+        if ($investment->createdBy && $investment->createdBy->cooperative_id !== auth()->user()->cooperative_id) {
+            abort(403, 'Unauthorized access to investment of another cooperative.');
+        }
+
         $validated = $request->validate([
             'amount' => 'required|numeric',
             'return_date' => 'required|date',
@@ -143,6 +151,10 @@ class InvestmentController extends Controller
 
     public function destroyReturn(Investment $investment, \App\Models\InvestmentReturn $return)
     {
+        if ($investment->createdBy && $investment->createdBy->cooperative_id !== auth()->user()->cooperative_id) {
+            abort(403, 'Unauthorized access to investment of another cooperative.');
+        }
+
         $this->investmentService->deleteReturn($return);
 
         return redirect()->route('treasurer.investments.show', $investment)->with('success', 'Investment return deleted successfully.');
@@ -150,6 +162,10 @@ class InvestmentController extends Controller
 
     public function edit(Investment $investment)
     {
+        if ($investment->createdBy && $investment->createdBy->cooperative_id !== auth()->user()->cooperative_id) {
+            abort(403, 'Unauthorized access to investment of another cooperative.');
+        }
+
         $investmentTypes = InvestmentType::all();
         if ($investmentTypes->isEmpty()) {
             $investmentTypes = collect([
@@ -163,6 +179,10 @@ class InvestmentController extends Controller
 
     public function update(Request $request, Investment $investment)
     {
+        if ($investment->createdBy && $investment->createdBy->cooperative_id !== auth()->user()->cooperative_id) {
+            abort(403, 'Unauthorized access to investment of another cooperative.');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|string|max:255',
@@ -181,17 +201,29 @@ class InvestmentController extends Controller
 
     public function destroy(Investment $investment)
     {
+        if ($investment->createdBy && $investment->createdBy->cooperative_id !== auth()->user()->cooperative_id) {
+            abort(403, 'Unauthorized access to investment of another cooperative.');
+        }
+
         $this->investmentService->deleteInvestment($investment);
         return redirect()->route('treasurer.investments.index')->with('success', 'Investment and associated returns/expenses deleted successfully.');
     }
 
     public function editReturn(Investment $investment, \App\Models\InvestmentReturn $return)
     {
+        if ($investment->createdBy && $investment->createdBy->cooperative_id !== auth()->user()->cooperative_id) {
+            abort(403, 'Unauthorized access to investment of another cooperative.');
+        }
+
         return view('treasurer.investments.returns.edit', compact('investment', 'return'));
     }
 
     public function updateReturn(Request $request, Investment $investment, \App\Models\InvestmentReturn $return)
     {
+        if ($investment->createdBy && $investment->createdBy->cooperative_id !== auth()->user()->cooperative_id) {
+            abort(403, 'Unauthorized access to investment of another cooperative.');
+        }
+
         $validated = $request->validate([
             'amount' => 'required|numeric',
             'return_date' => 'required|date',

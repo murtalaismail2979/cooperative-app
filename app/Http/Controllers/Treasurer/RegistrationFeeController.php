@@ -69,6 +69,10 @@ class RegistrationFeeController extends Controller
         ]);
 
         $member = User::findOrFail($validated['user_id']);
+        if ($member->cooperative_id !== auth()->user()->cooperative_id) {
+            abort(403, 'Unauthorized access to member of another cooperative.');
+        }
+
         $fee = $member->registrationFee ?: $this->registrationFeeService->createObligationForMember($member);
 
         $payment = $this->registrationFeeService->recordPayment(
@@ -85,6 +89,10 @@ class RegistrationFeeController extends Controller
 
     public function receipt(RegistrationFeePayment $payment)
     {
+        if ($payment->user && $payment->user->cooperative_id !== auth()->user()->cooperative_id) {
+            abort(403, 'Unauthorized access to receipt of another cooperative.');
+        }
+
         $payment->load(['user', 'registrationFee', 'recorder']);
         
         $previousPaid = RegistrationFeePayment::where('registration_fee_id', $payment->registration_fee_id)

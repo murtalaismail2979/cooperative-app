@@ -39,6 +39,10 @@ class SavingsController extends Controller
         ]);
 
         $member = User::findOrFail($validated['user_id']);
+        if ($member->cooperative_id !== auth()->user()->cooperative_id) {
+            abort(403, 'Unauthorized access to member of another cooperative.');
+        }
+
         if (!$member->is_active) {
             return redirect()->back()->withErrors(['user_id' => 'Cannot record savings for an inactive member.'])->withInput();
         }
@@ -112,6 +116,10 @@ class SavingsController extends Controller
     public function edit(Request $request)
     {
         $member = User::findOrFail($request->user_id);
+        if ($member->cooperative_id !== auth()->user()->cooperative_id) {
+            abort(403, 'Unauthorized access to member of another cooperative.');
+        }
+
         $month = $request->month;
 
         $paidSlotIds = MonthlySaving::where('user_id', $member->id)
@@ -138,6 +146,10 @@ class SavingsController extends Controller
         ]);
 
         $member = User::findOrFail($request->member_id);
+        if ($member->cooperative_id !== auth()->user()->cooperative_id) {
+            abort(403, 'Unauthorized access to member of another cooperative.');
+        }
+
         $amounts = $request->input('amounts', []);
 
         if (!empty($amounts)) {
@@ -191,6 +203,10 @@ class SavingsController extends Controller
         ]);
 
         $member = User::findOrFail($request->user_id);
+        if ($member->cooperative_id !== auth()->user()->cooperative_id) {
+            abort(403, 'Unauthorized access to member of another cooperative.');
+        }
+
         $this->savingsService->deleteSavings($member, $request->month);
 
         return redirect()->route('treasurer.savings.history')->with('success', 'Savings record deleted successfully.');

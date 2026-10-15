@@ -60,12 +60,22 @@ class ExpenseController extends Controller
 
     public function approve(Expense $expense)
     {
+        $user = auth()->user();
+        if (!$user->isSuperAdmin() && $expense->requestedBy && $expense->requestedBy->cooperative_id !== $user->cooperative_id) {
+            abort(403, 'Unauthorized access to expense of another cooperative.');
+        }
+
         $this->expenseService->approveExpense($expense);
         return back()->with('success', 'Expense approved successfully.');
     }
 
     public function reject(Expense $expense)
     {
+        $user = auth()->user();
+        if (!$user->isSuperAdmin() && $expense->requestedBy && $expense->requestedBy->cooperative_id !== $user->cooperative_id) {
+            abort(403, 'Unauthorized access to expense of another cooperative.');
+        }
+
         $this->expenseService->rejectExpense($expense);
         return back()->with('success', 'Expense rejected.');
     }

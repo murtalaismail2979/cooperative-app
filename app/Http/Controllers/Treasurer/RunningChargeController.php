@@ -63,6 +63,11 @@ class RunningChargeController extends Controller
             'payment_date' => 'required|date',
         ]);
 
+        $member = User::findOrFail($validated['user_id']);
+        if ($member->cooperative_id !== auth()->user()->cooperative_id) {
+            abort(403, 'Unauthorized access to member of another cooperative.');
+        }
+
         $this->runningChargeService->recordCharge(
             $validated['user_id'],
             $validated['month'],
@@ -163,11 +168,19 @@ class RunningChargeController extends Controller
 
     public function edit(\App\Models\RunningCharge $runningCharge)
     {
+        if ($runningCharge->user && $runningCharge->user->cooperative_id !== auth()->user()->cooperative_id) {
+            abort(403, 'Unauthorized access to running charge of another cooperative.');
+        }
+
         return view('treasurer.running-charges.edit', compact('runningCharge'));
     }
 
     public function update(Request $request, \App\Models\RunningCharge $runningCharge)
     {
+        if ($runningCharge->user && $runningCharge->user->cooperative_id !== auth()->user()->cooperative_id) {
+            abort(403, 'Unauthorized access to running charge of another cooperative.');
+        }
+
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0',
             'month' => 'required|date',
@@ -181,6 +194,10 @@ class RunningChargeController extends Controller
 
     public function destroy(\App\Models\RunningCharge $runningCharge)
     {
+        if ($runningCharge->user && $runningCharge->user->cooperative_id !== auth()->user()->cooperative_id) {
+            abort(403, 'Unauthorized access to running charge of another cooperative.');
+        }
+
         $runningCharge->delete();
         return redirect()->back(fallback: route('treasurer.running-charges.history'))->with('success', 'Running charge deleted successfully.');
     }

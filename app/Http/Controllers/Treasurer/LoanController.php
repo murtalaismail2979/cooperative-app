@@ -79,6 +79,10 @@ class LoanController extends Controller
     public function show(Loan $loan)
     {
         $cooperativeId = auth()->user()->cooperative_id;
+        if ($loan->user && $loan->user->cooperative_id !== $cooperativeId) {
+            abort(403, 'Unauthorized access to loan of another cooperative.');
+        }
+
         $loan->load(['user', 'repayments', 'approver']);
 
         $previousLoan = Loan::whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId))->where('id', '<', $loan->id)->latest('id')->first();
@@ -90,6 +94,11 @@ class LoanController extends Controller
 
     public function addRepayment(StoreRepaymentRequest $request, Loan $loan)
     {
+        $cooperativeId = auth()->user()->cooperative_id;
+        if ($loan->user && $loan->user->cooperative_id !== $cooperativeId) {
+            abort(403, 'Unauthorized access to loan of another cooperative.');
+        }
+
         $this->loanService->recordRepayment($loan, $request->amount, $request->payment_date);
 
         return redirect()->route('treasurer.loans.show', $loan)->with('success', 'Repayment recorded.');
@@ -98,12 +107,21 @@ class LoanController extends Controller
     public function edit(Loan $loan)
     {
         $cooperativeId = auth()->user()->cooperative_id;
+        if ($loan->user && $loan->user->cooperative_id !== $cooperativeId) {
+            abort(403, 'Unauthorized access to loan of another cooperative.');
+        }
+
         $members = User::where('role', 'member')->where('cooperative_id', $cooperativeId)->where('is_active', true)->get();
         return view('treasurer.loans.edit', compact('loan', 'members'));
     }
 
     public function update(Request $request, Loan $loan)
     {
+        $cooperativeId = auth()->user()->cooperative_id;
+        if ($loan->user && $loan->user->cooperative_id !== $cooperativeId) {
+            abort(403, 'Unauthorized access to loan of another cooperative.');
+        }
+
         $validated = $request->validate([
             'principal_amount' => 'required|numeric|min:1',
             'profit_rate' => 'nullable|numeric|min:0',
@@ -119,17 +137,32 @@ class LoanController extends Controller
 
     public function destroy(Loan $loan)
     {
+        $cooperativeId = auth()->user()->cooperative_id;
+        if ($loan->user && $loan->user->cooperative_id !== $cooperativeId) {
+            abort(403, 'Unauthorized access to loan of another cooperative.');
+        }
+
         $this->loanService->deleteLoan($loan);
         return redirect()->route('treasurer.loans.index')->with('success', 'Loan and associated repayments deleted successfully.');
     }
 
     public function editRepayment(Loan $loan, \App\Models\LoanRepayment $repayment)
     {
+        $cooperativeId = auth()->user()->cooperative_id;
+        if ($loan->user && $loan->user->cooperative_id !== $cooperativeId) {
+            abort(403, 'Unauthorized access to loan of another cooperative.');
+        }
+
         return view('treasurer.loans.repayments.edit', compact('loan', 'repayment'));
     }
 
     public function updateRepayment(Request $request, Loan $loan, \App\Models\LoanRepayment $repayment)
     {
+        $cooperativeId = auth()->user()->cooperative_id;
+        if ($loan->user && $loan->user->cooperative_id !== $cooperativeId) {
+            abort(403, 'Unauthorized access to loan of another cooperative.');
+        }
+
         $validated = $request->validate([
             'amount' => 'required|numeric|min:1',
             'payment_date' => 'required|date',
@@ -142,6 +175,11 @@ class LoanController extends Controller
 
     public function destroyRepayment(Loan $loan, \App\Models\LoanRepayment $repayment)
     {
+        $cooperativeId = auth()->user()->cooperative_id;
+        if ($loan->user && $loan->user->cooperative_id !== $cooperativeId) {
+            abort(403, 'Unauthorized access to loan of another cooperative.');
+        }
+
         $this->loanService->deleteRepayment($repayment);
         return redirect()->route('treasurer.loans.show', $loan)->with('success', 'Repayment deleted successfully.');
     }

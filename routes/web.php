@@ -31,6 +31,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Get member active slots (shared by Admin/Treasurer)
     Route::get('/members/{user}/active-slots', function (App\Models\User $user) {
+        $currentUser = auth()->user();
+        if ($currentUser && !$currentUser->isSuperAdmin() && $user->cooperative_id !== $currentUser->cooperative_id) {
+            abort(403, 'Unauthorized access to member of another cooperative.');
+        }
+
         return response()->json(
             $user->savingsSlots()->where('is_active', true)->get()
         );
@@ -38,6 +43,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Get member savings info (shared by Admin/Treasurer)
     Route::get('/members/{user}/savings-info', function (App\Models\User $user) {
+        $currentUser = auth()->user();
+        if ($currentUser && !$currentUser->isSuperAdmin() && $user->cooperative_id !== $currentUser->cooperative_id) {
+            abort(403, 'Unauthorized access to member of another cooperative.');
+        }
+
         $activeSlots = $user->savingsSlots()->where('is_active', true)->get();
         
         $totalSavings = \App\Models\MonthlySaving::where('user_id', $user->id)

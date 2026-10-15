@@ -113,4 +113,93 @@ class PasswordRecoveryTest extends TestCase
         ]);
         $successLogin->assertRedirect();
     }
+
+    public function test_unverified_session_cannot_access_reset_form(): void
+    {
+        $response = $this->get('/retrieve-password/reset');
+        $response->assertRedirect('/retrieve-password');
+        $response->assertSessionHasErrors('secret_verification');
+    }
+
+    public function test_unverified_session_cannot_submit_reset_password(): void
+    {
+        $response = $this->post('/retrieve-password/reset', [
+            'password' => 'new-secret-pass-999',
+            'password_confirmation' => 'new-secret-pass-999',
+        ]);
+        $response->assertRedirect('/retrieve-password');
+        $response->assertSessionHasErrors('secret_verification');
+    }
+
+    public function test_secret_question_verification_handles_whitespace_and_case_insensitivity(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'case.whitespace@example.com',
+            'member_code' => 'MEM-2026-CASE',
+            'password' => Hash::make('old-password-123'),
+        ]);
+
+        // Submit with surrounding whitespace and lower case
+        $response = $this->post('/retrieve-password/verify', [
+            'account_identifier' => '  case.whitespace@example.com  ',
+            'registration_number' => '  mem-2026-case  ',
+        ]);
+
+        $response->assertRedirect('/retrieve-password/reset');
+        $response->assertSessionHas('recovery_user_id', $user->id);
+    }
+
+    public function test_reset_password_validates_confirmation_and_minimum_length(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'validation-check@example.com',
+            'member_code' => 'MEM-2026-VAL',
+        ]);
+
+        // Verify session first
+        $this->post('/retrieve-password/verify', [
+            'account_identifier' => 'validation-check@example.com',
+            'registration_number' => 'MEM-2026-VAL',
+        ]);
+
+        // Mismatched confirmation
+        $mismatch = $this->post('/retrieve-password/reset', [
+            'password' => 'ValidPassword123!',
+            'password_confirmation' => 'MismatchPass123!',
+        ]);
+        $mismatch->assertSessionHasErrors('password');
+
+        // Too short (< 8 characters)
+        $tooShort = $this->post('/retrieve-password/reset', [
+            'password' => 'short',
+            'password_confirmation' => 'short',
+        ]);
+        $tooShort->assertSessionHasErrors('password');
+    }
+
+    public function test_recovery_session_token_is_cleared_after_successful_reset_preventing_replay(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'replay-prevention@example.com',
+            'member_code' => 'MEM-2026-REPLAY',
+        ]);
+
+        // Step 1: Verify
+        $this->post('/retrieve-password/verify', [
+            'account_identifier' => 'replay-prevention@example.com',
+            'registration_number' => 'MEM-2026-REPLAY',
+        ]);
+
+        // Step 2: Reset
+        $this->post('/retrieve-password/reset', [
+            'password' => 'valid-new-pass-1234',
+            'password_confirmation' => 'valid-new-pass-1234',
+        ])->assertRedirect('/login');
+
+        // Step 3: Replay attempt (trying to reset again without re-verifying)
+        $replayAttempt = $this->get('/retrieve-password/reset');
+        $replayAttempt->assertRedirect('/retrieve-password');
+        $replayAttempt->assertSessionHasErrors('secret_verification');
+    }
 }
+
