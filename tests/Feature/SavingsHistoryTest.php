@@ -439,4 +439,43 @@ class SavingsHistoryTest extends TestCase
         $response->assertDontSee('<td>November 2022</td>', false);
         $response->assertDontSee('<td>December 2022</td>', false);
     }
+
+    public function test_quick_view_marks_months_prior_to_readmission_as_inactive(): void
+    {
+        $member = User::factory()->create([
+            'role' => 'member',
+            'is_active' => true,
+            'registration_year' => 2021,
+        ]);
+
+        $slot = SavingsSlot::create(['user_id' => $member->id, 'slot_number' => 1, 'is_active' => true]);
+
+        // Member was re-admitted in September 2026
+        $member->slotHistories()->create([
+            'previous_slots' => 0,
+            'current_slots' => 1,
+            'changed_by' => 1,
+            'reason' => 'Re-admitted to cooperative on 2026-09-30',
+            'created_at' => '2026-09-30',
+        ]);
+
+        // Paid for September 2026
+        MonthlySaving::create([
+            'user_id' => $member->id,
+            'savings_slot_id' => $slot->id,
+            'amount' => 2000,
+            'month' => '2026-09-01',
+            'status' => 'paid',
+            'payment_date' => '2026-09-30',
+        ]);
+
+        $response = $this->actingAs($member)->get(route('member.savings', ['year' => 2026]));
+        $response->assertOk();
+
+        // September should be marked as Paid
+        $response->assertSee('Sep 2026: Paid');
+
+        // Months prior to re-admission (e.g. August) should show inactive / before re-admission
+        $response->assertSee('Inactive (Before Re-admission in Sep 2026)');
+    }
 }

@@ -15,6 +15,8 @@ class MemberSlotHistory extends Model
         'current_slots',
         'changed_by',
         'reason',
+        'created_at',
+        'updated_at',
     ];
 
     public function user()

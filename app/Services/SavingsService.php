@@ -139,7 +139,7 @@ class SavingsService
     {
         $cooperativeId = $cooperativeId ?? (auth()->check() && !auth()->user()->isSuperAdmin() ? auth()->user()->cooperative_id : null);
 
-        $query = User::where('role', 'member')->with('savingsSlots');
+        $query = User::where('role', 'member')->with(['savingsSlots', 'slotHistories']);
         if ($cooperativeId) {
             $query->where('cooperative_id', $cooperativeId);
         }

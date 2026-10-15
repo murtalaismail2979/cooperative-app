@@ -55,7 +55,7 @@
                                     </span>
                                 @elseif(!empty($mStatus['is_not_applicable']))
                                     @php
-                                        $reason = (int)$quickViewYear === 2021 ? 'Before Savings Inception (Started Oct 2021)' : 'Not Applicable (Savings held Jan–Apr only in 2022)';
+                                        $reason = $mStatus['reason'] ?? ((int)$quickViewYear === 2021 ? 'Before Savings Inception (Started Oct 2021)' : 'Not Applicable (Savings held Jan–Apr only in 2022)');
                                     @endphp
                                     <span class="badge bg-secondary d-inline-flex align-items-center gap-1 py-2 px-2 shadow-sm opacity-50" 
                                           style="min-width: 54px; justify-content: center; font-size: 0.8rem; border-radius: 6px;"

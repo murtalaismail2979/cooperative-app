@@ -109,9 +109,30 @@ class DashboardController extends Controller
         $isYear2022 = (int) $quickViewYear === 2022;
         $quickViewPossibleMonths = $isYear2021 ? 3 : ($isYear2022 ? 4 : 12);
 
+        $readmitHistory = $user->slotHistories()
+            ->where('reason', 'like', 'Re-admitted%')
+            ->latest('created_at')
+            ->first();
+        $readmitDate = $readmitHistory ? \Carbon\Carbon::parse($readmitHistory->created_at) : null;
+
         for ($m = 1; $m <= 12; $m++) {
             $isBeforeInception = ($isYear2021 && $m < 10);
-            $isNotApplicable = $isBeforeInception || ($isYear2022 && $m > 4);
+            $isBeforeReadmission = $readmitDate && ((int) $quickViewYear === (int) $readmitDate->year && $m < (int) $readmitDate->month);
+            $isBeforeRegistration = ((int) $quickViewYear === (int) $user->registration_year && !empty($user->registration_month) && $m < (int) $user->registration_month);
+            $isNotApplicable = $isBeforeInception || ($isYear2022 && $m > 4) || $isBeforeReadmission || $isBeforeRegistration;
+
+            if ($isBeforeInception) {
+                $reason = 'Before Savings Inception (Started Oct 2021)';
+            } elseif ($isYear2022 && $m > 4) {
+                $reason = 'Not Applicable (Savings held Jan–Apr only in 2022)';
+            } elseif ($isBeforeReadmission) {
+                $reason = 'Inactive (Before Re-admission in ' . $readmitDate->format('M Y') . ')';
+            } elseif ($isBeforeRegistration) {
+                $reason = 'Not Applicable (Registered in ' . date('M Y', mktime(0, 0, 0, $user->registration_month, 1, $user->registration_year)) . ')';
+            } else {
+                $reason = 'Not Applicable';
+            }
+
             $rec = $yearSavings->get($m);
             $isPaid = $rec && (float) $rec->total_amount > 0;
             if ($isPaid) {
@@ -122,6 +143,7 @@ class DashboardController extends Controller
                 'is_paid' => $isPaid,
                 'is_before_inception' => $isBeforeInception,
                 'is_not_applicable' => $isNotApplicable,
+                'reason' => $reason,
                 'amount' => $rec ? (float) $rec->total_amount : 0.0,
                 'payment_date' => $rec && $rec->max_payment_date ? \Carbon\Carbon::parse($rec->max_payment_date)->format('d/m/Y') : null,
             ];

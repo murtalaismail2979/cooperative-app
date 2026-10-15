@@ -58,6 +58,14 @@
                     @foreach($members as $member)
                     @php
                         $memberSavings = $savingsData->get($member->id);
+                        $readmitHistory = $member->slotHistories
+                            ? $member->slotHistories
+                                ->where('reason', '!=', null)
+                                ->filter(fn($h) => str_starts_with($h->reason, 'Re-admitted'))
+                                ->sortByDesc('created_at')
+                                ->first()
+                            : null;
+                        $readmitDate = $readmitHistory ? \Carbon\Carbon::parse($readmitHistory->created_at) : null;
                     @endphp
                     <tr class="{{ !$member->is_active ? 'table-secondary opacity-75' : '' }}">
                         <td>
@@ -75,8 +83,21 @@
                                     <div class="d-flex gap-1 align-items-center {{ $rowIndex === 0 ? 'mb-2' : '' }}">
                                         @foreach($row as $mNum => $mName)
                                             @php
-                                                $isNotApplicable = (((int)$selectedYear === 2021 && $mNum < 10) || ((int)$selectedYear === 2022 && $mNum > 4));
-                                                $reason = (int)$selectedYear === 2021 ? 'Before Inception (Started Oct 2021)' : 'Not Applicable (Jan–Apr only in 2022)';
+                                                $isBeforeInception = (((int)$selectedYear === 2021 && $mNum < 10) || ((int)$selectedYear === 2022 && $mNum > 4));
+                                                $isBeforeReadmission = $readmitDate && ((int)$selectedYear === (int)$readmitDate->year && $mNum < (int)$readmitDate->month);
+                                                $isBeforeRegistration = ((int)$selectedYear === (int)$member->registration_year && !empty($member->registration_month) && $mNum < (int)$member->registration_month);
+                                                $isNotApplicable = $isBeforeInception || $isBeforeReadmission || $isBeforeRegistration;
+                                                
+                                                if ($isBeforeInception) {
+                                                    $reason = (int)$selectedYear === 2021 ? 'Before Inception (Started Oct 2021)' : 'Not Applicable (Jan–Apr only in 2022)';
+                                                } elseif ($isBeforeReadmission) {
+                                                    $reason = 'Inactive (Before Re-admission in ' . $readmitDate->format('M Y') . ')';
+                                                } elseif ($isBeforeRegistration) {
+                                                    $reason = 'Not Applicable (Registered in ' . date('M Y', mktime(0, 0, 0, $member->registration_month, 1, $member->registration_year)) . ')';
+                                                } else {
+                                                    $reason = 'Not Applicable';
+                                                }
+
                                                 $rec = $memberSavings ? $memberSavings->firstWhere('month_num', $mNum) : null;
                                                 $isPaid = $rec && (float)$rec->total_amount > 0;
                                             @endphp
