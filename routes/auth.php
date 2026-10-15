@@ -13,10 +13,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])->name('register');
-    Route::post('register', [RegisteredUserController::class, 'store']);
+    Route::post('register', [RegisteredUserController::class, 'store'])->middleware('throttle:10,1');
 
     Route::get('register-cooperative', [\App\Http\Controllers\Auth\CooperativeRegistrationController::class, 'create'])->name('register.cooperative');
-    Route::post('register-cooperative', [\App\Http\Controllers\Auth\CooperativeRegistrationController::class, 'store'])->name('register.cooperative.store');
+    Route::post('register-cooperative', [\App\Http\Controllers\Auth\CooperativeRegistrationController::class, 'store'])->name('register.cooperative.store')->middleware('throttle:10,1');
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
                 ->name('login');
@@ -27,13 +27,15 @@ Route::middleware('guest')->group(function () {
                 ->name('password.request');
 
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
-                ->name('password.email');
+                ->name('password.email')
+                ->middleware('throttle:6,1');
 
     Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
                 ->name('password.reset');
 
     Route::post('reset-password', [NewPasswordController::class, 'store'])
-                ->name('password.store');
+                ->name('password.store')
+                ->middleware('throttle:10,1');
 });
 
 Route::middleware('auth')->group(function () {
@@ -61,6 +63,6 @@ Route::middleware('auth')->group(function () {
 
 // Password Retrieval / Recovery (Secret Questions: Registration Year & Date of Birth)
 Route::get('retrieve-password', [\App\Http\Controllers\Auth\PasswordRecoveryController::class, 'showForm'])->name('password.recovery');
-Route::post('retrieve-password/verify', [\App\Http\Controllers\Auth\PasswordRecoveryController::class, 'verifySecretQuestions'])->name('password.recovery.verify');
+Route::post('retrieve-password/verify', [\App\Http\Controllers\Auth\PasswordRecoveryController::class, 'verifySecretQuestions'])->name('password.recovery.verify')->middleware('throttle:10,1');
 Route::get('retrieve-password/reset', [\App\Http\Controllers\Auth\PasswordRecoveryController::class, 'showResetForm'])->name('password.recovery.reset');
-Route::post('retrieve-password/reset', [\App\Http\Controllers\Auth\PasswordRecoveryController::class, 'updatePassword'])->name('password.recovery.update');
+Route::post('retrieve-password/reset', [\App\Http\Controllers\Auth\PasswordRecoveryController::class, 'updatePassword'])->name('password.recovery.update')->middleware('throttle:10,1');
