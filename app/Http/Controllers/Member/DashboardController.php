@@ -73,21 +73,26 @@ class DashboardController extends Controller
         );
 
         $totalSavings = $this->savingsService->getTotalSavings($user);
+        $readmitStart = $user->getEffectiveSavingsStartDate();
 
         $driver = \DB::connection()->getDriverName();
         $yearExpr = $driver === 'sqlite' ? "strftime('%Y', month)" : "YEAR(month)";
-        $yearsFromDb = MonthlySaving::where('user_id', $user->id)
+        $yearsFromDbQuery = MonthlySaving::where('user_id', $user->id)
+            ->whereNotNull('month');
+        if ($readmitStart) {
+            $yearsFromDbQuery->whereDate('month', '>=', $readmitStart->format('Y-m-d'));
+        }
+        $yearsFromDb = $yearsFromDbQuery
             ->selectRaw("DISTINCT {$yearExpr} as yr")
-            ->whereNotNull('month')
             ->orderBy('yr', 'desc')
             ->pluck('yr')
             ->map(fn($y) => (int)$y)
             ->filter()
             ->toArray();
 
-        $regYear = (int) ($user->registration_year ?? date('Y'));
+        $startYear = $readmitStart ? (int) $readmitStart->year : (int) ($user->registration_year ?? date('Y'));
         $currentYear = (int) date('Y');
-        $years = array_unique(array_merge($yearsFromDb, [$regYear, $currentYear]));
+        $years = array_unique(array_merge($yearsFromDb, [$startYear, $currentYear]));
         rsort($years);
         $years = array_values($years);
 
@@ -109,15 +114,11 @@ class DashboardController extends Controller
         $isYear2022 = (int) $quickViewYear === 2022;
         $quickViewPossibleMonths = $isYear2021 ? 3 : ($isYear2022 ? 4 : 12);
 
-        $readmitHistory = $user->slotHistories()
-            ->where('reason', 'like', 'Re-admitted%')
-            ->latest('created_at')
-            ->first();
-        $readmitDate = $readmitHistory ? \Carbon\Carbon::parse($readmitHistory->created_at) : null;
+        $readmitDate = $user->getReadmissionDate();
 
         for ($m = 1; $m <= 12; $m++) {
             $isBeforeInception = ($isYear2021 && $m < 10);
-            $isBeforeReadmission = $readmitDate && ((int) $quickViewYear === (int) $readmitDate->year && $m < (int) $readmitDate->month);
+            $isBeforeReadmission = $readmitDate && (((int) $quickViewYear < (int) $readmitDate->year) || ((int) $quickViewYear === (int) $readmitDate->year && $m < (int) $readmitDate->month));
             $isBeforeRegistration = ((int) $quickViewYear === (int) $user->registration_year && !empty($user->registration_month) && $m < (int) $user->registration_month);
             $isNotApplicable = $isBeforeInception || ($isYear2022 && $m > 4) || $isBeforeReadmission || $isBeforeRegistration;
 
@@ -150,7 +151,11 @@ class DashboardController extends Controller
         }
 
         // All years overview for multi-year quick view
-        $allYearsSavings = MonthlySaving::where('user_id', $user->id)
+        $allYearsSavingsQuery = MonthlySaving::where('user_id', $user->id);
+        if ($readmitStart) {
+            $allYearsSavingsQuery->whereDate('month', '>=', $readmitStart->format('Y-m-d'));
+        }
+        $allYearsSavings = $allYearsSavingsQuery
             ->selectRaw("{$yearExpr} as yr, {$monthExpr} as month_num, SUM(amount) as total_amount")
             ->groupBy(\DB::raw("{$yearExpr}"), \DB::raw($monthExpr))
             ->get();
@@ -164,7 +169,8 @@ class DashboardController extends Controller
             $monthsStatus = [];
             for ($m = 1; $m <= 12; $m++) {
                 $isBeforeInception = ((int) $yr === 2021 && $m < 10);
-                $isNotApplicable = $isBeforeInception || ((int) $yr === 2022 && $m > 4);
+                $isBeforeReadmission = $readmitDate && (((int) $yr < (int) $readmitDate->year) || ((int) $yr === (int) $readmitDate->year && $m < (int) $readmitDate->month));
+                $isNotApplicable = $isBeforeInception || ((int) $yr === 2022 && $m > 4) || $isBeforeReadmission;
                 $rec = $yrRecords->firstWhere('month_num', $m);
                 $isPaid = $rec && (float) $rec->total_amount > 0;
                 if ($isPaid) {
@@ -195,23 +201,29 @@ class DashboardController extends Controller
 
     private function getSavingsHistory($user)
     {
-        $earliestSaving = MonthlySaving::where('user_id', $user->id)->min('month');
-        $regYearDate = $user->registration_year ? \Carbon\Carbon::create($user->registration_year, 1, 1)->startOfMonth() : null;
-        $createdDate = $user->created_at ? \Carbon\Carbon::parse($user->created_at)->startOfMonth() : null;
-
-        $dates = array_filter([
-            $earliestSaving ? \Carbon\Carbon::parse($earliestSaving)->startOfMonth() : null,
-            $regYearDate,
-            $createdDate
-        ]);
-
-        $start = !empty($dates) ? collect($dates)->min() : now()->startOfYear();
+        $readmitStart = $user->getEffectiveSavingsStartDate();
         $end = now()->startOfMonth();
 
-        // YLDA started savings in October 2021 - do not generate savings history prior to October 2021
-        $coopSavingsStart = \Carbon\Carbon::create(2021, 10, 1)->startOfMonth();
-        if ($start->lt($coopSavingsStart)) {
-            $start = $coopSavingsStart->copy();
+        if ($readmitStart) {
+            $start = $readmitStart->copy();
+        } else {
+            $earliestSaving = MonthlySaving::where('user_id', $user->id)->min('month');
+            $regYearDate = $user->registration_year ? \Carbon\Carbon::create($user->registration_year, 1, 1)->startOfMonth() : null;
+            $createdDate = $user->created_at ? \Carbon\Carbon::parse($user->created_at)->startOfMonth() : null;
+
+            $dates = array_filter([
+                $earliestSaving ? \Carbon\Carbon::parse($earliestSaving)->startOfMonth() : null,
+                $regYearDate,
+                $createdDate
+            ]);
+
+            $start = !empty($dates) ? collect($dates)->min() : now()->startOfYear();
+
+            // YLDA started savings in October 2021 - do not generate savings history prior to October 2021
+            $coopSavingsStart = \Carbon\Carbon::create(2021, 10, 1)->startOfMonth();
+            if ($start->lt($coopSavingsStart)) {
+                $start = $coopSavingsStart->copy();
+            }
         }
 
         if ($start->gt($end)) {
@@ -231,7 +243,12 @@ class DashboardController extends Controller
             $current->addMonth();
         }
 
-        $paidSavings = MonthlySaving::where('user_id', $user->id)
+        $paidSavingsQuery = MonthlySaving::where('user_id', $user->id);
+        if ($readmitStart) {
+            $paidSavingsQuery->whereDate('month', '>=', $readmitStart->format('Y-m-d'));
+        }
+
+        $paidSavings = $paidSavingsQuery
             ->selectRaw('month, CASE WHEN SUM(amount) > 0 THEN CAST(ROUND(SUM(amount) / 2000) AS INTEGER) ELSE COUNT(id) END as slots_count, SUM(amount) as total_amount, MAX(payment_date) as latest_payment_date')
             ->groupBy('month')
             ->get()

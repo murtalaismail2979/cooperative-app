@@ -658,6 +658,7 @@ class UserController extends Controller
                 'is_active' => true,
                 'membership_status' => 'approved',
                 'member_code' => $memberCode,
+                'readmitted_at' => $effectiveDate->format('Y-m-d'),
                 'approved_at' => now(),
                 'approved_by' => $currentUser->id,
             ]);

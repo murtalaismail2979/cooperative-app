@@ -357,4 +357,76 @@ class SavingsReportTest extends TestCase
         $response->assertSee('2,000.00'); // pending
         $response->assertSee('Total Dividends Shared');
     }
+
+    public function test_readmitted_member_savings_reports_start_with_effect_from_readmission_month(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $readmittedMember = User::factory()->create([
+            'role' => 'member',
+            'name' => 'Failsal Yerima',
+            'member_code' => 'YLDA/21/0017',
+            'readmitted_at' => '2026-09-01',
+            'is_active' => true,
+        ]);
+
+        $slot = SavingsSlot::create(['user_id' => $readmittedMember->id, 'slot_number' => 1, 'is_active' => true]);
+
+        // Prior savings from before withdrawal (2024)
+        MonthlySaving::create([
+            'user_id' => $readmittedMember->id,
+            'savings_slot_id' => $slot->id,
+            'amount' => 40000.00,
+            'month' => '2024-06-01',
+            'status' => 'paid',
+            'payment_date' => '2024-06-05',
+        ]);
+
+        // Current savings after re-admission (September 2026)
+        MonthlySaving::create([
+            'user_id' => $readmittedMember->id,
+            'savings_slot_id' => $slot->id,
+            'amount' => 10000.00,
+            'month' => '2026-09-01',
+            'status' => 'paid',
+            'payment_date' => '2026-09-05',
+        ]);
+
+        // 1. Lifetime savings report check
+        $lifetimeResponse = $this->actingAs($admin)
+            ->get(route('admin.reports.savings', ['tab' => 'lifetime', 'lifetime_search' => 'Failsal']));
+
+        $lifetimeResponse->assertOk();
+        $lifetimeResponse->assertSee('Failsal Yerima');
+        $lifetimeResponse->assertSee('YLDA/21/0017');
+        $lifetimeResponse->assertSee('2026');
+        $lifetimeResponse->assertDontSee('2024 - 2026');
+
+        $lifetimeRecords = $lifetimeResponse->viewData('lifetimeSavings');
+        $this->assertCount(1, $lifetimeRecords);
+        $this->assertEquals(10000.00, (float) $lifetimeRecords->first()->total_saved);
+        $this->assertEquals(2026, (int) $lifetimeRecords->first()->start_year);
+        $this->assertEquals(2026, (int) $lifetimeRecords->first()->end_year);
+
+        // 2. Yearly savings report check
+        $yearlyResponse = $this->actingAs($admin)
+            ->get(route('admin.reports.savings', ['tab' => 'yearly', 'yearly_search' => 'Failsal']));
+
+        $yearlyResponse->assertOk();
+        $yearlyResponse->assertSee('Failsal Yerima');
+        $yearlyResponse->assertSee('2026');
+
+        $yearlyRecords = $yearlyResponse->viewData('yearlySavings');
+        $this->assertCount(1, $yearlyRecords);
+        $this->assertEquals(2026, (int) $yearlyRecords->first()->year);
+        $this->assertEquals(10000.00, (float) $yearlyRecords->first()->total_saved);
+        $this->assertEquals(10000.00, (float) $yearlyRecords->first()->cumulative_saved);
+
+        // 3. Member savings page check
+        $memberResponse = $this->actingAs($readmittedMember)->get(route('member.savings'));
+        $memberResponse->assertOk();
+        $memberResponse->assertSee('₦10,000.00');
+        $this->assertEquals(10000.00, (float) $memberResponse->viewData('totalSavings'));
+        $this->assertEquals(10000.00, (float) $memberResponse->viewData('quickViewTotalAmount'));
+        $this->assertEquals([2026], $memberResponse->viewData('years'));
+    }
 }

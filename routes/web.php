@@ -50,11 +50,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         $activeSlots = $user->savingsSlots()->where('is_active', true)->get();
         
-        $totalSavings = \App\Models\MonthlySaving::where('user_id', $user->id)
-            ->where('status', 'paid')
-            ->sum('amount');
+        $savingsService = app(\App\Services\SavingsService::class);
+        $totalSavings = $savingsService->getTotalSavings($user);
 
-        $latestSaving = \App\Models\MonthlySaving::where('user_id', $user->id)
+        $latestSavingQuery = \App\Models\MonthlySaving::where('user_id', $user->id)
+            ->where('status', 'paid');
+        if ($startDate = $user->getEffectiveSavingsStartDate()) {
+            $latestSavingQuery->whereDate('month', '>=', $startDate->format('Y-m-d'));
+        }
+        $latestSaving = $latestSavingQuery
             ->selectRaw('month, SUM(amount) as total_amount, MAX(payment_date) as max_payment_date')
             ->groupBy('month')
             ->orderBy('month', 'desc')

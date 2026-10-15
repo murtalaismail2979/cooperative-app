@@ -354,4 +354,75 @@ class MemberReadmissionTest extends TestCase
         ]);
         $response2->assertSessionHasErrors(['custom_fee']);
     }
+
+    public function test_readmission_sets_readmitted_at_and_savings_are_calculated_with_effect_from_readmission(): void
+    {
+        $coop = Cooperative::factory()->create(['is_active' => true, 'slug' => 'COOPTEST']);
+        $admin = User::factory()->create([
+            'cooperative_id' => $coop->id,
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $member = User::factory()->create([
+            'cooperative_id' => $coop->id,
+            'role' => 'member',
+            'is_active' => false,
+            'membership_status' => 'approved',
+            'member_code' => 'COOPTEST/21/0017',
+        ]);
+
+        $slot = $member->savingsSlots()->create(['slot_number' => 1, 'is_active' => false]);
+
+        // Historical savings from past membership (e.g. 2024, withdrawn upon exit)
+        \App\Models\MonthlySaving::create([
+            'user_id' => $member->id,
+            'savings_slot_id' => $slot->id,
+            'amount' => 50000.00,
+            'month' => '2024-05-01',
+            'status' => 'paid',
+            'payment_date' => '2024-05-10',
+        ]);
+
+        // Admin re-admits member effective 2026-09-01
+        $response = $this->actingAs($admin)->post(route('admin.members.readmit', $member), [
+            'readmission_date' => '2026-09-01',
+            'slots' => 5,
+            'fee_option' => 'waived',
+            'code_action' => 'keep',
+        ]);
+
+        $response->assertSessionHas('success');
+        $member->refresh();
+
+        $this->assertEquals('2026-09-01', $member->readmitted_at->format('Y-m-d'));
+        $this->assertEquals('2026-09-01', $member->getEffectiveSavingsStartDate()->format('Y-m-d'));
+
+        // Post-readmission savings in Sept 2026
+        \App\Models\MonthlySaving::create([
+            'user_id' => $member->id,
+            'savings_slot_id' => $slot->id,
+            'amount' => 10000.00,
+            'month' => '2026-09-01',
+            'status' => 'paid',
+            'payment_date' => '2026-09-10',
+        ]);
+
+        $savingsService = app(\App\Services\SavingsService::class);
+        $this->assertEquals(10000.00, $savingsService->getTotalSavings($member));
+
+        // Savings info endpoint should also return 10000
+        $infoResponse = $this->actingAs($admin)->get("/members/{$member->id}/savings-info");
+        $infoResponse->assertOk();
+        $infoResponse->assertJson([
+            'total_savings' => 10000.00,
+            'formatted_total_savings' => '₦10,000.00',
+        ]);
+
+        // Verify historical 2024 record is preserved (internal function intact)
+        $this->assertDatabaseHas('monthly_savings', [
+            'user_id' => $member->id,
+            'amount' => 50000.00,
+        ]);
+    }
 }

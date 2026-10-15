@@ -25,6 +25,7 @@ class User extends Authenticatable
         'is_active',
         'membership_status',
         'approved_at',
+        'readmitted_at',
         'approved_by',
         'rejection_reason',
     ];
@@ -39,6 +40,7 @@ class User extends Authenticatable
         'password' => 'hashed',
         'is_active' => 'boolean',
         'approved_at' => 'datetime',
+        'readmitted_at' => 'date',
     ];
 
     // Relationships
@@ -245,5 +247,33 @@ class User extends Authenticatable
         }
 
         return sprintf('%s/%s/%04d', $prefix, $year, $newNumber);
+    }
+
+    /**
+     * Get the effective re-admission date if member was re-admitted.
+     */
+    public function getReadmissionDate(): ?\Carbon\Carbon
+    {
+        if (!empty($this->readmitted_at)) {
+            return \Carbon\Carbon::parse($this->readmitted_at);
+        }
+
+        $history = $this->slotHistories
+            ? $this->slotHistories->filter(fn($h) => str_starts_with($h->reason ?? '', 'Re-admitted'))->sortByDesc('created_at')->first()
+            : $this->slotHistories()->where('reason', 'like', 'Re-admitted%')->latest('created_at')->first();
+
+        return $history ? \Carbon\Carbon::parse($history->created_at) : null;
+    }
+
+    /**
+     * Get the start of the effective savings contribution period (re-admission month or null).
+     */
+    public function getEffectiveSavingsStartDate(): ?\Carbon\Carbon
+    {
+        if ($date = $this->getReadmissionDate()) {
+            return $date->copy()->startOfMonth();
+        }
+
+        return null;
     }
 }

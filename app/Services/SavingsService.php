@@ -95,13 +95,18 @@ class SavingsService
 
 
     /**
-     * Get total savings for a member.
+     * Get total savings for a member (calculated with effect from re-admission if member was re-admitted).
      */
     public function getTotalSavings(User $member): float
     {
-        return MonthlySaving::where('user_id', $member->id)
-            ->where('status', 'paid')
-            ->sum('amount');
+        $query = MonthlySaving::where('user_id', $member->id)
+            ->where('status', 'paid');
+
+        if ($startDate = $member->getEffectiveSavingsStartDate()) {
+            $query->whereDate('month', '>=', $startDate->format('Y-m-d'));
+        }
+
+        return (float) $query->sum('amount');
     }
 
     /**

@@ -54,10 +54,15 @@ class DividendService
 
         foreach ($members as $member) {
             // Get cumulative paid savings up to and including the start month of the investment
-            $savingsUpToMonth = MonthlySaving::where('user_id', $member->id)
+            $savingsQuery = MonthlySaving::where('user_id', $member->id)
                 ->where('status', 'paid')
-                ->whereDate('month', '<=', $businessMonth)
-                ->sum('amount');
+                ->whereDate('month', '<=', $businessMonth);
+
+            if ($startDate = $member->getEffectiveSavingsStartDate()) {
+                $savingsQuery->whereDate('month', '>=', $startDate->format('Y-m-d'));
+            }
+
+            $savingsUpToMonth = $savingsQuery->sum('amount');
 
             // Get number of 2000s as units
             $units = floor($savingsUpToMonth / 2000);

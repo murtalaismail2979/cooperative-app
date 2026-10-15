@@ -58,14 +58,7 @@
                     @foreach($members as $member)
                     @php
                         $memberSavings = $savingsData->get($member->id);
-                        $readmitHistory = $member->slotHistories
-                            ? $member->slotHistories
-                                ->where('reason', '!=', null)
-                                ->filter(fn($h) => str_starts_with($h->reason, 'Re-admitted'))
-                                ->sortByDesc('created_at')
-                                ->first()
-                            : null;
-                        $readmitDate = $readmitHistory ? \Carbon\Carbon::parse($readmitHistory->created_at) : null;
+                        $readmitDate = $member->getReadmissionDate();
                     @endphp
                     <tr class="{{ !$member->is_active ? 'table-secondary opacity-75' : '' }}">
                         <td>
@@ -84,7 +77,7 @@
                                         @foreach($row as $mNum => $mName)
                                             @php
                                                 $isBeforeInception = (((int)$selectedYear === 2021 && $mNum < 10) || ((int)$selectedYear === 2022 && $mNum > 4));
-                                                $isBeforeReadmission = $readmitDate && ((int)$selectedYear === (int)$readmitDate->year && $mNum < (int)$readmitDate->month);
+                                                $isBeforeReadmission = $readmitDate && (((int)$selectedYear < (int)$readmitDate->year) || ((int)$selectedYear === (int)$readmitDate->year && $mNum < (int)$readmitDate->month));
                                                 $isBeforeRegistration = ((int)$selectedYear === (int)$member->registration_year && !empty($member->registration_month) && $mNum < (int)$member->registration_month);
                                                 $isNotApplicable = $isBeforeInception || $isBeforeReadmission || $isBeforeRegistration;
                                                 

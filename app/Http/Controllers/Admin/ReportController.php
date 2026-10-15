@@ -42,19 +42,23 @@ class ReportController extends Controller
         $yearlyYear = $request->input('yearly_year');
 
         $yearExprOuter = $driver === 'sqlite' ? "strftime('%Y', monthly_savings.month)" : "YEAR(monthly_savings.month)";
+        $monthYearExpr = $driver === 'sqlite' ? "strftime('%Y-%m', monthly_savings.month)" : "DATE_FORMAT(monthly_savings.month, '%Y-%m')";
+        $readmitMonthYearExpr = $driver === 'sqlite' ? "strftime('%Y-%m', users.readmitted_at)" : "DATE_FORMAT(users.readmitted_at, '%Y-%m')";
 
         // 1) Find distinct member user_ids that match search and year criteria
-        $yearlyUserIdsQuery = MonthlySaving::where('monthly_savings.status', 'paid')
-            ->where('monthly_savings.amount', '>', 0);
+        $yearlyUserIdsQuery = MonthlySaving::join('users', 'users.id', '=', 'monthly_savings.user_id')
+            ->where('monthly_savings.status', 'paid')
+            ->where('monthly_savings.amount', '>', 0)
+            ->whereRaw("(users.readmitted_at IS NULL OR {$monthYearExpr} >= {$readmitMonthYearExpr})");
 
         if ($cooperativeId) {
-            $yearlyUserIdsQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            $yearlyUserIdsQuery->where('users.cooperative_id', $cooperativeId);
         }
 
         if ($yearlySearch) {
-            $yearlyUserIdsQuery->whereHas('user', function ($q) use ($yearlySearch) {
-                $q->where('name', 'like', "%{$yearlySearch}%")
-                  ->orWhere('member_code', 'like', "%{$yearlySearch}%");
+            $yearlyUserIdsQuery->where(function ($q) use ($yearlySearch) {
+                $q->where('users.name', 'like', "%{$yearlySearch}%")
+                  ->orWhere('users.member_code', 'like', "%{$yearlySearch}%");
             });
         }
 
@@ -76,18 +80,20 @@ class ReportController extends Controller
         $pageUserIds = collect($paginatedUsers->items())->pluck('user_id')->filter()->toArray();
 
         if (!empty($pageUserIds)) {
-            $yearlySavingsQuery = MonthlySaving::selectRaw("
+            $yearlySavingsQuery = MonthlySaving::join('users', 'users.id', '=', 'monthly_savings.user_id')
+                ->selectRaw("
                     monthly_savings.user_id,
                     {$yearExprOuter} as year,
                     SUM(monthly_savings.amount) as total_saved
                 ")
                 ->where('monthly_savings.status', 'paid')
                 ->where('monthly_savings.amount', '>', 0)
+                ->whereRaw("(users.readmitted_at IS NULL OR {$monthYearExpr} >= {$readmitMonthYearExpr})")
                 ->whereIn('monthly_savings.user_id', $pageUserIds)
                 ->with('user');
 
             if ($cooperativeId) {
-                $yearlySavingsQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+                $yearlySavingsQuery->where('users.cooperative_id', $cooperativeId);
             }
 
             if ($yearlyYear) {
@@ -111,10 +117,15 @@ class ReportController extends Controller
         // Calculate cumulative savings for items on current page
         $yearlyRecords->transform(function ($item) use ($driver) {
             $yearExpr = $driver === 'sqlite' ? "strftime('%Y', month)" : "YEAR(month)";
-            $item->cumulative_saved = MonthlySaving::where('user_id', $item->user_id)
+            $cumQuery = MonthlySaving::where('user_id', $item->user_id)
                 ->where('status', 'paid')
-                ->whereRaw("{$yearExpr} <= ?", [$item->year])
-                ->sum('amount');
+                ->whereRaw("{$yearExpr} <= ?", [$item->year]);
+
+            if ($item->user && ($startDate = $item->user->getEffectiveSavingsStartDate())) {
+                $cumQuery->whereDate('month', '>=', $startDate->format('Y-m-d'));
+            }
+
+            $item->cumulative_saved = $cumQuery->sum('amount');
             return $item;
         });
 
@@ -149,7 +160,8 @@ class ReportController extends Controller
         // 3. Lifetime Savings by Member
         $lifetimeSearch = $request->input('lifetime_search');
 
-        $lifetimeQuery = MonthlySaving::selectRaw("
+        $lifetimeQuery = MonthlySaving::join('users', 'users.id', '=', 'monthly_savings.user_id')
+            ->selectRaw("
                 monthly_savings.user_id,
                 MIN({$yearExprOuter}) as start_year,
                 MAX({$yearExprOuter}) as end_year,
@@ -157,16 +169,17 @@ class ReportController extends Controller
             ")
             ->where('monthly_savings.status', 'paid')
             ->where('monthly_savings.amount', '>', 0)
+            ->whereRaw("(users.readmitted_at IS NULL OR {$monthYearExpr} >= {$readmitMonthYearExpr})")
             ->with('user');
 
         if ($cooperativeId) {
-            $lifetimeQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            $lifetimeQuery->where('users.cooperative_id', $cooperativeId);
         }
 
         if ($lifetimeSearch) {
-            $lifetimeQuery->whereHas('user', function ($q) use ($lifetimeSearch) {
-                $q->where('name', 'like', "%{$lifetimeSearch}%")
-                  ->orWhere('member_code', 'like', "%{$lifetimeSearch}%");
+            $lifetimeQuery->where(function ($q) use ($lifetimeSearch) {
+                $q->where('users.name', 'like', "%{$lifetimeSearch}%")
+                  ->orWhere('users.member_code', 'like', "%{$lifetimeSearch}%");
             });
         }
 
@@ -1028,24 +1041,28 @@ class ReportController extends Controller
     {
         $driver = \DB::connection()->getDriverName();
         $yearExprOuter = $driver === 'sqlite' ? "strftime('%Y', monthly_savings.month)" : "YEAR(monthly_savings.month)";
+        $monthYearExpr = $driver === 'sqlite' ? "strftime('%Y-%m', monthly_savings.month)" : "DATE_FORMAT(monthly_savings.month, '%Y-%m')";
+        $readmitMonthYearExpr = $driver === 'sqlite' ? "strftime('%Y-%m', users.readmitted_at)" : "DATE_FORMAT(users.readmitted_at, '%Y-%m')";
 
-        $query = MonthlySaving::selectRaw("
+        $query = MonthlySaving::join('users', 'users.id', '=', 'monthly_savings.user_id')
+            ->selectRaw("
                 monthly_savings.user_id,
                 {$yearExprOuter} as year,
                 SUM(monthly_savings.amount) as total_saved
             ")
             ->where('monthly_savings.status', 'paid')
             ->where('monthly_savings.amount', '>', 0)
+            ->whereRaw("(users.readmitted_at IS NULL OR {$monthYearExpr} >= {$readmitMonthYearExpr})")
             ->with('user');
 
         if ($cooperativeId) {
-            $query->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            $query->where('users.cooperative_id', $cooperativeId);
         }
 
         if ($search) {
-            $query->whereHas('user', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('member_code', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('users.name', 'like', "%{$search}%")
+                  ->orWhere('users.member_code', 'like', "%{$search}%");
             });
         }
 
@@ -1068,10 +1085,15 @@ class ReportController extends Controller
         $rows = [];
         foreach ($results as $item) {
             $yearExpr = $driver === 'sqlite' ? "strftime('%Y', month)" : "YEAR(month)";
-            $cumulative = MonthlySaving::where('user_id', $item->user_id)
+            $cumQuery = MonthlySaving::where('user_id', $item->user_id)
                 ->where('status', 'paid')
-                ->whereRaw("{$yearExpr} <= ?", [$item->year])
-                ->sum('amount');
+                ->whereRaw("{$yearExpr} <= ?", [$item->year]);
+
+            if ($item->user && ($startDate = $item->user->getEffectiveSavingsStartDate())) {
+                $cumQuery->whereDate('month', '>=', $startDate->format('Y-m-d'));
+            }
+
+            $cumulative = $cumQuery->sum('amount');
 
             $rows[] = [
                 $item->user->member_code ?? 'N/A',
@@ -1089,24 +1111,29 @@ class ReportController extends Controller
     {
         $driver = \DB::connection()->getDriverName();
         $yearExprOuter = $driver === 'sqlite' ? "strftime('%Y', monthly_savings.month)" : "YEAR(monthly_savings.month)";
+        $monthYearExpr = $driver === 'sqlite' ? "strftime('%Y-%m', monthly_savings.month)" : "DATE_FORMAT(monthly_savings.month, '%Y-%m')";
+        $readmitMonthYearExpr = $driver === 'sqlite' ? "strftime('%Y-%m', users.readmitted_at)" : "DATE_FORMAT(users.readmitted_at, '%Y-%m')";
 
-        $query = MonthlySaving::selectRaw("
+        $query = MonthlySaving::join('users', 'users.id', '=', 'monthly_savings.user_id')
+            ->selectRaw("
                 monthly_savings.user_id,
                 MIN({$yearExprOuter}) as start_year,
                 MAX({$yearExprOuter}) as end_year,
                 SUM(monthly_savings.amount) as total_saved
             ")
             ->where('monthly_savings.status', 'paid')
+            ->where('monthly_savings.amount', '>', 0)
+            ->whereRaw("(users.readmitted_at IS NULL OR {$monthYearExpr} >= {$readmitMonthYearExpr})")
             ->with('user');
 
         if ($cooperativeId) {
-            $query->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            $query->where('users.cooperative_id', $cooperativeId);
         }
 
         if ($search) {
-            $query->whereHas('user', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('member_code', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('users.name', 'like', "%{$search}%")
+                  ->orWhere('users.member_code', 'like', "%{$search}%");
             });
         }
 
