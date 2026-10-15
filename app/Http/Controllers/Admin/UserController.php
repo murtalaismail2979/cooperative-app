@@ -87,8 +87,10 @@ class UserController extends Controller
             ->pluck('registration_year')
             ->toArray();
 
+        $defaultRegistrationFee = app(\App\Services\RegistrationFeeService::class)->getCurrentFeeAmount();
+
         return view('admin.members.index', compact(
-            'members', 'search', 'regYear', 'slots', 'status', 'roleFilter', 'registrationYears', 'pendingCount'
+            'members', 'search', 'regYear', 'slots', 'status', 'roleFilter', 'registrationYears', 'pendingCount', 'defaultRegistrationFee'
         ));
     }
 
@@ -332,8 +334,9 @@ class UserController extends Controller
             abort(403, 'Unauthorized access to member of another cooperative.');
         }
 
-        $member->load(['nextOfKin', 'slotHistories.changedBy']);
-        return view('admin.members.edit', compact('member'));
+        $defaultRegistrationFee = app(\App\Services\RegistrationFeeService::class)->getCurrentFeeAmount();
+        $member->load(['nextOfKin', 'slotHistories.changedBy', 'registrationFee']);
+        return view('admin.members.edit', compact('member', 'defaultRegistrationFee'));
     }
 
     public function slots(User $member)
@@ -608,5 +611,121 @@ class UserController extends Controller
         });
 
         return redirect()->back()->with('success', "Membership application for {$member->name} has been rejected.");
+    }
+
+    /**
+     * Re-admit an inactive/withdrawn member back into the cooperative.
+     */
+    public function readmit(Request $request, User $member)
+    {
+        $currentUser = auth()->user();
+        if (!$currentUser->isSuperAdmin() && $member->cooperative_id !== $currentUser->cooperative_id) {
+            abort(403, 'Unauthorized access to member of another cooperative.');
+        }
+
+        abort_unless($member->isMember(), 400, 'Only member accounts can be re-admitted.');
+        if ($member->is_active) {
+            return redirect()->back()->with('info', 'Member is already active.');
+        }
+
+        $validated = $request->validate([
+            'readmission_date' => 'required|date',
+            'slots' => 'required|integer|min:1|max:10',
+            'fee_option' => 'required|in:standard,custom,waived',
+            'custom_fee' => 'nullable|required_if:fee_option,custom|numeric|min:0.01',
+            'payment_method' => 'nullable|string|in:Pending,Cash,Bank Transfer,Cheque,Online,Other',
+            'reference_number' => 'nullable|string|max:255',
+            'notes' => 'nullable|string|max:500',
+            'code_action' => 'required|in:keep,new',
+        ]);
+
+        $effectiveDate = \Carbon\Carbon::parse($validated['readmission_date'])->startOfDay();
+        $regService = app(\App\Services\RegistrationFeeService::class);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($member, $validated, $effectiveDate, $regService, $currentUser) {
+            $memberCode = $member->member_code;
+            if ($validated['code_action'] === 'new' || empty($memberCode)) {
+                $year = (int) $effectiveDate->format('Y');
+                $memberCode = User::generateMemberCode($year, (int) $member->cooperative_id);
+            }
+
+            // Update member to active
+            $member->update([
+                'is_active' => true,
+                'membership_status' => 'approved',
+                'member_code' => $memberCode,
+                'approved_at' => now(),
+                'approved_by' => $currentUser->id,
+            ]);
+
+            // Adjust slots
+            $newSlotsCount = (int) $validated['slots'];
+            $oldSlotsCount = $member->savingsSlots()->where('is_active', true)->count();
+
+            for ($i = 1; $i <= $newSlotsCount; $i++) {
+                $slot = $member->savingsSlots()->where('slot_number', $i)->first();
+                if ($slot) {
+                    $slot->update(['is_active' => true]);
+                } else {
+                    $member->savingsSlots()->create([
+                        'slot_number' => $i,
+                        'is_active' => true,
+                    ]);
+                }
+            }
+
+            for ($i = $newSlotsCount + 1; $i <= 10; $i++) {
+                $member->savingsSlots()
+                    ->where('slot_number', $i)
+                    ->where('is_active', true)
+                    ->update(['is_active' => false]);
+            }
+
+            // Record slot history
+            $historyNote = 'Re-admitted to cooperative on ' . $effectiveDate->format('Y-m-d');
+            if (!empty($validated['notes'])) {
+                $historyNote .= ' (' . $validated['notes'] . ')';
+            }
+
+            $slotHistory = new \App\Models\MemberSlotHistory([
+                'previous_slots' => $oldSlotsCount,
+                'current_slots' => $newSlotsCount,
+                'changed_by' => $currentUser->id,
+                'reason' => $historyNote,
+            ]);
+            $slotHistory->created_at = $effectiveDate;
+            $slotHistory->updated_at = $effectiveDate;
+            $member->slotHistories()->save($slotHistory);
+
+            // Handle Registration / Readmission Fee
+            if ($validated['fee_option'] !== 'waived') {
+                $feeAmount = $validated['fee_option'] === 'custom'
+                    ? (float) $validated['custom_fee']
+                    : $regService->getCurrentFeeAmount();
+
+                $fee = $member->registrationFee()->first();
+                if (!$fee) {
+                    $fee = $regService->createObligationForMember($member, $feeAmount);
+                } else {
+                    $fee->increment('fee_amount', $feeAmount);
+                    $fee->refresh();
+                    $fee->updatePaymentTotals();
+                }
+
+                $paymentMethod = $validated['payment_method'] ?? 'Pending';
+                if ($paymentMethod !== 'Pending') {
+                    $regService->recordPayment(
+                        $fee,
+                        $feeAmount,
+                        $effectiveDate->format('Y-m-d'),
+                        $paymentMethod,
+                        $validated['reference_number'] ?? null,
+                        $currentUser->id
+                    );
+                }
+            }
+        });
+
+        return redirect()->back()->with('success', "Member {$member->name} has been successfully re-admitted to the cooperative.");
     }
 }

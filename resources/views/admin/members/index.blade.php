@@ -201,6 +201,11 @@
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                 @else
+                                    @if(!$member->is_active && $member->isMember() && !$member->isPendingMembership() && !$member->isRejectedMembership())
+                                        <button type="button" class="btn btn-sm btn-success text-white" title="Re-admit Member" data-bs-toggle="modal" data-bs-target="#readmitModal{{ $member->id }}">
+                                            <i class="bi bi-person-check"></i> Re-admit
+                                        </button>
+                                    @endif
                                     <a href="{{ route('admin.members.edit', $member) }}" class="btn btn-sm btn-info text-white" title="Edit member profile">
                                         <i class="bi bi-pencil"></i>
                                     </a>
@@ -254,6 +259,129 @@
         </div>
     </div>
     @endif
+
+    @if(!$member->is_active && $member->isMember() && !$member->isPendingMembership() && !$member->isRejectedMembership())
+    <div class="modal fade" id="readmitModal{{ $member->id }}" tabindex="-1" aria-labelledby="readmitModalLabel{{ $member->id }}" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form action="{{ route('admin.members.readmit', $member) }}" method="POST">
+                    @csrf
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title" id="readmitModalLabel{{ $member->id }}">
+                            <i class="bi bi-person-check-fill me-2"></i> Re-admit Member: {{ $member->name }}
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="alert alert-info py-2 mb-3">
+                            <i class="bi bi-info-circle-fill me-1"></i> Re-admitting this member will reactivate their account, configure active savings slots from the re-admission date, and optionally record a re-admission fee.
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Re-admission Effective Date <span class="text-danger">*</span></label>
+                                <input type="date" name="readmission_date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Savings Slots to Activate <span class="text-danger">*</span></label>
+                                @php
+                                    $activeSlotCount = $member->savingsSlots->where('is_active', true)->count();
+                                    $defaultSlotCount = $activeSlotCount > 0 ? $activeSlotCount : max(1, $member->savingsSlots->count());
+                                @endphp
+                                <select name="slots" class="form-select" required>
+                                    @for($s = 1; $s <= 10; $s++)
+                                        <option value="{{ $s }}" {{ $s === $defaultSlotCount ? 'selected' : '' }}>
+                                            {{ $s }} {{ Str::plural('Slot', $s) }} (₦{{ number_format($s * 2000) }}/mo)
+                                        </option>
+                                    @endfor
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Member Code Action <span class="text-danger">*</span></label>
+                                <select name="code_action" class="form-select" required>
+                                    <option value="keep" selected>Keep Original Code ({{ $member->member_code ?? 'N/A' }})</option>
+                                    <option value="new">Generate New Code for Current Year</option>
+                                </select>
+                                <small class="text-muted">Standard practice is retaining their original ID.</small>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Re-admission Fee Policy <span class="text-danger">*</span></label>
+                                <select name="fee_option" id="feeOption{{ $member->id }}" class="form-select" onchange="toggleReadmitFeeInput('{{ $member->id }}')" required>
+                                    <option value="waived">Waive Fee (₦0.00 - No Payment Required)</option>
+                                    <option value="standard">Standard Registration Fee (₦{{ number_format($defaultRegistrationFee ?? 1000, 2) }})</option>
+                                    <option value="custom">Custom Re-admission Fee Amount</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 d-none" id="customFeeGroup{{ $member->id }}">
+                                <label class="form-label fw-semibold">Custom Fee Amount (₦) <span class="text-danger">*</span></label>
+                                <input type="number" step="0.01" min="0.01" name="custom_fee" id="customFeeInput{{ $member->id }}" class="form-control" placeholder="e.g. 2000.00">
+                            </div>
+
+                            <div class="col-md-6 d-none" id="paymentMethodGroup{{ $member->id }}">
+                                <label class="form-label fw-semibold">Payment Status / Method</label>
+                                <select name="payment_method" class="form-select">
+                                    <option value="Pending">Pending (Member will pay later)</option>
+                                    <option value="Cash" selected>Cash</option>
+                                    <option value="Bank Transfer">Bank Transfer</option>
+                                    <option value="Cheque">Cheque</option>
+                                    <option value="Online">Online</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 d-none" id="referenceGroup{{ $member->id }}">
+                                <label class="form-label fw-semibold">Payment Reference Number</label>
+                                <input type="text" name="reference_number" class="form-control" placeholder="Optional transaction / receipt ref">
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Approval / Exco Minutes Note</label>
+                                <input type="text" name="notes" class="form-control" placeholder="e.g. Approved at Exco Meeting on {{ date('d M Y') }}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success text-white">
+                            <i class="bi bi-check-circle-fill me-1"></i> Confirm Re-admission
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endif
 @endforeach
+
+<script>
+function toggleReadmitFeeInput(id) {
+    const feeOption = document.getElementById('feeOption' + id).value;
+    const customGroup = document.getElementById('customFeeGroup' + id);
+    const customInput = document.getElementById('customFeeInput' + id);
+    const methodGroup = document.getElementById('paymentMethodGroup' + id);
+    const refGroup = document.getElementById('referenceGroup' + id);
+
+    if (feeOption === 'custom') {
+        customGroup.classList.remove('d-none');
+        customInput.required = true;
+        methodGroup.classList.remove('d-none');
+        refGroup.classList.remove('d-none');
+    } else if (feeOption === 'standard') {
+        customGroup.classList.add('d-none');
+        customInput.required = false;
+        methodGroup.classList.remove('d-none');
+        refGroup.classList.remove('d-none');
+    } else {
+        customGroup.classList.add('d-none');
+        customInput.required = false;
+        methodGroup.classList.add('d-none');
+        refGroup.classList.add('d-none');
+    }
+}
+</script>
 @endif
 @endsection
