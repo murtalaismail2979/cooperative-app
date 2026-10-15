@@ -218,7 +218,7 @@
 @else
     {{-- APPROVED FULL MEMBER DASHBOARD VIEW --}}
     <div class="row">
-        <div class="col-xl-3 col-md-6 mb-4">
+        <div class="col-md-4 mb-4">
             <div class="card stat-card bg-primary text-white shadow">
                 <div class="card-body">
                     <i class="bi bi-piggy-bank icon"></i>
@@ -228,7 +228,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6 mb-4">
+        <div class="col-md-4 mb-4">
             <div class="card stat-card bg-success text-white shadow">
                 <div class="card-body">
                     <i class="bi bi-wallet2 icon"></i>
@@ -237,21 +237,12 @@
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6 mb-4">
+        <div class="col-md-4 mb-4">
             <div class="card stat-card bg-info text-white shadow">
                 <div class="card-body">
                     <i class="bi bi-cash-stack icon"></i>
                     <div class="stat-label">Total Savings</div>
                     <div class="stat-value">₦{{ number_format($data['totalSavings'], 2) }}</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stat-card bg-warning text-white shadow">
-                <div class="card-body">
-                    <i class="bi bi-receipt icon"></i>
-                    <div class="stat-label">Running Charges Paid</div>
-                    <div class="stat-value">{{ $data['runningChargesPaid'] }}</div>
                 </div>
             </div>
         </div>

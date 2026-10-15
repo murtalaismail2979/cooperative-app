@@ -227,8 +227,9 @@ class MembershipApprovalTest extends TestCase
         $response->assertSee('Recent Savings');
         $response->assertSee('YLDA/26/0055');
 
-        // Should NOT see applicant in review banner
+        // Should NOT see applicant in review banner or admin-only running charges
         $response->assertDontSee('Application In Review');
         $response->assertDontSee('Assigned upon management approval');
+        $response->assertDontSee('Running Charges Paid');
     }
 }

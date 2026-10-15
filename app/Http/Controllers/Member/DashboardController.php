@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Member;
 
 use App\Http\Controllers\Controller;
 use App\Models\MonthlySaving;
-use App\Models\RunningCharge;
 use App\Services\SavingsService;
 use App\Services\DividendService;
 use Illuminate\Http\Request;
@@ -35,9 +34,6 @@ class DashboardController extends Controller
             'currentMonthSavings' => $this->savingsService->getCurrentMonthSavings($user),
             'totalSavings' => $this->savingsService->getTotalSavings($user),
             'activeLoan' => $user->loans()->where('status', 'active')->first(),
-            'runningChargesPaid' => RunningCharge::where('user_id', $user->id)
-                ->where('status', 'paid')
-                ->count(),
             'registrationFee' => $registrationFee,
             'recentSavings' => $history->take(6),
         ];
