@@ -135,7 +135,7 @@
                     <x-input-label for="name">
                         {{ __('Full Name') }} <span class="text-rose-400 font-bold">*</span>
                     </x-input-label>
-                    <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name')" required autofocus autocomplete="name" placeholder="Surname Firstname Middlename" />
+                    <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name')" required autofocus autocomplete="name" placeholder="Enter your full name" />
                     <x-input-error :messages="$errors->get('name')" class="mt-2" />
                 </div>
 
