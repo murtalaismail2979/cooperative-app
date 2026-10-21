@@ -29,8 +29,9 @@ class MembershipApprovalTest extends TestCase
             'terms' => '1',
         ]);
 
-        $this->assertAuthenticated();
-        $response->assertRedirect(RouteServiceProvider::HOME);
+        $this->assertGuest();
+        $response->assertRedirect(route('login'));
+        $response->assertSessionHas('status');
 
         $member = User::where('email', 'applicant@example.com')->first();
         $this->assertNotNull($member);
@@ -179,7 +180,78 @@ class MembershipApprovalTest extends TestCase
         $response->assertSee('Pending Approval');
     }
 
-    public function test_pending_member_dashboard_shows_application_progress_and_profile_only(): void
+    public function test_pending_member_cannot_login_to_account(): void
+    {
+        $coop = Cooperative::factory()->create(['is_active' => true]);
+        $applicant = User::factory()->create([
+            'cooperative_id' => $coop->id,
+            'email' => 'pending@example.com',
+            'role' => 'member',
+            'is_active' => false,
+            'membership_status' => 'pending',
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+        ]);
+
+        $response = $this->post('/login', [
+            'email' => 'pending@example.com',
+            'password' => 'password123',
+        ]);
+
+        $this->assertGuest();
+        $response->assertSessionHasErrors('email');
+        $this->assertTrue(str_contains(
+            session('errors')->first('email'),
+            'pending approval'
+        ));
+    }
+
+    public function test_rejected_member_cannot_login_to_account(): void
+    {
+        $coop = Cooperative::factory()->create(['is_active' => true]);
+        $rejected = User::factory()->create([
+            'cooperative_id' => $coop->id,
+            'email' => 'rejected@example.com',
+            'role' => 'member',
+            'is_active' => false,
+            'membership_status' => 'rejected',
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+        ]);
+
+        $response = $this->post('/login', [
+            'email' => 'rejected@example.com',
+            'password' => 'password123',
+        ]);
+
+        $this->assertGuest();
+        $response->assertSessionHasErrors('email');
+        $this->assertTrue(str_contains(
+            session('errors')->first('email'),
+            'not approved'
+        ));
+    }
+
+    public function test_approved_member_can_login_successfully(): void
+    {
+        $coop = Cooperative::factory()->create(['is_active' => true]);
+        $approved = User::factory()->create([
+            'cooperative_id' => $coop->id,
+            'email' => 'approved@example.com',
+            'role' => 'member',
+            'is_active' => true,
+            'membership_status' => 'approved',
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+        ]);
+
+        $response = $this->post('/login', [
+            'email' => 'approved@example.com',
+            'password' => 'password123',
+        ]);
+
+        $this->assertAuthenticatedAs($approved);
+        $response->assertRedirect(route('dashboard'));
+    }
+
+    public function test_pending_member_cannot_access_member_dashboard_if_session_existed(): void
     {
         $coop = Cooperative::factory()->create(['is_active' => true, 'name' => 'Harmony Cooperative']);
         $applicant = User::factory()->create([
@@ -192,20 +264,9 @@ class MembershipApprovalTest extends TestCase
         ]);
 
         $response = $this->actingAs($applicant)->get(route('member.dashboard'));
-        $response->assertStatus(200);
-
-        // Should see progress and profile
-        $response->assertSee('Application Status & Progress', false);
-        $response->assertSee('Application In Review');
-        $response->assertSee('My Profile');
-        $response->assertSee('Assigned upon management approval');
-        $response->assertSee('John Applicant');
-        $response->assertSee('Harmony Cooperative');
-
-        // Should NOT see financial modules or active cards
-        $response->assertDontSee('My Savings Slots');
-        $response->assertDontSee('Active Financing');
-        $response->assertDontSee('Recent Savings');
+        $this->assertGuest();
+        $response->assertRedirect(route('login'));
+        $response->assertSessionHasErrors('email');
     }
 
     public function test_approved_member_dashboard_shows_full_financial_metrics(): void

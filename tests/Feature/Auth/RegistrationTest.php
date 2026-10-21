@@ -43,8 +43,14 @@ class RegistrationTest extends TestCase
             'terms' => '1',
         ]);
 
-        $this->assertAuthenticated();
-        $response->assertRedirect(RouteServiceProvider::HOME);
+        $this->assertGuest();
+        $response->assertRedirect(route('login'));
+        $response->assertSessionHas('status');
+        $this->assertDatabaseHas('users', [
+            'email' => 'test@example.com',
+            'membership_status' => 'pending',
+            'is_active' => false,
+        ]);
     }
 
     public function test_registration_requires_terms_acceptance(): void

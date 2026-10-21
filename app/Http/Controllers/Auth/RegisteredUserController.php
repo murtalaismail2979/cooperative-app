@@ -97,8 +97,7 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user));
 
-        Auth::login($user);
-
-        return redirect(RouteServiceProvider::HOME);
+        // Prospective members must wait for administrative approval before accessing their account
+        return redirect()->route('login')->with('status', 'Your membership application has been submitted successfully! Your account is currently awaiting administrative review and approval before login access is activated.');
     }
 }

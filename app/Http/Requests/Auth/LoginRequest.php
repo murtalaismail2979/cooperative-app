@@ -51,7 +51,21 @@ class LoginRequest extends FormRequest
 
         $user = Auth::user();
         if ($user && !$user->isSuperAdmin()) {
-            if (!$user->is_active && $user->isApprovedMembership()) {
+            if ($user->isPendingMembership()) {
+                Auth::logout();
+                RateLimiter::hit($this->throttleKey());
+                throw ValidationException::withMessages([
+                    'email' => 'Your membership application is currently pending approval by the cooperative admin. You will be able to log in once your application has been accepted.',
+                ]);
+            }
+            if ($user->isRejectedMembership()) {
+                Auth::logout();
+                RateLimiter::hit($this->throttleKey());
+                throw ValidationException::withMessages([
+                    'email' => 'Your membership application was not approved by the cooperative administration. Please contact support.',
+                ]);
+            }
+            if (!$user->is_active) {
                 Auth::logout();
                 RateLimiter::hit($this->throttleKey());
                 throw ValidationException::withMessages([

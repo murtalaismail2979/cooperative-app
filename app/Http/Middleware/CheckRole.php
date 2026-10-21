@@ -37,6 +37,16 @@ class CheckRole
             abort(403, 'Unauthorized access.');
         }
 
+        // Prevent pending or deactivated members from accessing member routes
+        if (in_array('member', $roles, true) && ($user->isPendingMembership() || !$user->is_active)) {
+            \Illuminate\Support\Facades\Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return redirect()->route('login')->withErrors([
+                'email' => 'Your membership application is currently pending approval by the cooperative admin. You will be able to log in once your application has been accepted.',
+            ]);
+        }
+
         return $next($request);
     }
 }
