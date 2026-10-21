@@ -18,6 +18,12 @@ class RegistrationTest extends TestCase
         $response = $this->get('/register');
 
         $response->assertStatus(200);
+        $response->assertSee('Member Details');
+        $response->assertSee('Next of Kin Details');
+        $response->assertSee('Account Password & Security');
+        $response->assertSee('coop_slot_display');
+        $response->assertSee('togglePasswordVisibility');
+        $response->assertSee('I declare that the information provided is accurate');
     }
 
     public function test_new_member_can_register(): void
@@ -30,13 +36,35 @@ class RegistrationTest extends TestCase
             'email' => 'test@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
+            'phone' => '08012345678',
             'nok_name' => 'Kin Name',
             'nok_phone' => '08000000000',
             'nok_relationship' => 'Spouse',
+            'terms' => '1',
         ]);
 
         $this->assertAuthenticated();
         $response->assertRedirect(RouteServiceProvider::HOME);
+    }
+
+    public function test_registration_requires_terms_acceptance(): void
+    {
+        $coop = Cooperative::factory()->create(['is_active' => true]);
+
+        $response = $this->post('/register', [
+            'cooperative_id' => $coop->id,
+            'name' => 'Test User',
+            'email' => 'test_noterms@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+            'phone' => '08012345678',
+            'nok_name' => 'Kin Name',
+            'nok_phone' => '08000000000',
+            'nok_relationship' => 'Spouse',
+            // terms missing
+        ]);
+
+        $response->assertSessionHasErrors('terms');
     }
 
     public function test_cooperative_registration_screen_can_be_rendered(): void

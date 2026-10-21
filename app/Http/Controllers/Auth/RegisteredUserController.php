@@ -35,12 +35,20 @@ class RegisteredUserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'phone' => ['nullable', 'string', 'max:20', new \App\Rules\PhoneNumber],
+            'phone' => ['required', 'string', 'max:20', new \App\Rules\PhoneNumber],
             'address' => ['nullable', 'string', 'max:500'],
             'nok_name' => ['required', 'string', 'max:255'],
             'nok_phone' => ['required', 'string', 'max:20', new \App\Rules\PhoneNumber],
             'nok_relationship' => ['required', 'string', 'max:255'],
             'nok_address' => ['nullable', 'string', 'max:500'],
+            'terms' => ['accepted'],
+        ], [
+            'terms.accepted' => 'You must agree to the cooperative constitution and membership terms to register.',
+            'cooperative_id.required' => 'Please select the cooperative you wish to join.',
+            'phone.required' => 'Your phone number is required for account communication and SMS alerts.',
+            'nok_name.required' => 'Next of kin full name is required.',
+            'nok_phone.required' => 'Next of kin phone number is required.',
+            'nok_relationship.required' => 'Please specify your relationship with your next of kin.',
         ]);
 
         $user = \Illuminate\Support\Facades\DB::transaction(function () use ($request) {

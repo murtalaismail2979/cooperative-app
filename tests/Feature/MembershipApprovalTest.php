@@ -22,9 +22,11 @@ class MembershipApprovalTest extends TestCase
             'email' => 'applicant@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
+            'phone' => '08012345678',
             'nok_name' => 'Kin Person',
             'nok_phone' => '08012345678',
             'nok_relationship' => 'Brother',
+            'terms' => '1',
         ]);
 
         $this->assertAuthenticated();
