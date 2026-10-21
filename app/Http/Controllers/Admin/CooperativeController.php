@@ -49,13 +49,20 @@ class CooperativeController extends Controller
             'min_share_units' => ['nullable', 'integer', 'min:0'],
             'dividend_allocation_basis' => ['required', 'in:savings_only,shares_only,hybrid'],
             'hybrid_shares_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'logo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'],
         ]);
 
         $slug = $request->slug ? Str::slug($request->slug) : Str::slug($request->name);
 
+        $logoPath = null;
+        if ($request->hasFile('logo')) {
+            $logoPath = $request->file('logo')->store('cooperatives/logos', 'public');
+        }
+
         Cooperative::create([
             'name' => $request->name,
             'slug' => strtoupper($slug),
+            'logo_path' => $logoPath,
             'email' => $request->email,
             'phone' => $request->phone,
             'address' => $request->address,
@@ -98,11 +105,26 @@ class CooperativeController extends Controller
             'min_share_units' => ['nullable', 'integer', 'min:0'],
             'dividend_allocation_basis' => ['required', 'in:savings_only,shares_only,hybrid'],
             'hybrid_shares_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'logo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'],
         ]);
+
+        $logoPath = $cooperative->logo_path;
+        if ($request->hasFile('logo')) {
+            if ($cooperative->logo_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($cooperative->logo_path)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($cooperative->logo_path);
+            }
+            $logoPath = $request->file('logo')->store('cooperatives/logos', 'public');
+        } elseif ($request->boolean('remove_logo')) {
+            if ($cooperative->logo_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($cooperative->logo_path)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($cooperative->logo_path);
+            }
+            $logoPath = null;
+        }
 
         $cooperative->update([
             'name' => $request->name,
             'slug' => strtoupper(Str::slug($request->slug)),
+            'logo_path' => $logoPath,
             'email' => $request->email,
             'phone' => $request->phone,
             'address' => $request->address,

@@ -29,13 +29,16 @@ class DashboardController extends Controller
         $history = $this->getSavingsHistory($user);
         $registrationFee = $user->registrationFee ?: $this->registrationFeeService->createObligationForMember($user);
 
+        $totalSavings = $this->savingsService->getTotalSavings($user);
         $data = [
             'totalSlots' => $user->savingsSlots->where('is_active', true)->count(),
             'currentMonthSavings' => $this->savingsService->getCurrentMonthSavings($user),
-            'totalSavings' => $this->savingsService->getTotalSavings($user),
+            'totalSavings' => $totalSavings,
             'activeLoan' => $user->loans()->where('status', 'active')->first(),
+            'pendingLoanRequest' => $user->pendingLoanRequest(),
+            'maxEligibleLoanAmount' => round($totalSavings * \App\Services\LoanRequestService::SAVINGS_MULTIPLIER, 2),
             'registrationFee' => $registrationFee,
-            'recentSavings' => $history->take(6),
+            'recentSavings' => $history,
         ];
 
         return view('member.dashboard', compact('data'));
@@ -311,7 +314,11 @@ class DashboardController extends Controller
             9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
         ];
 
-        return view('member.loans', compact('loans', 'year', 'month', 'years', 'months'));
+        $loanRequestService = app(\App\Services\LoanRequestService::class);
+        $eligibility = $loanRequestService->checkEligibility($user);
+        $loanRequests = $user->loanRequests()->with('loan')->latest()->get();
+
+        return view('member.loans', compact('loans', 'year', 'month', 'years', 'months', 'eligibility', 'loanRequests'));
     }
 
     public function dividends(Request $request)

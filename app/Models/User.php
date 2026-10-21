@@ -69,6 +69,26 @@ class User extends Authenticatable
         return $this->hasMany(Loan::class);
     }
 
+    public function loanRequests()
+    {
+        return $this->hasMany(LoanRequest::class);
+    }
+
+    public function activeLoan(): ?Loan
+    {
+        return $this->loans()->where('status', 'active')->first();
+    }
+
+    public function hasActiveLoan(): bool
+    {
+        return $this->loans()->where('status', 'active')->exists();
+    }
+
+    public function pendingLoanRequest(): ?LoanRequest
+    {
+        return $this->loanRequests()->where('status', LoanRequest::STATUS_PENDING)->first();
+    }
+
     public function loanRepayments()
     {
         return $this->hasMany(LoanRepayment::class);

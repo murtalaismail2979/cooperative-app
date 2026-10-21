@@ -34,6 +34,7 @@ class CooperativeRegistrationController extends Controller
             'lga' => ['nullable', 'string', 'max:100'],
             'base_slot_amount' => ['required', 'numeric', 'min:0'],
             'dividend_allocation_basis' => ['required', 'in:savings_only,shares_only,hybrid'],
+            'logo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'],
             
             // Admin user details
             'name' => ['required', 'string', 'max:255'],
@@ -45,10 +46,16 @@ class CooperativeRegistrationController extends Controller
         $slugInput = $request->cooperative_slug ? $request->cooperative_slug : $request->cooperative_name;
         $slug = strtoupper(Str::slug($slugInput));
 
-        $adminUser = DB::transaction(function () use ($request, $slug) {
+        $logoPath = null;
+        if ($request->hasFile('logo')) {
+            $logoPath = $request->file('logo')->store('cooperatives/logos', 'public');
+        }
+
+        $adminUser = DB::transaction(function () use ($request, $slug, $logoPath) {
             $cooperative = Cooperative::create([
                 'name' => $request->cooperative_name,
                 'slug' => $slug,
+                'logo_path' => $logoPath,
                 'email' => $request->cooperative_email,
                 'phone' => $request->cooperative_phone,
                 'address' => $request->cooperative_address ?: $request->address,

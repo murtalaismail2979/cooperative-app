@@ -43,6 +43,49 @@ class ProfileTest extends TestCase
         $this->assertNull($user->email_verified_at);
     }
 
+    public function test_member_can_update_email_phone_and_address(): void
+    {
+        $member = User::factory()->create([
+            'role' => 'member',
+            'email' => 'oldmember@coop.test',
+            'phone' => '08011112222',
+            'address' => 'Old Address',
+        ]);
+
+        $response = $this
+            ->actingAs($member)
+            ->patch('/profile', [
+                'name' => 'Updated Member Name',
+                'email' => 'newmember@coop.test',
+                'phone' => '08099998888',
+                'address' => 'New Residential Address',
+            ]);
+
+        $response->assertSessionHasNoErrors()->assertRedirect('/profile');
+
+        $member->refresh();
+        $this->assertSame('Updated Member Name', $member->name);
+        $this->assertSame('newmember@coop.test', $member->email);
+        $this->assertSame('08099998888', $member->phone);
+        $this->assertSame('New Residential Address', $member->address);
+    }
+
+    public function test_member_cannot_update_email_to_existing_user_email(): void
+    {
+        User::factory()->create(['email' => 'existing@coop.test']);
+        $member = User::factory()->create(['role' => 'member', 'email' => 'member1@coop.test']);
+
+        $response = $this
+            ->actingAs($member)
+            ->patch('/profile', [
+                'name' => $member->name,
+                'email' => 'existing@coop.test',
+            ]);
+
+        $response->assertSessionHasErrors('email');
+        $this->assertSame('member1@coop.test', $member->fresh()->email);
+    }
+
     public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged(): void
     {
         $user = User::factory()->create();
@@ -88,7 +131,20 @@ class ProfileTest extends TestCase
         $this->assertNotNull($member->fresh());
     }
 
-    public function test_admin_can_delete_their_account(): void
+    public function test_delete_account_button_is_not_displayed_for_admins(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this
+            ->actingAs($admin)
+            ->get('/profile');
+
+        $response->assertOk();
+        $response->assertDontSee('Delete Account');
+        $response->assertDontSee('Danger Zone: Delete Account');
+    }
+
+    public function test_admin_cannot_delete_their_account(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
 
@@ -98,29 +154,7 @@ class ProfileTest extends TestCase
                 'password' => 'password',
             ]);
 
-        $response
-            ->assertSessionHasNoErrors()
-            ->assertRedirect('/');
-
-        $this->assertGuest();
-        $this->assertNull($admin->fresh());
-    }
-
-    public function test_correct_password_must_be_provided_to_delete_account(): void
-    {
-        $admin = User::factory()->create(['role' => 'admin']);
-
-        $response = $this
-            ->actingAs($admin)
-            ->from('/profile')
-            ->delete('/profile', [
-                'password' => 'wrong-password',
-            ]);
-
-        $response
-            ->assertSessionHasErrorsIn('userDeletion', 'password')
-            ->assertRedirect('/profile');
-
+        $response->assertForbidden();
         $this->assertNotNull($admin->fresh());
     }
 }

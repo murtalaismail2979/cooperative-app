@@ -69,6 +69,17 @@ class Cooperative extends Model
         return (float) ($this->total_monthly_charge * 12);
     }
 
+    public function getLogoUrlAttribute(): ?string
+    {
+        if ($this->logo_path) {
+            if (str_starts_with($this->logo_path, 'http://') || str_starts_with($this->logo_path, 'https://')) {
+                return $this->logo_path;
+            }
+            return asset('storage/' . $this->logo_path);
+        }
+        return null;
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);

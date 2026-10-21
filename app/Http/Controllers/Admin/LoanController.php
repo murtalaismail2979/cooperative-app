@@ -29,7 +29,7 @@ class LoanController extends Controller
         $user = auth()->user();
         $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
 
-        $query = Loan::with('user');
+        $query = Loan::with('user')->withSum('repayments', 'amount');
         if ($cooperativeId) {
             $query->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
         }

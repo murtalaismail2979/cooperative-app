@@ -12,9 +12,10 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css" media="print" onload="this.media='all'">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"></noscript>
     <style>
-        body { font-family: 'Outfit', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; color: #1e293b; }
+        body { font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #1e293b; }
         
         /* Modern Sidebar styling */
         .sidebar { min-height: 100vh; background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); box-shadow: 4px 0 10px rgba(0,0,0,0.05); }
@@ -104,7 +105,14 @@
                             <img src="{{ asset('images/mycoopsuite-logo.png') }}" alt="{{ config('app.name', 'MyCoopSuite') }}" style="height: 38px; max-width: 100%; object-fit: contain;">
                         </a>
                     @else
-                        <span class="d-inline-flex align-items-center"><i class="bi bi-building me-2"></i> {{ auth()->user()->cooperative->slug ?? config('app.name', 'MyCoopSuite') }}</span>
+                        <span class="d-inline-flex align-items-center">
+                            @if(auth()->user()->cooperative->logo_url)
+                                <img src="{{ auth()->user()->cooperative->logo_url }}" alt="{{ auth()->user()->cooperative->slug }}" class="me-2 rounded bg-white p-1" style="height: 32px; max-width: 50px; object-fit: contain;">
+                            @else
+                                <i class="bi bi-building me-2"></i>
+                            @endif
+                            {{ auth()->user()->cooperative->slug ?? config('app.name', 'MyCoopSuite') }}
+                        </span>
                     @endif
                 </div>
                 <nav class="p-3">
@@ -119,6 +127,9 @@
                                 </a>
                                 <a href="{{ route('admin.platform-charges.index') }}" class="nav-link d-block {{ request()->routeIs('admin.platform-charges.*') ? 'active' : '' }}">
                                     <i class="bi bi-cash-stack"></i> Platform Charges
+                                </a>
+                                <a href="{{ route('admin.user-logins.index') }}" class="nav-link d-block {{ request()->routeIs('admin.user-logins.*') ? 'active' : '' }}">
+                                    <i class="bi bi-key-fill"></i> User Login Details
                                 </a>
                             @endif
                             <a href="{{ route('admin.members.index') }}" class="nav-link d-block {{ request()->routeIs('admin.members.*') ? 'active' : '' }}">
@@ -140,6 +151,9 @@
                             </a>
                             <a href="{{ route('admin.loans.index') }}" class="nav-link d-block {{ request()->routeIs('admin.loans.*') ? 'active' : '' }}">
                                 <i class="bi bi-cash-stack"></i> Financing
+                            </a>
+                            <a href="{{ route('admin.loan-requests.index') }}" class="nav-link d-block {{ request()->routeIs('admin.loan-requests.*') ? 'active' : '' }}">
+                                <i class="bi bi-inbox"></i> Financing Requests
                             </a>
                             <a href="{{ route('admin.investments.index') }}" class="nav-link d-block {{ request()->routeIs('admin.investments.*') ? 'active' : '' }}">
                                 <i class="bi bi-graph-up-arrow"></i> Investments
@@ -199,7 +213,7 @@
                             <a href="{{ route('member.savings') }}" class="nav-link d-block {{ request()->routeIs('member.savings') ? 'active' : '' }}">
                                 <i class="bi bi-piggy-bank"></i> My Savings
                             </a>
-                            <a href="{{ route('member.loans') }}" class="nav-link d-block {{ request()->routeIs('member.loans') ? 'active' : '' }}">
+                            <a href="{{ route('member.loans') }}" class="nav-link d-block {{ request()->routeIs('member.loans*') ? 'active' : '' }}">
                                 <i class="bi bi-cash-stack"></i> My Financing
                             </a>
                             <a href="{{ route('member.dividends') }}" class="nav-link d-block {{ request()->routeIs('member.dividends') ? 'active' : '' }}">

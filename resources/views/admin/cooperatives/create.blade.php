@@ -12,7 +12,7 @@
         <h5 class="mb-0 text-gray-800 fw-bold">Cooperative Information & Configuration</h5>
     </div>
     <div class="card-body">
-        <form method="POST" action="{{ route('admin.cooperatives.store') }}">
+        <form method="POST" action="{{ route('admin.cooperatives.store') }}" enctype="multipart/form-data">
             @csrf
 
             <div class="row g-3">
@@ -27,6 +27,13 @@
                     <input type="text" class="form-control @error('slug') is-invalid @enderror" id="slug" name="slug" value="{{ old('slug') }}" placeholder="e.g. APEX-HORIZON (Used in Member Code)">
                     <small class="text-muted">Unique prefix for member IDs (e.g. APEX-HORIZON/26/0001)</small>
                     @error('slug') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+
+                <div class="col-md-6">
+                    <label for="logo" class="form-label font-weight-bold">Cooperative Official Logo</label>
+                    <input type="file" class="form-control @error('logo') is-invalid @enderror" id="logo" name="logo" accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml">
+                    <small class="text-muted">PNG, JPG, SVG or WebP up to 2MB</small>
+                    @error('logo') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
                 <div class="col-md-6">

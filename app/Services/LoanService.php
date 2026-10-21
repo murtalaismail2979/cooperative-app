@@ -156,12 +156,12 @@ class LoanService
                 $q->where('cooperative_id', $cooperativeId);
             });
         }
-        $activeLoans = $query->get();
+        $activeLoans = $query->withSum('repayments', 'amount')->get();
 
         return [
             'count' => $activeLoans->count(),
-            'totalOutstanding' => $activeLoans->sum('outstanding_balance'),
-            'totalPrincipal' => $activeLoans->sum('principal_amount'),
+            'totalOutstanding' => (float) $activeLoans->sum('outstanding_balance'),
+            'totalPrincipal' => (float) $activeLoans->sum('principal_amount'),
         ];
     }
 }

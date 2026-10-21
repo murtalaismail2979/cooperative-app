@@ -478,4 +478,79 @@ class SavingsHistoryTest extends TestCase
         // Months prior to re-admission (e.g. August) should show inactive / before re-admission
         $response->assertSee('Inactive (Before Re-admission in Sep 2026)');
     }
+
+    public function test_member_dashboard_savings_history_is_collapsible_with_full_records(): void
+    {
+        $member = User::factory()->create([
+            'role' => 'member',
+            'is_active' => true,
+            'membership_status' => 'approved',
+            'member_code' => 'YLDA/26/0010',
+            'registration_year' => 2026,
+        ]);
+
+        $slot = SavingsSlot::create(['user_id' => $member->id, 'slot_number' => 1, 'is_active' => true]);
+
+        MonthlySaving::create([
+            'user_id' => $member->id,
+            'savings_slot_id' => $slot->id,
+            'amount' => 2000,
+            'month' => '2026-09-01',
+            'status' => 'paid',
+            'payment_date' => '2026-09-05',
+        ]);
+
+        $response = $this->actingAs($member)->get(route('member.dashboard'));
+        $response->assertOk();
+
+        // Must see Recent Savings card with collapse attributes
+        $response->assertSee('Recent Savings');
+        $response->assertSee('data-bs-target="#recentSavingsCollapse"', false);
+        $response->assertSee('id="recentSavingsCollapse"', false);
+        $response->assertSee('Click to View');
+        $response->assertSee('Sep 2026');
+        $response->assertSee('₦2,000.00');
+
+        // Verify full history is passed into viewData
+        $historyData = $response->viewData('data')['recentSavings'];
+        $this->assertNotEmpty($historyData);
+        $septRecord = $historyData->first(fn($i) => \Carbon\Carbon::parse($i->month)->format('Y-m') === '2026-09');
+        $this->assertNotNull($septRecord);
+        $this->assertEquals(2000.00, (float) $septRecord->total_amount);
+        $this->assertEquals('paid', $septRecord->status);
+    }
+
+    public function test_member_savings_detailed_transaction_history_is_collapsible(): void
+    {
+        $member = User::factory()->create([
+            'role' => 'member',
+            'is_active' => true,
+            'membership_status' => 'approved',
+            'member_code' => 'YLDA/26/0011',
+            'registration_year' => 2026,
+        ]);
+
+        $slot = SavingsSlot::create(['user_id' => $member->id, 'slot_number' => 1, 'is_active' => true]);
+
+        MonthlySaving::create([
+            'user_id' => $member->id,
+            'savings_slot_id' => $slot->id,
+            'amount' => 4000,
+            'month' => '2026-08-01',
+            'status' => 'paid',
+            'payment_date' => '2026-08-05',
+        ]);
+
+        $response = $this->actingAs($member)->get(route('member.savings'));
+        $response->assertOk();
+
+        // Must see Detailed Transaction History card with collapsible attributes
+        $response->assertSee('Detailed Transaction History');
+        $response->assertSee('data-bs-target="#detailedHistoryCollapse"', false);
+        $response->assertSee('id="detailedHistoryCollapse"', false);
+        $response->assertSee('Click to View');
+        $response->assertSee('August 2026');
+        $response->assertSee('₦4,000.00');
+    }
 }
+

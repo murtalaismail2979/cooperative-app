@@ -4,7 +4,7 @@
         <p class="text-sm text-slate-300 mt-1 font-medium">Setup your cooperative workspace and administrative account</p>
     </div>
 
-    <form method="POST" action="{{ route('register.cooperative.store') }}">
+    <form method="POST" action="{{ route('register.cooperative.store') }}" enctype="multipart/form-data">
         @csrf
 
         <div class="register-grid">
@@ -26,6 +26,26 @@
                     <x-input-label for="cooperative_slug" :value="__('Cooperative Short Code / Prefix')" />
                     <x-text-input id="cooperative_slug" class="block mt-1 w-full" type="text" name="cooperative_slug" :value="old('cooperative_slug')" placeholder="e.g. AL-BARAKAH (Used for Member Code format)" />
                     <x-input-error :messages="$errors->get('cooperative_slug')" class="mt-2" />
+                </div>
+
+                <!-- Cooperative Logo -->
+                <div>
+                    <x-input-label for="logo" :value="__('Cooperative Official Logo (Optional)')" />
+                    <div class="mt-1 flex items-center gap-3">
+                        <div id="coop_logo_preview_box" class="w-14 h-14 rounded-xl border border-dashed border-slate-600 bg-slate-800/80 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-inner">
+                            <i id="coop_logo_placeholder_icon" class="bi bi-image text-slate-400 text-xl"></i>
+                            <img id="coop_logo_preview_img" class="w-full h-full object-contain hidden" alt="Logo preview">
+                        </div>
+                        <div class="flex-grow">
+                            <input type="file" 
+                                   id="logo" 
+                                   name="logo" 
+                                   accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+                                   class="block w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer" />
+                            <p class="text-xs text-slate-400 mt-1">PNG, JPG, SVG or WebP up to 2MB</p>
+                        </div>
+                    </div>
+                    <x-input-error :messages="$errors->get('logo')" class="mt-2" />
                 </div>
 
                 <!-- Cooperative Email & Phone -->
@@ -160,6 +180,27 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             initNigeriaStateLga('state', 'lga', @json(old('lga', '')));
+
+            const logoInput = document.getElementById('logo');
+            const previewImg = document.getElementById('coop_logo_preview_img');
+            const placeholderIcon = document.getElementById('coop_logo_placeholder_icon');
+            if (logoInput && previewImg) {
+                logoInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(evt) {
+                            previewImg.src = evt.target.result;
+                            previewImg.classList.remove('hidden');
+                            if (placeholderIcon) placeholderIcon.classList.add('hidden');
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        previewImg.classList.add('hidden');
+                        if (placeholderIcon) placeholderIcon.classList.remove('hidden');
+                    }
+                });
+            }
         });
     </script>
 </x-guest-layout>

@@ -37,10 +37,21 @@ class Loan extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
+    public function loanRequest()
+    {
+        return $this->hasOne(LoanRequest::class);
+    }
+
     public function getOutstandingBalanceAttribute()
     {
-        $totalPaid = $this->repayments()->sum('amount');
-        return $this->total_amount - $totalPaid;
+        if (array_key_exists('repayments_sum_amount', $this->attributes)) {
+            return (float) $this->total_amount - (float) ($this->attributes['repayments_sum_amount'] ?? 0);
+        }
+        if ($this->relationLoaded('repayments')) {
+            return (float) $this->total_amount - (float) $this->repayments->sum('amount');
+        }
+        $totalPaid = (float) $this->repayments()->sum('amount');
+        return (float) $this->total_amount - $totalPaid;
     }
 
     public function getProfitAmountAttribute(): float

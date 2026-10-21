@@ -1,3 +1,15 @@
+@php
+    $currentRoute = request()->route() ? request()->route()->getName() : '';
+    $backUrl = url('/');
+
+    if (str_starts_with($currentRoute, 'member.') || (auth()->check() && auth()->user()->isMember())) {
+        $backUrl = route('member.registration-fee.index');
+    } elseif (str_starts_with($currentRoute, 'treasurer.') || (auth()->check() && auth()->user()->isTreasurer())) {
+        $backUrl = route('treasurer.registration-fees.index');
+    } elseif (str_starts_with($currentRoute, 'admin.') || (auth()->check() && auth()->user()->isManagementRole())) {
+        $backUrl = route('admin.registration-fees.index');
+    }
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,6 +18,7 @@
     <title>Registration Fee Receipt - {{ $payment->receipt_number }}</title>
     <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="{{ asset('css/bootstrap-icons.min.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Outfit', sans-serif; background-color: #f8fafc; color: #1e293b; padding: 30px; }
@@ -25,7 +38,9 @@
 <body>
     <div class="receipt-card">
         <div class="d-flex justify-content-between align-items-center no-print mb-4">
-            <a href="javascript:history.back()" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i> Back</a>
+            <a href="{{ $backUrl }}" id="receiptBackBtn" class="btn btn-outline-secondary btn-sm" onclick="return handleReceiptBack(event);">
+                <i class="bi bi-arrow-left me-1"></i> Back
+            </a>
             <button onclick="window.print()" class="btn btn-primary btn-sm"><i class="bi bi-printer me-1"></i> Print / Save PDF</button>
         </div>
 
@@ -113,5 +128,44 @@
             <p class="mb-0">This is an officially computer-generated receipt issued by {{ $payment->user->cooperative->name ?? config('app.name', 'MyCoopSuite') }}.</p>
         </div>
     </div>
+
+    <script>
+        function handleReceiptBack(event) {
+            const fallbackUrl = @json($backUrl);
+
+            // 1. If opened in a separate tab or popup window
+            if (window.opener && !window.opener.closed) {
+                event.preventDefault();
+                window.close();
+                // If browser policy blocks closing the tab, fallback to redirecting in current tab
+                setTimeout(function() {
+                    window.location.href = fallbackUrl;
+                }, 150);
+                return false;
+            }
+
+            // 2. If navigated in the same tab from within our own application
+            if (document.referrer && document.referrer.indexOf(window.location.origin) === 0 && window.history.length > 1) {
+                event.preventDefault();
+                window.history.back();
+                return false;
+            }
+
+            // 3. If there is no previous session history in this tab
+            if (window.history.length <= 1) {
+                event.preventDefault();
+                try {
+                    window.close();
+                } catch (e) {}
+                setTimeout(function() {
+                    window.location.href = fallbackUrl;
+                }, 150);
+                return false;
+            }
+
+            // 4. Default fallback: allow natural navigation to fallbackUrl
+            return true;
+        }
+    </script>
 </body>
 </html>

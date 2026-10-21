@@ -119,6 +119,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::get('/platform-charges/{cooperative}/agreement', [App\Http\Controllers\Admin\PlatformChargeController::class, 'agreement'])->name('platform-charges.agreement');
                 Route::post('/platform-charges/{cooperative}', [App\Http\Controllers\Admin\PlatformChargeController::class, 'update'])->name('platform-charges.update');
                 Route::post('/platform-charges-batch', [App\Http\Controllers\Admin\PlatformChargeController::class, 'updateBatch'])->name('platform-charges.batch');
+
+                // User Login Details & Authentication Directory (Super Admin only)
+                Route::get('/user-logins', [App\Http\Controllers\Admin\UserLoginController::class, 'index'])->name('user-logins.index');
+                Route::post('/user-logins/{user}/reset-password', [App\Http\Controllers\Admin\UserLoginController::class, 'resetPassword'])->name('user-logins.reset-password');
             });
 
             // Investment Type Management
@@ -151,6 +155,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/loans/{loan}/repayments/{repayment}/edit', [App\Http\Controllers\Admin\LoanController::class, 'editRepayment'])->name('loans.repayments.edit');
         Route::put('/loans/{loan}/repayments/{repayment}', [App\Http\Controllers\Admin\LoanController::class, 'updateRepayment'])->name('loans.repayments.update');
         Route::delete('/loans/{loan}/repayments/{repayment}', [App\Http\Controllers\Admin\LoanController::class, 'destroyRepayment'])->name('loans.repayments.destroy');
+
+        // Financing Requests Management
+        Route::get('/loan-requests', [App\Http\Controllers\Admin\LoanRequestController::class, 'index'])->name('loan-requests.index');
+        Route::get('/loan-requests/{loanRequest}', [App\Http\Controllers\Admin\LoanRequestController::class, 'show'])->name('loan-requests.show');
+        Route::get('/loan-requests/{loanRequest}/edit', [App\Http\Controllers\Admin\LoanRequestController::class, 'edit'])->name('loan-requests.edit');
+        Route::put('/loan-requests/{loanRequest}', [App\Http\Controllers\Admin\LoanRequestController::class, 'update'])->name('loan-requests.update');
+        Route::post('/loan-requests/{loanRequest}/approve', [App\Http\Controllers\Admin\LoanRequestController::class, 'approve'])->name('loan-requests.approve');
+        Route::post('/loan-requests/{loanRequest}/reject', [App\Http\Controllers\Admin\LoanRequestController::class, 'reject'])->name('loan-requests.reject');
 
         // Investment Management
         Route::resource('investments', App\Http\Controllers\Admin\InvestmentController::class);
@@ -261,6 +273,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/dashboard', [App\Http\Controllers\Member\DashboardController::class, 'index'])->name('dashboard');
         Route::get('/savings', [App\Http\Controllers\Member\DashboardController::class, 'savings'])->name('savings');
         Route::get('/loans', [App\Http\Controllers\Member\DashboardController::class, 'loans'])->name('loans');
+        Route::get('/loans/request', [App\Http\Controllers\Member\LoanRequestController::class, 'create'])->name('loans.request');
+        Route::post('/loans/request', [App\Http\Controllers\Member\LoanRequestController::class, 'store'])->name('loans.request.store');
+        Route::post('/loans/requests/{loanRequest}/cancel', [App\Http\Controllers\Member\LoanRequestController::class, 'cancel'])->name('loans.request.cancel');
         Route::get('/dividends', [App\Http\Controllers\Member\DashboardController::class, 'dividends'])->name('dividends');
         Route::get('/registration-fee', [App\Http\Controllers\Member\RegistrationFeeController::class, 'index'])->name('registration-fee.index');
         Route::get('/registration-fee/payments/{payment}/receipt', [App\Http\Controllers\Member\RegistrationFeeController::class, 'receipt'])->name('registration-fee.receipt');

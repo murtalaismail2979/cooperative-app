@@ -4,9 +4,15 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        <meta name="color-scheme" content="dark">
 
         @php
             $guestCoop = auth()->check() ? auth()->user()->cooperative : null;
+            if (!$guestCoop && request('cooperative_id')) {
+                $guestCoop = \App\Models\Cooperative::find(request('cooperative_id'));
+            } elseif (!$guestCoop && request('coop')) {
+                $guestCoop = \App\Models\Cooperative::where('slug', strtoupper(request('coop')))->first();
+            }
             $appName = config('app.name', 'MyCoopSuite');
             $guestTitle = $guestCoop ? ($guestCoop->slug ?: $guestCoop->name) : $appName;
             $guestName = $guestCoop ? ($guestCoop->name ?: $guestCoop->slug) : $appName;
@@ -18,6 +24,7 @@
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+        <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"></noscript>
 
         <!-- Bootstrap Icons -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" media="print" onload="this.media='all'">
@@ -27,6 +34,7 @@
 
         <style>
             :root {
+                color-scheme: dark;
                 --bg-color: #0b0d19;
                 --card-bg: #111827;
                 --border-color: #334155;
@@ -162,8 +170,13 @@
             .auth-card input[type="text"],
             .auth-card input[type="email"],
             .auth-card input[type="password"],
+            .auth-card input[type="tel"],
+            .auth-card input[type="url"],
+            .auth-card input[type="search"],
+            .auth-card input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="number"]):not(#base_slot_amount),
             .auth-card select,
             .auth-card textarea {
+                color-scheme: dark !important;
                 background-color: #1e293b !important;
                 border: 1.5px solid #475569 !important;
                 color: #ffffff !important;
@@ -179,6 +192,10 @@
             .auth-card input[type="text"]:focus,
             .auth-card input[type="email"]:focus,
             .auth-card input[type="password"]:focus,
+            .auth-card input[type="tel"]:focus,
+            .auth-card input[type="url"]:focus,
+            .auth-card input[type="search"]:focus,
+            .auth-card input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="number"]):not(#base_slot_amount):focus,
             .auth-card select:focus,
             .auth-card textarea:focus {
                 border-color: #818cf8 !important;
@@ -186,6 +203,30 @@
                 box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.35) !important;
                 outline: none !important;
                 color: #ffffff !important;
+            }
+
+            /* Autocomplete background/color overrides for dark mode across all browsers */
+            .auth-card input:autofill,
+            .auth-card input:-webkit-autofill,
+            .auth-card input:-webkit-autofill:hover,
+            .auth-card input:-webkit-autofill:focus,
+            .auth-card input:-webkit-autofill:active {
+                -webkit-box-shadow: 0 0 0 1000px #1e293b inset !important;
+                -webkit-text-fill-color: #ffffff !important;
+                box-shadow: 0 0 0 1000px #1e293b inset !important;
+                color: #ffffff !important;
+                caret-color: #ffffff !important;
+                transition: background-color 50000s ease-in-out 0s, color 50000s ease-in-out 0s !important;
+            }
+
+            .auth-card input:-moz-autofill,
+            .auth-card input:-moz-autofill:hover,
+            .auth-card input:-moz-autofill:focus {
+                box-shadow: 0 0 0 1000px #1e293b inset !important;
+                color: #ffffff !important;
+                -moz-text-fill-color: #ffffff !important;
+                filter: none !important;
+                caret-color: #ffffff !important;
             }
 
             /* White Input / Number Field (Base Slot Amount) with Black Text */
@@ -414,12 +455,14 @@
         <div class="orb orb-3"></div>
 
         <div class="auth-container">
-            <a href="/" class="logo">
-                @if(!$guestCoop)
-                    <img src="{{ asset('images/mycoopsuite-logo.png') }}" alt="{{ $guestName }}" style="height: 50px; max-width: 100%; object-fit: contain;">
+            <a href="/" class="logo" id="guestHeaderLogoLink">
+                @if($guestCoop && $guestCoop->logo_url)
+                    <img id="guestHeaderLogoImg" src="{{ $guestCoop->logo_url }}" alt="{{ $guestName }}" style="height: 52px; max-width: 100%; object-fit: contain;">
+                @elseif(!$guestCoop)
+                    <img id="guestHeaderLogoImg" src="{{ asset('images/mycoopsuite-logo.png') }}" alt="{{ $guestName }}" style="height: 50px; max-width: 100%; object-fit: contain;">
                 @else
                     <i class="bi bi-building"></i>
-                    {{ $guestName }}
+                    <span id="guestHeaderLogoText">{{ $guestName }}</span>
                 @endif
             </a>
             <p class="tagline">{{ $guestTagline }}</p>
@@ -442,6 +485,39 @@
                         }
                     });
                 });
+
+                // Contrast guardian: if browser forces a light/yellow autofill background, ensure high-contrast readable dark text
+                function enforceContrast() {
+                    document.querySelectorAll('.auth-card input').forEach(function (input) {
+                        if (input.type === 'checkbox' || input.type === 'radio' || input.type === 'submit' || input.type === 'button') return;
+                        try {
+                            const bg = window.getComputedStyle(input).backgroundColor;
+                            if (bg && bg.startsWith('rgb')) {
+                                const rgb = bg.match(/\d+/g);
+                                if (rgb && rgb.length >= 3) {
+                                    const r = parseInt(rgb[0]), g = parseInt(rgb[1]), b = parseInt(rgb[2]);
+                                    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                                    if (brightness > 160) {
+                                        input.style.setProperty('color', '#0f172a', 'important');
+                                        input.style.setProperty('-webkit-text-fill-color', '#0f172a', 'important');
+                                    } else {
+                                        input.style.setProperty('color', '#ffffff', 'important');
+                                        input.style.setProperty('-webkit-text-fill-color', '#ffffff', 'important');
+                                    }
+                                }
+                            }
+                        } catch (e) {}
+                    });
+                }
+
+                enforceContrast();
+                window.addEventListener('load', enforceContrast);
+                document.addEventListener('input', enforceContrast);
+                document.addEventListener('change', enforceContrast);
+                setTimeout(enforceContrast, 50);
+                setTimeout(enforceContrast, 300);
+                setTimeout(enforceContrast, 800);
+                setTimeout(enforceContrast, 1500);
             });
         </script>
     </body>

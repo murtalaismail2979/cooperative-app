@@ -9,6 +9,9 @@
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>All Financing</span>
         <div class="d-flex gap-2">
+            <a href="{{ route('admin.loan-requests.index') }}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-inbox me-1"></i> Financing Requests
+            </a>
             <a href="{{ route('admin.batch-upload.index', ['type' => 'loans']) }}" class="btn btn-outline-warning btn-sm">
                 <i class="bi bi-cloud-arrow-up me-1"></i> Batch Upload Financing
             </a>

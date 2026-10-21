@@ -20,6 +20,21 @@
 </div>
 @endif
 
+@if(!empty($data['pendingLoanRequests']) && $data['pendingLoanRequests'] > 0)
+<div class="alert alert-info d-flex align-items-center justify-content-between shadow-sm mb-4" role="alert">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-inbox fs-3 me-3 text-info"></i>
+        <div>
+            <div class="fw-bold text-dark">{{ $data['pendingLoanRequests'] }} Pending Financing {{ Str::plural('Request', $data['pendingLoanRequests']) }}</div>
+            <div class="text-secondary small">Members have submitted requests for cooperative financing awaiting executive review.</div>
+        </div>
+    </div>
+    <a href="{{ route('admin.loan-requests.index', ['status' => 'pending']) }}" class="btn btn-info btn-sm fw-semibold text-white">
+        <i class="bi bi-inbox"></i> Review Requests
+    </a>
+</div>
+@endif
+
 <div class="row">
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="card stat-card bg-primary text-white shadow">

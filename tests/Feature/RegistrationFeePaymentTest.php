@@ -174,6 +174,30 @@ class RegistrationFeePaymentTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee($payment->receipt_number);
         $response->assertSee($member->name);
+        $response->assertSee(route('member.registration-fee.index'));
+        $response->assertSee('handleReceiptBack');
+        $response->assertDontSee('javascript:history.back()');
+    }
+
+    public function test_admin_and_treasurer_receipts_have_correct_back_urls()
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $treasurer = User::factory()->create(['role' => 'treasurer', 'cooperative_id' => $admin->cooperative_id]);
+        $member = User::factory()->create(['role' => 'member', 'cooperative_id' => $admin->cooperative_id]);
+
+        $service = new RegistrationFeeService();
+        $fee = $service->createObligationForMember($member, 10000.00);
+        $payment = $service->recordPayment($fee, 10000.00, '2026-07-18', 'Cash');
+
+        $adminResponse = $this->actingAs($admin)->get(route('admin.registration-fees.receipt', $payment->id));
+        $adminResponse->assertStatus(200);
+        $adminResponse->assertSee(route('admin.registration-fees.index'));
+        $adminResponse->assertDontSee('javascript:history.back()');
+
+        $treasurerResponse = $this->actingAs($treasurer)->get(route('treasurer.registration-fees.receipt', $payment->id));
+        $treasurerResponse->assertStatus(200);
+        $treasurerResponse->assertSee(route('treasurer.registration-fees.index'));
+        $treasurerResponse->assertDontSee('javascript:history.back()');
     }
 
     public function test_member_cannot_view_another_members_receipt()

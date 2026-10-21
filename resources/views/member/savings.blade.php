@@ -189,59 +189,180 @@
     </div>
 </div>
 
+@php
+    $isHistoryOpen = request()->has('page');
+@endphp
+
 <div class="row">
     <div class="col-12">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <h6 class="m-0 font-weight-bold text-primary"><i class="bi bi-clock-history me-1"></i> Detailed Transaction History</h6>
-                <div class="d-flex align-items-center gap-3 flex-wrap">
-                    <span class="badge bg-primary fs-6">
-                        Lifetime Savings: ₦{{ number_format($totalSavings, 2) }}
+        <div class="card shadow mb-4 border-0" style="border-radius: 10px;">
+            <div class="card-header py-3 bg-white d-flex justify-content-between align-items-center flex-wrap gap-2 detailed-history-header border-bottom"
+                 role="button"
+                 id="detailedHistoryHeader"
+                 tabindex="0"
+                 title="Click to view or hide detailed transaction history"
+                 style="cursor: pointer; user-select: none;">
+                <div class="d-flex align-items-center gap-2">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="bi bi-clock-history me-1"></i> Detailed Transaction History
+                    </h6>
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size: 0.75rem;">
+                        {{ $savings->total() }} {{ Str::plural('record', $savings->total()) }}
                     </span>
                 </div>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Month</th>
-                                <th>Slots Paid</th>
-                                <th>Total Amount</th>
-                                <th>Status</th>
-                                <th>Payment Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($savings as $index => $saving)
-                                <tr>
-                                    <td>{{ $savings->firstItem() + $index }}</td>
-                                    <td>{{ \Carbon\Carbon::parse($saving->month)->format('F Y') }}</td>
-                                    <td>{{ $saving->slots_count }} {{ Str::plural('Slot', $saving->slots_count) }}</td>
-                                    <td>₦{{ number_format($saving->total_amount, 2) }}</td>
-                                    <td>
-                                        @if(($saving->status ?? 'paid') === 'paid')
-                                            <span class="badge bg-success">Paid</span>
-                                        @else
-                                            <span class="badge bg-danger">Unpaid</span>
-                                        @endif
-                                    </td>
-                                    <td>{{ $saving->latest_payment_date ? \Carbon\Carbon::parse($saving->latest_payment_date)->format('d/m/Y') : 'N/A' }}</td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="6" class="text-center text-muted">No savings records found.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="badge bg-primary fs-6 px-3 py-2 shadow-sm">
+                        Lifetime Savings: ₦{{ number_format($totalSavings, 2) }}
+                    </span>
+                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 d-inline-flex align-items-center gap-1 shadow-none" 
+                            type="button" 
+                            data-bs-toggle="collapse" 
+                            data-bs-target="#detailedHistoryCollapse" 
+                            data-toggle="collapse" 
+                            data-target="#detailedHistoryCollapse" 
+                            aria-expanded="{{ $isHistoryOpen ? 'true' : 'false' }}" 
+                            aria-controls="detailedHistoryCollapse"
+                            id="detailedHistoryBtn">
+                        <span class="history-collapse-btn-text small fw-semibold">{{ $isHistoryOpen ? 'Hide History' : 'Click to View' }}</span>
+                        <i class="bi bi-chevron-down history-chevron ms-1 transition-icon {{ $isHistoryOpen ? 'rotated' : '' }}"></i>
+                    </button>
                 </div>
-                <div class="d-flex justify-content-center">
-                    {{ $savings->links() }}
+            </div>
+            <div class="collapse {{ $isHistoryOpen ? 'show' : '' }}" id="detailedHistoryCollapse">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Month</th>
+                                    <th>Slots Paid</th>
+                                    <th>Total Amount</th>
+                                    <th>Status</th>
+                                    <th>Payment Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($savings as $index => $saving)
+                                    <tr>
+                                        <td>{{ $savings->firstItem() + $index }}</td>
+                                        <td>{{ \Carbon\Carbon::parse($saving->month)->format('F Y') }}</td>
+                                        <td>{{ $saving->slots_count }} {{ Str::plural('Slot', $saving->slots_count) }}</td>
+                                        <td class="fw-semibold">₦{{ number_format($saving->total_amount, 2) }}</td>
+                                        <td>
+                                            @if(($saving->status ?? 'paid') === 'paid')
+                                                <span class="badge bg-success">Paid</span>
+                                            @else
+                                                <span class="badge bg-danger">Unpaid</span>
+                                            @endif
+                                        </td>
+                                        <td>{{ $saving->latest_payment_date ? \Carbon\Carbon::parse($saving->latest_payment_date)->format('d/m/Y') : 'N/A' }}</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-4">No savings records found.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                    @if($savings->hasPages())
+                        <div class="d-flex justify-content-center mt-3">
+                            {{ $savings->links() }}
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<style>
+    .detailed-history-header {
+        transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .detailed-history-header:hover {
+        background-color: #f8fafc;
+    }
+    .transition-icon {
+        transition: transform 0.25s ease-in-out;
+    }
+    .history-chevron.rotated {
+        transform: rotate(180deg);
+    }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const collapseEl = document.getElementById('detailedHistoryCollapse');
+    const headerEl = document.getElementById('detailedHistoryHeader');
+    const btnEl = document.getElementById('detailedHistoryBtn');
+    const btnTexts = document.querySelectorAll('.history-collapse-btn-text');
+    const chevrons = document.querySelectorAll('.history-chevron');
+
+    function updateState(isOpen) {
+        btnTexts.forEach(el => el.textContent = isOpen ? 'Hide History' : 'Click to View');
+        chevrons.forEach(el => {
+            if (isOpen) {
+                el.style.transform = 'rotate(180deg)';
+                el.classList.add('rotated');
+            } else {
+                el.style.transform = 'rotate(0deg)';
+                el.classList.remove('rotated');
+            }
+        });
+        if (headerEl) {
+            headerEl.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        }
+        if (btnEl) {
+            btnEl.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        }
+    }
+
+    if (collapseEl) {
+        collapseEl.addEventListener('show.bs.collapse', function () {
+            updateState(true);
+        });
+        collapseEl.addEventListener('shown.bs.collapse', function () {
+            updateState(true);
+        });
+        collapseEl.addEventListener('hide.bs.collapse', function () {
+            updateState(false);
+        });
+        collapseEl.addEventListener('hidden.bs.collapse', function () {
+            updateState(false);
+        });
+    }
+
+    if (headerEl && btnEl) {
+        headerEl.addEventListener('click', function (e) {
+            if (!e.target.closest('#detailedHistoryBtn')) {
+                btnEl.click();
+            }
+        });
+
+        headerEl.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                btnEl.click();
+            }
+        });
+    }
+
+    // Safety fallback: in case Bootstrap collapse is not initialized on the element
+    if (btnEl && collapseEl) {
+        btnEl.addEventListener('click', function () {
+            setTimeout(function () {
+                const isTransitioning = collapseEl.classList.contains('collapsing');
+                const isShown = collapseEl.classList.contains('show');
+                if (!isTransitioning && !isShown && btnEl.getAttribute('aria-expanded') !== 'true') {
+                    collapseEl.classList.toggle('show');
+                    updateState(collapseEl.classList.contains('show'));
+                }
+            }, 100);
+        });
+    }
+});
+</script>
+@endpush

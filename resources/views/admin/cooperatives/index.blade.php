@@ -35,9 +35,15 @@
                             <td class="ps-4 text-muted fw-bold">{{ $coop->id }}</td>
                             <td>
                                 <div class="d-flex align-items-center">
-                                    <div class="rounded-circle bg-primary bg-opacity-10 text-primary p-2 me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                        <i class="bi bi-building fs-5"></i>
-                                    </div>
+                                    @if($coop->logo_url)
+                                        <div class="rounded-circle border p-1 me-3 d-flex align-items-center justify-content-center bg-white shadow-sm flex-shrink-0" style="width: 40px; height: 40px; overflow: hidden;">
+                                            <img src="{{ $coop->logo_url }}" alt="{{ $coop->slug }}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                                        </div>
+                                    @else
+                                        <div class="rounded-circle bg-primary bg-opacity-10 text-primary p-2 me-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 40px; height: 40px;">
+                                            <i class="bi bi-building fs-5"></i>
+                                        </div>
+                                    @endif
                                     <div>
                                         <h6 class="mb-0 fw-bold">{{ $coop->name }}</h6>
                                         <small class="text-muted">{{ $coop->email ?? 'No email set' }}</small>

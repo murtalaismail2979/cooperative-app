@@ -13,6 +13,7 @@ use App\Services\InvestmentService;
 use App\Services\ExpenseService;
 use App\Services\RegistrationFeeService;
 use App\Models\MonthlySaving;
+use App\Services\LoanRequestService;
 
 class DashboardController extends Controller
 {
@@ -21,19 +22,22 @@ class DashboardController extends Controller
     protected $investmentService;
     protected $expenseService;
     protected $registrationFeeService;
+    protected $loanRequestService;
 
     public function __construct(
         LoanService $loanService,
         SavingsService $savingsService,
         InvestmentService $investmentService,
         ExpenseService $expenseService,
-        RegistrationFeeService $registrationFeeService
+        RegistrationFeeService $registrationFeeService,
+        LoanRequestService $loanRequestService
     ) {
         $this->loanService = $loanService;
         $this->savingsService = $savingsService;
         $this->investmentService = $investmentService;
         $this->expenseService = $expenseService;
         $this->registrationFeeService = $registrationFeeService;
+        $this->loanRequestService = $loanRequestService;
     }
 
     public function index(\Illuminate\Http\Request $request)
@@ -56,14 +60,13 @@ class DashboardController extends Controller
         }
 
         $savingsQuery = MonthlySaving::where('status', 'paid');
-        if ($cooperativeId) {
-            $savingsQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
-        }
-
         $breakdownQuery = MonthlySaving::selectRaw("{$yearExpr} as year, {$monthExpr} as month_num, SUM(amount) as total, COUNT(DISTINCT user_id) as members")
             ->where('status', 'paid');
+
         if ($cooperativeId) {
-            $breakdownQuery->whereHas('user', fn($q) => $q->where('cooperative_id', $cooperativeId));
+            $memberIds = User::where('cooperative_id', $cooperativeId)->pluck('id');
+            $savingsQuery->whereIn('user_id', $memberIds);
+            $breakdownQuery->whereIn('user_id', $memberIds);
         }
 
         $data = [
@@ -72,6 +75,7 @@ class DashboardController extends Controller
             'pendingMembers' => (clone $membersQuery)->where('membership_status', 'pending')->count(),
             'activeLoans' => $loanStats['count'],
             'totalOutstanding' => $loanStats['totalOutstanding'],
+            'pendingLoanRequests' => $this->loanRequestService->getPendingRequestsCount($cooperativeId),
             'pendingExpenses' => $expenseStats['pending'],
             'approvedExpenses' => $expenseStats['totalApproved'],
             'activeInvestments' => $investmentStats['count'],

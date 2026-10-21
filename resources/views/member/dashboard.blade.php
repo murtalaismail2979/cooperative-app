@@ -310,48 +310,100 @@
                             <strong>{{ $data['activeLoan']->remaining_months }} / {{ $data['activeLoan']->duration_months }}</strong>
                         </div>
                     @else
-                        <p class="text-muted mb-0">No active financing.</p>
+                        <p class="text-muted mb-2">No active financing facility.</p>
+                        @if(!empty($data['pendingLoanRequest']))
+                            <div class="alert alert-info py-2 px-3 small mb-0 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="bi bi-hourglass-split me-1"></i> Request for <strong>₦{{ number_format($data['pendingLoanRequest']->amount_requested, 2) }}</strong> is under review.
+                                </div>
+                                <a href="{{ route('member.loans') }}" class="btn btn-sm btn-outline-info">View</a>
+                            </div>
+                        @elseif(!empty($data['maxEligibleLoanAmount']) && $data['maxEligibleLoanAmount'] > 0)
+                            <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                                <div>
+                                    <small class="text-muted d-block">Financing Capacity (3x Savings):</small>
+                                    <strong class="text-success fs-6">₦{{ number_format($data['maxEligibleLoanAmount'], 2) }}</strong>
+                                </div>
+                                <a href="{{ route('member.loans.request') }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-send-plus me-1"></i> Request Financing
+                                </a>
+                            </div>
+                        @endif
                     @endif
                 </div>
             </div>
         </div>
         <div class="col-lg-6">
             <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Recent Savings</h6>
+                <div class="card-header py-3 d-flex justify-content-between align-items-center flex-wrap gap-2 recent-savings-header"
+                     role="button"
+                     id="recentSavingsHeader"
+                     tabindex="0"
+                     title="Click to view or hide savings history"
+                     style="cursor: pointer; user-select: none;">
+                    <div class="d-flex align-items-center gap-2">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="bi bi-clock-history me-1"></i> Recent Savings
+                        </h6>
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size: 0.75rem;">
+                            {{ count($data['recentSavings']) }} {{ Str::plural('record', count($data['recentSavings'])) }}
+                        </span>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 d-inline-flex align-items-center gap-1 shadow-none" 
+                            type="button" 
+                            data-bs-toggle="collapse" 
+                            data-bs-target="#recentSavingsCollapse" 
+                            data-toggle="collapse" 
+                            data-target="#recentSavingsCollapse" 
+                            aria-expanded="false" 
+                            aria-controls="recentSavingsCollapse"
+                            id="recentSavingsBtn">
+                        <span class="savings-collapse-btn-text small fw-semibold">Click to View</span>
+                        <i class="bi bi-chevron-down savings-chevron ms-1 transition-icon"></i>
+                    </button>
                 </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Month</th>
-                                    <th>Slots Paid</th>
-                                    <th>Total Amount</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($data['recentSavings'] as $saving)
+                <div class="collapse" id="recentSavingsCollapse">
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+                            <table class="table table-hover table-striped align-middle mb-0">
+                                <thead class="table-light sticky-top shadow-sm" style="top: 0; z-index: 1;">
                                     <tr>
-                                        <td>{{ \Carbon\Carbon::parse($saving->month)->format('M Y') }}</td>
-                                        <td>{{ $saving->slots_count }} {{ Str::plural('Slot', $saving->slots_count) }}</td>
-                                        <td>₦{{ number_format($saving->total_amount, 2) }}</td>
-                                        <td>
-                                            @if(($saving->status ?? 'paid') === 'paid')
-                                                <span class="badge bg-success">Paid</span>
-                                            @else
-                                                <span class="badge bg-danger">Unpaid</span>
-                                            @endif
-                                        </td>
+                                        <th class="ps-3 py-2">Month</th>
+                                        <th class="py-2">Slots Paid</th>
+                                        <th class="py-2">Total Amount</th>
+                                        <th class="pe-3 py-2 text-end">Status</th>
                                     </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="4" class="text-muted">No savings records yet.</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    @forelse($data['recentSavings'] as $saving)
+                                        <tr>
+                                            <td class="ps-3 fw-semibold text-dark">{{ \Carbon\Carbon::parse($saving->month)->format('M Y') }}</td>
+                                            <td>{{ $saving->slots_count }} {{ Str::plural('Slot', $saving->slots_count) }}</td>
+                                            <td class="fw-semibold {{ ($saving->status ?? 'paid') === 'paid' ? 'text-success' : 'text-muted' }}">
+                                                ₦{{ number_format($saving->total_amount, 2) }}
+                                            </td>
+                                            <td class="pe-3 text-end">
+                                                @if(($saving->status ?? 'paid') === 'paid')
+                                                    <span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i> Paid</span>
+                                                @else
+                                                    <span class="badge bg-danger"><i class="bi bi-x-circle-fill me-1"></i> Unpaid</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="4" class="text-muted text-center py-4">No savings records yet.</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-light py-2 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i> Full savings history for your membership.</small>
+                        <a href="{{ route('member.savings') }}" class="btn btn-sm btn-link text-decoration-none text-primary p-0 fw-semibold">
+                            Full Savings Page <i class="bi bi-arrow-right"></i>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -462,3 +514,98 @@
     </div>
 @endif
 @endsection
+
+@push('scripts')
+<style>
+    .recent-savings-header {
+        transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .recent-savings-header:hover {
+        background-color: #f8fafc;
+    }
+    .transition-icon {
+        transition: transform 0.25s ease-in-out;
+    }
+    .savings-chevron.rotated {
+        transform: rotate(180deg);
+    }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const collapseEl = document.getElementById('recentSavingsCollapse');
+    const headerEl = document.getElementById('recentSavingsHeader');
+    const btnEl = document.getElementById('recentSavingsBtn');
+    const btnTexts = document.querySelectorAll('.savings-collapse-btn-text');
+    const chevrons = document.querySelectorAll('.savings-chevron');
+
+    function updateState(isOpen) {
+        btnTexts.forEach(el => el.textContent = isOpen ? 'Hide History' : 'Click to View');
+        chevrons.forEach(el => {
+            if (isOpen) {
+                el.style.transform = 'rotate(180deg)';
+                el.classList.add('rotated');
+            } else {
+                el.style.transform = 'rotate(0deg)';
+                el.classList.remove('rotated');
+            }
+        });
+        if (headerEl) {
+            headerEl.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        }
+        if (btnEl) {
+            btnEl.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        }
+    }
+
+    if (collapseEl) {
+        // Bootstrap event listeners
+        collapseEl.addEventListener('show.bs.collapse', function () {
+            updateState(true);
+        });
+        collapseEl.addEventListener('shown.bs.collapse', function () {
+            updateState(true);
+        });
+        collapseEl.addEventListener('hide.bs.collapse', function () {
+            updateState(false);
+        });
+        collapseEl.addEventListener('hidden.bs.collapse', function () {
+            updateState(false);
+        });
+    }
+
+    if (headerEl && btnEl) {
+        // Clicking anywhere on the header toggles the button if the button itself wasn't directly clicked
+        headerEl.addEventListener('click', function (e) {
+            if (!e.target.closest('#recentSavingsBtn')) {
+                btnEl.click();
+            }
+        });
+
+        // Accessibility: Keyboard support (Enter or Space) on header
+        headerEl.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                btnEl.click();
+            }
+        });
+    }
+
+    // Safety fallback: in case Bootstrap collapse is not initialized on the element
+    if (btnEl && collapseEl) {
+        btnEl.addEventListener('click', function () {
+            setTimeout(function () {
+                // If neither Bootstrap 4 nor Bootstrap 5 toggled the class
+                const isTransitioning = collapseEl.classList.contains('collapsing');
+                const isShown = collapseEl.classList.contains('show');
+                if (!isTransitioning && !isShown && btnEl.getAttribute('aria-expanded') !== 'true') {
+                    // Manual toggle fallback
+                    collapseEl.classList.toggle('show');
+                    const manualShown = collapseEl.classList.contains('show');
+                    updateState(manualShown);
+                }
+            }, 100);
+        });
+    }
+});
+</script>
+@endpush

@@ -12,7 +12,7 @@
         <h5 class="mb-0 text-gray-800 fw-bold">Edit {{ $cooperative->name }}</h5>
     </div>
     <div class="card-body">
-        <form method="POST" action="{{ route('admin.cooperatives.update', $cooperative) }}">
+        <form method="POST" action="{{ route('admin.cooperatives.update', $cooperative) }}" enctype="multipart/form-data">
             @csrf
             @method('PUT')
 
@@ -27,6 +27,22 @@
                     <label for="slug" class="form-label font-weight-bold">Cooperative Code / Slug <span class="text-danger">*</span></label>
                     <input type="text" class="form-control @error('slug') is-invalid @enderror" id="slug" name="slug" value="{{ old('slug', $cooperative->slug) }}" required>
                     @error('slug') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+
+                <div class="col-md-6">
+                    <label for="logo" class="form-label font-weight-bold">Cooperative Official Logo</label>
+                    @if($cooperative->logo_url)
+                        <div class="d-flex align-items-center gap-3 mb-2 p-2 bg-light rounded border">
+                            <img src="{{ $cooperative->logo_url }}" alt="Logo" class="rounded" style="height: 44px; max-width: 80px; object-fit: contain;">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="remove_logo" value="1" id="remove_logo">
+                                <label class="form-check-label text-danger small" for="remove_logo">Remove current logo</label>
+                            </div>
+                        </div>
+                    @endif
+                    <input type="file" class="form-control @error('logo') is-invalid @enderror" id="logo" name="logo" accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml">
+                    <small class="text-muted">Upload new file to change logo (PNG, JPG, SVG, WebP up to 2MB)</small>
+                    @error('logo') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
                 <div class="col-md-6">

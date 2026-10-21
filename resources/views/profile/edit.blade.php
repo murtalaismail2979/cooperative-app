@@ -25,10 +25,51 @@
                     @csrf
                     @method('patch')
 
+                    <!-- Account Summary -->
+                    <div class="p-3 mb-3 bg-light rounded-3 border">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-muted small">Member Code / Username:</span>
+                            @if($user->member_code)
+                                <span class="badge bg-primary text-white font-monospace px-2 py-1">{{ $user->member_code }}</span>
+                            @else
+                                <span class="badge bg-secondary text-white small">No code assigned</span>
+                            @endif
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">Cooperative:</span>
+                            <span class="fw-semibold text-dark small">{{ $user->cooperative?->name ?? 'Platform Wide' }}</span>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
-                        <label for="name" class="form-label text-muted small fw-bold text-uppercase">Name</label>
+                        <label for="name" class="form-label text-muted small fw-bold text-uppercase">Full Name <span class="text-danger">*</span></label>
                         <input type="text" name="name" id="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name', $user->name) }}" required autocomplete="name">
                         @error('name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label text-muted small fw-bold text-uppercase">Email Address (Login Email) <span class="text-danger">*</span></label>
+                        <input type="email" name="email" id="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email', $user->email) }}" required autocomplete="email">
+                        <small class="text-muted">This email address is used to sign into your account.</small>
+                        @error('email')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="phone" class="form-label text-muted small fw-bold text-uppercase">Phone Number</label>
+                        <input type="tel" name="phone" id="phone" inputmode="tel" pattern="[\+]?[0-9\s\-\(\)]{7,20}" maxlength="20" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone', $user->phone) }}" placeholder="e.g. 08012345678 or +234 800 000 0000">
+                        @error('phone')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="address" class="form-label text-muted small fw-bold text-uppercase">Contact Address</label>
+                        <textarea name="address" id="address" rows="2" class="form-control @error('address') is-invalid @enderror" placeholder="Enter residential / contact address">{{ old('address', $user->address) }}</textarea>
+                        @error('address')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -120,66 +161,9 @@
     </div>
 </div>
 
-@if(!auth()->user()->isMember())
-<div class="row mt-4">
-    <!-- Delete Account Card -->
-    <div class="col-12">
-        <div class="card shadow-sm border-danger">
-            <div class="card-header bg-danger bg-opacity-10 py-3 text-danger border-danger">
-                <h6 class="m-0 fw-bold"><i class="bi bi-exclamation-triangle"></i> Danger Zone: Delete Account</h6>
-            </div>
-            <div class="card-body">
-                <p class="text-muted small">Once your account is deleted, all of its resources and data will be permanently deleted. Please proceed with extreme caution.</p>
-                
-                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirmUserDeletionModal">
-                    <i class="bi bi-trash"></i> Delete Account
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="confirmUserDeletionModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form method="post" action="{{ route('profile.destroy') }}">
-                @csrf
-                @method('delete')
-                
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title" id="deleteModalLabel"><i class="bi bi-exclamation-octagon"></i> Confirm Account Deletion</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="fw-bold">Are you sure you want to delete your account?</p>
-                    <p class="text-muted small mb-3">Once your account is deleted, all data will be permanently lost. Please enter your password to confirm deletion.</p>
-                    
-                    <div class="mb-3">
-                        <label for="delete_password" class="form-label text-muted small fw-bold">Password</label>
-                        <input type="password" name="password" id="delete_password" class="form-control @error('password', 'userDeletion') is-invalid @enderror" placeholder="Enter your password" required>
-                        @error('password', 'userDeletion')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Permanently Delete Account</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-@endif
-
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        @if (!auth()->user()->isMember() && $errors->userDeletion->isNotEmpty())
-            const modal = new bootstrap.Modal(document.getElementById('confirmUserDeletionModal'));
-            modal.show();
-        @endif
 
         // Ensure current password field starts completely blank and is never pre-filled by browser
         const currentPasswordInput = document.getElementById('current_password');

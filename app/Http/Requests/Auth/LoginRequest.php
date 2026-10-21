@@ -49,6 +49,24 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        $user = Auth::user();
+        if ($user && !$user->isSuperAdmin()) {
+            if (!$user->is_active && $user->isApprovedMembership()) {
+                Auth::logout();
+                RateLimiter::hit($this->throttleKey());
+                throw ValidationException::withMessages([
+                    'email' => 'Your account has been deactivated by cooperative administration. Please contact support.',
+                ]);
+            }
+            if ($user->cooperative && !$user->cooperative->is_active) {
+                Auth::logout();
+                RateLimiter::hit($this->throttleKey());
+                throw ValidationException::withMessages([
+                    'email' => 'Your cooperative is currently inactive or suspended. Please contact the platform administrator.',
+                ]);
+            }
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 
