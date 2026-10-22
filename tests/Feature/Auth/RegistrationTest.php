@@ -23,6 +23,8 @@ class RegistrationTest extends TestCase
         $response->assertSee('Account Password & Security');
         $response->assertSee('coop_slot_display');
         $response->assertSee('togglePasswordVisibility');
+        $response->assertSee('Monthly Savings Commitment');
+        $response->assertSee('id="slots"', false);
         $response->assertSee('I declare that the information provided is accurate');
     }
 
@@ -50,6 +52,47 @@ class RegistrationTest extends TestCase
             'email' => 'test@example.com',
             'membership_status' => 'pending',
             'is_active' => false,
+        ]);
+        $this->assertDatabaseHas('savings_slots', [
+            'slot_number' => 1,
+            'is_active' => false,
+        ]);
+    }
+
+    public function test_new_member_can_register_with_custom_savings_slots(): void
+    {
+        $coop = Cooperative::factory()->create([
+            'is_active' => true,
+            'base_slot_amount' => 5000,
+        ]);
+
+        $response = $this->post('/register', [
+            'cooperative_id' => $coop->id,
+            'slots' => 3,
+            'name' => 'Slot Investor',
+            'email' => 'investor@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+            'phone' => '08012345678',
+            'nok_name' => 'Kin Name',
+            'nok_phone' => '08000000000',
+            'nok_relationship' => 'Spouse',
+            'terms' => '1',
+        ]);
+
+        $this->assertGuest();
+        $response->assertRedirect(route('login'));
+
+        $user = \App\Models\User::where('email', 'investor@example.com')->first();
+        $this->assertNotNull($user);
+        $this->assertEquals(3, $user->savingsSlots()->count());
+        $this->assertEquals(0, $user->savingsSlots()->where('is_active', true)->count());
+        $this->assertEquals(3, $user->savingsSlots()->where('is_active', false)->count());
+
+        $this->assertDatabaseHas('member_slot_histories', [
+            'user_id' => $user->id,
+            'previous_slots' => 0,
+            'current_slots' => 3,
         ]);
     }
 

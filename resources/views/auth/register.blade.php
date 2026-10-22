@@ -85,11 +85,15 @@
                     <select id="cooperative_id" name="cooperative_id" required class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
                         <option value="" disabled {{ $selectedCoopId ? '' : 'selected' }}>-- Choose Cooperative to Join * --</option>
                         @foreach($activeCooperatives as $cooperative)
+                            @php
+                                $coopBaseSlot = (float)(($cooperative->base_slot_amount > 0) ? $cooperative->base_slot_amount : 2000);
+                            @endphp
                             <option value="{{ $cooperative->id }}" 
                                     data-logo="{{ $cooperative->logo_url ?? '' }}" 
                                     data-name="{{ $cooperative->name }}" 
                                     data-slug="{{ $cooperative->slug }}"
-                                    data-slot="{{ number_format($cooperative->base_slot_amount ?? 0, 2) }}"
+                                    data-slot="{{ number_format($coopBaseSlot, 2) }}"
+                                    data-raw-slot="{{ $coopBaseSlot }}"
                                     {{ (string)$selectedCoopId === (string)$cooperative->id ? 'selected' : '' }}>
                                 {{ $cooperative->name }} ({{ $cooperative->slug }})
                             </option>
@@ -128,6 +132,35 @@
                     </div>
 
                     <x-input-error :messages="$errors->get('cooperative_id')" class="mt-2" />
+                </div>
+
+                <!-- Monthly Savings Commitment (Slots) -->
+                <div>
+                    <x-input-label for="slots">
+                        {{ __('Monthly Savings Commitment') }} <span class="text-rose-400 font-bold">*</span>
+                    </x-input-label>
+                    @php
+                        $oldSlots = (int) old('slots', 1);
+                        $initialBaseSlot = ($currentCoop && $currentCoop->base_slot_amount > 0) 
+                            ? (float) $currentCoop->base_slot_amount 
+                            : (($activeCooperatives->first() && $activeCooperatives->first()->base_slot_amount > 0) ? (float) $activeCooperatives->first()->base_slot_amount : 2000.0);
+                    @endphp
+                    <select id="slots" name="slots" required class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                        @for($i = 1; $i <= 10; $i++)
+                            @php
+                                $monthly = $i * $initialBaseSlot;
+                                $annual = $monthly * 12;
+                            @endphp
+                            <option value="{{ $i }}" {{ $oldSlots === $i ? 'selected' : '' }}>
+                                {{ $i }} Slot{{ $i > 1 ? 's' : '' }} &mdash; &#8358;{{ number_format($monthly, 2) }}/month (&#8358;{{ number_format($annual, 2) }}/yr)
+                            </option>
+                        @endfor
+                    </select>
+                    <p class="text-xs text-slate-400 mt-1 mb-0 flex items-center gap-1">
+                        <i class="bi bi-info-circle text-indigo-400"></i>
+                        <span>Select the monthly savings slots you commit to contribute (1 to 10 slots).</span>
+                    </p>
+                    <x-input-error :messages="$errors->get('slots')" class="mt-2" />
                 </div>
 
                 <!-- Full Name -->
@@ -320,6 +353,27 @@
             const coopSlugTxt = document.getElementById('selected_coop_slug_txt');
             const coopSlotDisplay = document.getElementById('coop_slot_display');
             const headerLogoImg = document.getElementById('guestHeaderLogoImg');
+            const slotsSelect = document.getElementById('slots');
+
+            function updateSlotOptions(baseAmount) {
+                if (!slotsSelect) return;
+                const currentVal = parseInt(slotsSelect.value) || 1;
+                slotsSelect.innerHTML = '';
+
+                for (let i = 1; i <= 10; i++) {
+                    const monthly = i * baseAmount;
+                    const annual = monthly * 12;
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    const monthlyFormatted = monthly.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    const annualFormatted = annual.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    opt.textContent = `${i} Slot${i > 1 ? 's' : ''} — ₦${monthlyFormatted}/month (₦${annualFormatted}/yr)`;
+                    if (i === currentVal) {
+                        opt.selected = true;
+                    }
+                    slotsSelect.appendChild(opt);
+                }
+            }
 
             function updateCoopDisplay() {
                 if (!coopSelect) return;
@@ -333,10 +387,14 @@
                 const name = selectedOption.getAttribute('data-name');
                 const slug = selectedOption.getAttribute('data-slug');
                 const slot = selectedOption.getAttribute('data-slot');
+                const rawSlot = parseFloat(selectedOption.getAttribute('data-raw-slot')) || 2000;
 
                 if (coopNameTxt) coopNameTxt.textContent = name;
                 if (coopSlugTxt) coopSlugTxt.textContent = slug;
                 if (coopSlotDisplay) coopSlotDisplay.textContent = '₦' + (slot || '0.00');
+
+                // Dynamically update savings commitment slots to match selected cooperative's rate
+                updateSlotOptions(rawSlot);
 
                 if (logo && logo.trim() !== '') {
                     if (coopLogoImg) {

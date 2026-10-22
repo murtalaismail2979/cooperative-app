@@ -21,7 +21,7 @@ class UserController extends Controller
         $user = auth()->user();
         $cooperativeId = $user->isSuperAdmin() ? $request->get('cooperative_id') : $user->cooperative_id;
 
-        $query = User::with('savingsSlots');
+        $query = User::with(['savingsSlots', 'cooperative']);
         if ($cooperativeId) {
             $query->where('cooperative_id', $cooperativeId);
         }

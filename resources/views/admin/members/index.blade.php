@@ -157,7 +157,16 @@
                         <td>{{ $member->email }}</td>
                         <td>{{ $member->phone ?? 'N/A' }}</td>
                         <td>
-                            @if($member->isMember())
+                            @if($member->isPendingMembership())
+                                @php
+                                    $reqSlots = $member->savingsSlots->count();
+                                    $baseAmount = (float)($member->cooperative->base_slot_amount ?? 2000);
+                                    $reqMonthly = $reqSlots * $baseAmount;
+                                @endphp
+                                <span class="badge bg-warning text-dark border border-warning shadow-sm" title="Requested Commitment during registration">
+                                    <i class="bi bi-hourglass-split"></i> {{ $reqSlots }}/10 (₦{{ number_format($reqMonthly, 2) }}/mo)
+                                </span>
+                            @elseif($member->isMember())
                                 {{ $member->savingsSlots->where('is_active', true)->count() }}/10
                             @else
                                 <span class="text-muted">N/A</span>
@@ -178,7 +187,7 @@
                             @if(empty($readOnly))
                             <div class="d-flex align-items-center gap-1">
                                 @if($member->isPendingMembership())
-                                    <form action="{{ route('admin.members.approve', $member) }}" method="POST" class="d-inline" onsubmit="return confirm('Approve {{ addslashes($member->name) }} as an active member?');">
+                                    <form action="{{ route('admin.members.approve', $member) }}" method="POST" class="d-inline" onsubmit="return confirm('Approve {{ addslashes($member->name) }} with {{ $member->savingsSlots->count() }} requested savings slot(s)?');">
                                         @csrf
                                         <button type="submit" class="btn btn-sm btn-success text-white" title="Approve Membership">
                                             <i class="bi bi-check-lg"></i> Approve
@@ -186,10 +195,13 @@
                                     </form>
                                     <button type="button" class="btn btn-sm btn-outline-danger" title="Reject Application" data-bs-toggle="modal" data-bs-target="#rejectModal{{ $member->id }}">
                                         <i class="bi bi-x-lg"></i> Reject
-                                    </button>
-                                    <a href="{{ route('admin.members.edit', $member) }}" class="btn btn-sm btn-info text-white" title="Edit member profile">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
+                                     </button>
+                                     <a href="{{ route('admin.members.slots', $member) }}" class="btn btn-sm btn-outline-primary" title="Manage / Adjust requested savings slots">
+                                         <i class="bi bi-grid-3x3-gap"></i>
+                                     </a>
+                                     <a href="{{ route('admin.members.edit', $member) }}" class="btn btn-sm btn-info text-white" title="Edit member profile">
+                                         <i class="bi bi-pencil"></i>
+                                     </a>
                                 @elseif($member->isRejectedMembership())
                                     <form action="{{ route('admin.members.approve', $member) }}" method="POST" class="d-inline" onsubmit="return confirm('Re-approve {{ addslashes($member->name) }}?');">
                                         @csrf

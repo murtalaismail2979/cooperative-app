@@ -295,4 +295,79 @@ class MembershipApprovalTest extends TestCase
         $response->assertDontSee('Assigned upon management approval');
         $response->assertDontSee('Running Charges Paid');
     }
+
+    public function test_approving_member_activates_all_requested_savings_slots(): void
+    {
+        $coop = Cooperative::factory()->create([
+            'is_active' => true,
+            'slug' => 'SAVINGSCOOP',
+            'base_slot_amount' => 5000,
+        ]);
+        $admin = User::factory()->create([
+            'cooperative_id' => $coop->id,
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $applicant = User::factory()->create([
+            'cooperative_id' => $coop->id,
+            'role' => 'member',
+            'is_active' => false,
+            'membership_status' => 'pending',
+            'member_code' => null,
+            'registration_year' => 2026,
+        ]);
+
+        for ($i = 1; $i <= 4; $i++) {
+            $applicant->savingsSlots()->create([
+                'slot_number' => $i,
+                'is_active' => false,
+            ]);
+        }
+
+        $this->assertEquals(0, $applicant->savingsSlots()->where('is_active', true)->count());
+        $this->assertEquals(4, $applicant->savingsSlots()->where('is_active', false)->count());
+
+        $response = $this->actingAs($admin)->post(route('admin.members.approve', $applicant));
+        $response->assertSessionHas('success');
+
+        $applicant->refresh();
+        $this->assertEquals('approved', $applicant->membership_status);
+        $this->assertTrue((bool) $applicant->is_active);
+        $this->assertEquals(4, $applicant->savingsSlots()->where('is_active', true)->count());
+    }
+
+    public function test_pending_member_displays_requested_slots_and_monthly_amount_in_admin_list(): void
+    {
+        $coop = Cooperative::factory()->create([
+            'is_active' => true,
+            'base_slot_amount' => 5000,
+        ]);
+        $admin = User::factory()->create([
+            'cooperative_id' => $coop->id,
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $applicant = User::factory()->create([
+            'cooperative_id' => $coop->id,
+            'name' => 'Fatima Ibrahim',
+            'role' => 'member',
+            'is_active' => false,
+            'membership_status' => 'pending',
+            'member_code' => null,
+        ]);
+
+        for ($i = 1; $i <= 3; $i++) {
+            $applicant->savingsSlots()->create([
+                'slot_number' => $i,
+                'is_active' => false,
+            ]);
+        }
+
+        $response = $this->actingAs($admin)->get(route('admin.members.index'));
+        $response->assertStatus(200);
+        $response->assertSee('Fatima Ibrahim');
+        $response->assertSee('3/10 (₦15,000.00/mo)');
+    }
 }
